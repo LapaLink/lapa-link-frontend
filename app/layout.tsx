@@ -1,29 +1,26 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Nunito_Sans } from "next/font/google"
 import "./globals.css"
+import { QueryProvider } from "@/components/providers"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-})
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const nunitoSans = Nunito_Sans({
+  variable: "--font-nunito-sans",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
 })
 
 export const metadata: Metadata = {
-  title: "Lapa Link",
-  description: "Lapa Link",
+  title: { default: "LapaLink — добрые дела рядом", template: "%s · LapaLink" },
+  description:
+    "Помогаем найденным и бездомным кошкам и собакам найти заботу и дом.",
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${geistSans.className} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="ru" className={`${nunitoSans.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col">
+        <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   )
 }

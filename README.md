@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LapaLink
 
-## Getting Started
+Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui (Radix), TanStack Query 5, React Hook Form и Zod 4.
 
-First, run the development server:
+## Запуск
 
-```bash
+```powershell
+npm install
+# В .env.local задайте BACKEND_API_URL=http://localhost:8080
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+В `BACKEND_API_URL` укажите адрес backend без `/api/v1`. Next.js проксирует `/api/v1/*` на backend, сохраняя Authorization, и обходит CORS-проблему auth-методов. После изменения адреса перезапустите dev-сервер; для production задайте переменную перед сборкой. Конфигурация проверяется Zod, скрытого адреса по умолчанию в коде нет.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Структура
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+За основу взято разделение из finances-app-client: API, типы, hooks, providers, layouts, common и pages. Отдельные экраны входа, регистрации и подтверждения позволяют менять каждую форму независимо.
 
-## Learn More
+```text
+app/                    Маршруты Next.js: подключают экраны и корневой провайдер
+api/                    HTTP-клиент, authApi и accountApi
+hooks/                  Запрос профиля, мутации аккаунта, таймеры
+components/
+  providers/            QueryProvider
+  layouts/              AppLayout, AuthLayout, общие Header и Footer
+  common/               Логотип, навигация, поле формы, ошибки, RequireAuth
+  pages/                Home, Account, Auth
+    Auth/
+      common/           LoginForm, RegisterForm, VerificationForm
+      hooks/            Локальная логика экранов
+      lib/              Привязка ошибок backend к полям
+      schemas.ts        Zod-схемы и выведенные из них типы форм
+  ui/                   Примитивы shadcn/ui
+lib/
+  auth/                 Хранение и синхронизация сессии, незавершённая регистрация
+  constants/            Маршруты интерфейса
+  config/server.ts      Серверная конфигурация окружения
+  utils.ts              Общие небольшие утилиты
+types/                  DTO и типы ответов API
+public/                 Оригинальный логотип
+```
 
-To learn more about Next.js, take a look at the following resources:
+Внешние импорты идут через публичные `index.ts`: `@/api`, `@/hooks`, `@/types`, `@/components/pages`, `@/components/common`, `@/components/ui`, `@/lib/auth`. Внутри модуля используются относительные импорты. ESLint запрещает обход этих публичных API. Серверная конфигурация не экспортируется через клиентские barrels.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Основные страницы находятся в `app/(main)` и используют общий `AppLayout` с Header, областью `main` и Footer. Группа `(main)` не меняет URL: главная остаётся `/`, профиль — `/account`. Новые основные разделы добавляются в эту группу и автоматически получают общий каркас. Сами экраны в `components/pages` содержат только содержимое страницы, без повторяющихся хедера и футера. `AuthLayout` использует те же Header и Footer, передавая в хедер ссылку на главную вместо навигации аккаунта.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Пример proxy от backend для Vite/CRA здесь не нужен: проект работает на Next.js, а proxy уже настроен через `rewrites` в `next.config.ts`. Клиент обращается только к относительному `/api/v1`; сервер Next.js перенаправляет запросы на `BACKEND_API_URL`. Прямых обращений из браузера на адрес backend нет.
 
-## Deploy on Vercel
+## Формы и сессия
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/register`: имя, почта, пароль; затем `/register/verify`.
+- `/register/verify`: код, срок действия, повторная отправка с новым requestId, обработка исчерпанных попыток. Данные шага переживают перезагрузку в sessionStorage; пароль не сохраняется.
+- `/login`: вход. EMAIL_NOT_VERIFIED открывает регистрацию с заполненной почтой для получения нового кода.
+- `/account`: защищённый профиль. Будущие приватные экраны оборачиваются в RequireAuth, а защищённые запросы выполняются через authorizedRequest.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+React Hook Form управляет полями и состоянием отправки, Zod проверяет значения. Формы не содержат fetch: они вызывают hooks с useMutation. Данные профиля живут в кэше React Query через useQuery. После входа кэш старой сессии удаляется, новая сессия подтверждается через `/account/me`. Ошибки полей появляются рядом с полями, общие ошибки — в форме. Ограничение размера пароля проверяется по контракту backend, но сообщение для пользователя не содержит технических терминов.
+
+HTTP-клиент добавляет Bearer-токен, разбирает три формата ошибок и повторяет запрос один раз после TOKEN_EXPIRED. Refresh объединяется внутри вкладки и сериализуется между вкладками через Web Locks. Для синхронизации между вкладками нужен браузер с Web Locks и HTTPS (localhost также поддерживается). SESSION_NOT_FOUND, TOKEN_INVALID и отозванный refresh завершают сессию. При logout токены и кэш удаляются даже при ошибке сети. Без токенов `/me` не вызывается. JWT не включаются в ключи React Query.
+
+## Конфигурация и безопасность
+
+Адрес backend и будущие секреты инфраструктуры задаются в серверном окружении. `.env.local` игнорируется Git; `NEXT_PUBLIC_*` попадает в браузерный код, поэтому не подходит для секретов. Маршруты, ключи хранилища и параметры интерфейса не являются секретами: переносить их в `.env` не нужно.
+
+Токены выдаются пользователю backend и хранятся в localStorage по текущему контракту; они не являются конфигурацией окружения. Это сохраняет вход после перезапуска браузера, но оставляет токены доступными JavaScript. Перенос токенов в HttpOnly cookies потребует отдельного серверного слоя сессии; текущий rewrite этого не делает. Не добавляйте небезопасный HTML и непроверенные сторонние скрипты. RequireAuth управляет отображением; доступ к данным и роли обязательно проверяет backend.
+
+## Проверки
+
+```powershell
+npm run lint
+npx tsc --noEmit
+npm run build
+npm test
+```
+
+Тесты покрывают схемы Zod, ограничения пароля, форматы ошибок API, отсутствие анонимных защищённых запросов, параллельный refresh, синхронизацию между вкладками и выход во время обновления токенов. В `types/` находятся только пользовательские DTO и публичный index.ts. Актуальные типы маршрутов генерируются в `.next/types`.
