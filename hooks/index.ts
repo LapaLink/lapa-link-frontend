@@ -1,4 +1,13 @@
 export { useAuth } from "./useAuth"
+export { dictionaryQueries } from "./model/dictionaryQueries"
+export {
+  useCities,
+  useNeedTypes,
+  useCaseCloseReasons,
+  useDictionaryLocale,
+  useRefreshNeedTypes,
+} from "./useDictionaries"
+export { useTransientNotice } from "./useTransientNotice"
 export {
   useLogin,
   useRegister,
@@ -7,3 +16,9 @@ export {
   useLogout,
 } from "./useAuthMutations"
 export { useCountdown, useCooldown } from "./useCountdown"
+export {
+  useUploadAvatar,
+  useDeleteAvatar,
+  useRequestEmailChange,
+  useConfirmEmailChange,
+} from "./useAccountMutations"

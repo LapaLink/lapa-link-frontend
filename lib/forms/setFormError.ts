@@ -10,13 +10,9 @@ export function setFormError<T extends FieldValues>(
   if (error instanceof ApiError) {
     for (const [field, message] of Object.entries(error.fields)) {
       if (!(field in values)) continue
-      const friendlyMessage =
-        field === "password" && /байт|utf.?8/i.test(message)
-          ? "Пароль слишком длинный. Попробуйте сделать его короче."
-          : message
       form.setError(field as Path<T>, {
         type: "server",
-        message: friendlyMessage,
+        message,
       })
       hasFieldErrors = true
     }

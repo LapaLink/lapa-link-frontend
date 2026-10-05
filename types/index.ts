@@ -1,4 +1,12 @@
 export type {
+  DictionaryLocale,
+  DictionaryEntry,
+  City,
+  CityGroup,
+  NeedType,
+  CaseCloseReason,
+} from "./dictionaries"
+export type {
   Tokens,
   CurrentUser,
   LoginDto,
@@ -6,3 +14,8 @@ export type {
   VerificationDto,
   OtpResponse,
 } from "./auth"
+export type {
+  UserProfile,
+  EmailChangeDto,
+  EmailConfirmationDto,
+} from "./account"

@@ -8,7 +8,9 @@ export type CurrentUser = {
   email: string
   displayName: string
   roles: string[]
-  avatarUrl?: string
+  avatarUrl?: string | null
+  locale?: string | null
+  cityCode?: string | null
 }
 
 export type LoginDto = {

@@ -1,18 +1,5 @@
 import { z } from "zod"
-
-const emailSchema = z
-  .string()
-  .trim()
-  .min(1, "Укажите вашу почту.")
-  .max(320, "Адрес почты слишком длинный.")
-  .pipe(z.email("Проверьте адрес почты, например name@example.com."))
-const passwordSchema = z
-  .string()
-  .min(1, "Введите пароль.")
-  .refine(
-    (value) => new TextEncoder().encode(value).length <= 72,
-    "Пароль слишком длинный. Попробуйте сделать его короче.",
-  )
+import { emailSchema, passwordSchema, otpCodeSchema } from "@/lib/validation"
 
 export const loginSchema = z.object({
   email: emailSchema,
@@ -30,10 +17,7 @@ export const registerSchema = loginSchema.extend({
   ),
 })
 export const verificationSchema = z.object({
-  code: z
-    .string()
-    .length(6, "Введите все 6 цифр из письма.")
-    .regex(/^\d{6}$/, "Введите все 6 цифр из письма."),
+  code: otpCodeSchema,
 })
 
 export type LoginValues = z.infer<typeof loginSchema>

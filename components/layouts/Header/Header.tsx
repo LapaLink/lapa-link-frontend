@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { AccountNavigation, Brand } from "@/components/common"
+import { AccountNavigation, Brand } from "./common"
 
 type HeaderProps = { children?: ReactNode }
 

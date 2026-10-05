@@ -10,7 +10,7 @@ export function useCountdown(deadline: number) {
       clearTimeout(initial)
       clearInterval(interval)
     }
-  }, [])
+  }, [deadline])
   return now ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0
 }
 

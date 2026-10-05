@@ -44,7 +44,7 @@ export function Home() {
           width={1254}
           height={1254}
           priority
-          className="mx-auto w-full max-w-sm"
+          className="mx-auto hidden w-full max-w-sm md:block"
         />
       </section>
     </div>

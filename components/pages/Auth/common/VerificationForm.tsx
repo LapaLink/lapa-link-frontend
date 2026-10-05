@@ -3,16 +3,23 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { FormProvider, useForm } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError } from "@/api"
 import { useVerifyEmail, useResendCode, useCountdown } from "@/hooks"
 import { savePendingVerification, clearPendingVerification } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
-import { AuthFormField, FormAlert } from "@/components/common"
-import { Button } from "@/components/ui"
+import {
+  Form,
+  FormAlert,
+  Loader,
+  LoadingButton,
+  OtpCodeField,
+  ResendCodeButton,
+} from "@/components/common"
+import { Button, FieldGroup } from "@/components/ui"
 import { verificationSchema, type VerificationValues } from "../schemas"
-import { setFormError } from "../lib/setFormError"
+import { setFormError } from "@/lib/forms"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
 import { usePendingVerification } from "../hooks/usePendingVerification"
 
@@ -73,7 +80,13 @@ export function VerificationForm() {
     }
   }
 
-  if (!isReady) return <p role="status">Подготавливаем форму…</p>
+  if (!isReady)
+    return (
+      <Loader
+        label="Подготавливаем форму…"
+        className="py-8 text-muted-foreground"
+      />
+    )
   if (!pending)
     return (
       <div className="flex flex-col gap-4">
@@ -85,63 +98,59 @@ export function VerificationForm() {
     )
 
   return (
-    <FormProvider {...form}>
-      <form
-        onSubmit={form.handleSubmit(submit)}
-        noValidate
-        aria-busy={busy}
-        className="flex flex-col gap-5"
-      >
-        <p className="break-words text-sm text-muted-foreground">
-          Письмо отправлено на{" "}
-          <strong className="text-foreground">{pending.email}</strong>. Если его
-          нет во входящих, загляните в «Спам».
+    <Form
+      form={form}
+      onSubmit={submit}
+      busy={busy}
+      autoComplete="off"
+      className="gap-5"
+    >
+      <p className="break-words text-sm text-muted-foreground">
+        Письмо отправлено на{" "}
+        <strong className="text-foreground">{pending.email}</strong>. Если его
+        нет во входящих, загляните в «Спам».
+      </p>
+      <FormAlert message={form.formState.errors.root?.message} />
+      {notice && (
+        <p role="status" className="text-sm">
+          {notice}
         </p>
-        <FormAlert message={form.formState.errors.root?.message} />
-        {notice && (
-          <p role="status" className="text-sm">
-            {notice}
-          </p>
-        )}
-        <AuthFormField
-          name="code"
-          label="Код из письма"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="000000"
-          required
+      )}
+      <FieldGroup>
+        <OtpCodeField
           disabled={busy || !!codeUnavailable}
+          describedBy="code-expiry"
         />
-        <p className="text-sm text-muted-foreground">
-          {pending.exhausted
-            ? "Слишком много неверных попыток. Запросите новый код."
-            : expires > 0
-              ? `Код действителен ещё ${expires} с.`
-              : "Этот код уже не действует. Отправим новый?"}
-        </p>
-        <Button type="submit" size="lg" disabled={busy || !!codeUnavailable}>
-          {verify.isPending ? "Подтверждаем…" : "Подтвердить почту"}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy || resendWait > 0}
-          onClick={() => void resendCode()}
-        >
-          {resend.isPending
-            ? "Отправляем…"
-            : resendWait > 0
-              ? `Отправить ещё раз через ${resendWait} с`
-              : "Отправить код ещё раз"}
-        </Button>
-        <Link
-          href={ROUTES.REGISTER}
-          className="text-center text-sm text-primary hover:underline"
-        >
-          Указать другую почту
-        </Link>
-      </form>
-    </FormProvider>
+      </FieldGroup>
+      <p id="code-expiry" className="text-sm text-muted-foreground">
+        {pending.exhausted
+          ? "Слишком много неверных попыток. Запросите новый код."
+          : expires > 0
+            ? `Код действителен ещё ${expires} с.`
+            : "Этот код уже не действует. Отправим новый?"}
+      </p>
+      <LoadingButton
+        type="submit"
+        size="lg"
+        loading={verify.isPending}
+        loadingText="Подтверждаем…"
+        disabled={busy || !!codeUnavailable}
+      >
+        Подтвердить почту
+      </LoadingButton>
+      <ResendCodeButton
+        size="default"
+        wait={resendWait}
+        loading={resend.isPending}
+        disabled={busy}
+        onClick={() => void resendCode()}
+      />
+      <Link
+        href={ROUTES.REGISTER}
+        className="text-center text-sm text-primary hover:underline"
+      >
+        Указать другую почту
+      </Link>
+    </Form>
   )
 }

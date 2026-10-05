@@ -1,5 +1,35 @@
 export * from "./button"
+export {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./dialog"
+export { Slider } from "./slider"
 export { Input } from "./input"
+export { InputOTP, InputOTPGroup, InputOTPSlot } from "./input-otp"
+export { Skeleton } from "./skeleton"
+export { Spinner } from "./spinner"
+export { Avatar, AvatarImage, AvatarFallback } from "./avatar"
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "./card"
+export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "./dropdown-menu"
 export {
   Field,
   FieldGroup,
