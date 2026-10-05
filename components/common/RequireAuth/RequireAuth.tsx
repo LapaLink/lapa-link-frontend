@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Button } from "@/components/ui"
-import { FormAlert, PageLoader } from "@/components/common"
+import { FormAlert } from "../FormAlert/FormAlert"
+import { PageLoader } from "../PageLoader/PageLoader"
 
 type RequireAuthProps = {
   children: React.ReactNode

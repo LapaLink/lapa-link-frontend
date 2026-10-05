@@ -33,8 +33,8 @@ export function Home() {
             сделать первый шаг проще вместе.
           </p>
           <Button size="lg" asChild>
-            <Link href={user ? ROUTES.ACCOUNT : ROUTES.REGISTER}>
-              {user ? "Перейти в профиль" : "Присоединиться"}
+            <Link href={user ? ROUTES.CREATE_CASE : ROUTES.REGISTER}>
+              {user ? "Я нашёл животное" : "Присоединиться"}
             </Link>
           </Button>
         </div>

@@ -1,4 +1,11 @@
 export type {
+  AnimalType,
+  AnimalSex,
+  CreateCaseDto,
+  AnimalCase,
+  CaseNeed,
+} from "./cases"
+export type {
   DictionaryLocale,
   DictionaryEntry,
   City,

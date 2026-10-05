@@ -1,11 +1,16 @@
 import type { Area } from "react-easy-crop"
 
-export async function cropAvatar(source: string, area: Area): Promise<File> {
+export async function cropImage(
+  source: string,
+  area: Area,
+  maxSize: number,
+  fileName: string,
+): Promise<File> {
   const image = new Image()
   image.src = source
   await image.decode()
   const canvas = document.createElement("canvas")
-  const size = Math.min(512, Math.round(area.width))
+  const size = Math.max(1, Math.min(maxSize, Math.round(area.width)))
   canvas.width = size
   canvas.height = size
   const context = canvas.getContext("2d")
@@ -31,5 +36,5 @@ export async function cropAvatar(source: string, area: Area): Promise<File> {
       "image/png",
     )
   })
-  return new File([blob], "avatar.png", { type: "image/png" })
+  return new File([blob], fileName, { type: "image/png" })
 }

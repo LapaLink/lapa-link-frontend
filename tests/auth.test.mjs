@@ -17,6 +17,7 @@ function load(file, fetch, sharedStorage, locks) {
     TextEncoder,
     FormData,
     File,
+    Blob,
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
@@ -516,4 +517,93 @@ test("dictionary cache shares requests and survives sign-in and logout", async (
   await client.fetchQuery(options)
   assert.equal(calls, 2)
   client.clear()
+})
+
+test("case validation enforces required fields, coordinates and text limits", () => {
+  const { createCaseSchema, toCreateCaseDto } = load(
+    "components/pages/CreateCase/schemas.ts",
+  )
+  const values = {
+    animalType: "CAT",
+    title: " Найден кот ",
+    cityCode: "minsk",
+    latitude: "53,9",
+    longitude: "27.56",
+    sex: "UNKNOWN",
+    description: "",
+    approximateAge: "",
+    condition: "",
+    needTypes: ["NEW_TYPE"],
+  }
+  const valid = createCaseSchema.safeParse(values)
+  assert.equal(valid.success, true)
+  const dto = toCreateCaseDto(valid.data)
+  assert.equal(dto.title, "Найден кот")
+  assert.equal(dto.latitude, 53.9)
+  assert.equal("city" in dto, false)
+  assert.equal("needTypes" in dto, false)
+  assert.equal("description" in dto, false)
+  for (const patch of [
+    { title: " " },
+    { title: "x".repeat(151) },
+    { cityCode: "" },
+    { animalType: "BIRD" },
+    { latitude: "" },
+    { latitude: "NaN" },
+    { latitude: "91" },
+    { longitude: "181" },
+    { description: "x".repeat(2001) },
+    { approximateAge: "x".repeat(51) },
+    { condition: "x".repeat(501) },
+    { needTypes: ["FOOD", "FOOD"] },
+  ])
+    assert.equal(
+      createCaseSchema.safeParse({ ...values, ...patch }).success,
+      false,
+    )
+  assert.equal(
+    createCaseSchema.safeParse({ ...values, latitude: "-90", longitude: "180" })
+      .success,
+    true,
+  )
+})
+
+test("case creation sends JSON without photo and typed multipart with photo", async () => {
+  const storage = new Map([["lapalink.session", JSON.stringify(old)]])
+  const received = []
+  const { casesApi } = load(
+    "api/cases.ts",
+    async (url, options) => {
+      received.push({ url, options })
+      return response(201, { id: "case-1" })
+    },
+    storage,
+  )
+  const dto = {
+    animalType: "DOG",
+    title: "Найдена собака",
+    cityCode: "minsk",
+    latitude: 53.9,
+    longitude: 27.56,
+  }
+  await casesApi.create(dto)
+  assert.equal(
+    received[0].options.headers.get("Content-Type"),
+    "application/json",
+  )
+  assert.equal(JSON.parse(received[0].options.body).cityCode, "minsk")
+  const photo = new File(["photo"], "dog.png", { type: "image/png" })
+  await casesApi.create(dto, photo)
+  const multipart = received[1].options
+  assert.equal(multipart.headers.has("Content-Type"), false)
+  assert.equal(multipart.body.get("case").type, "application/json")
+  assert.equal(
+    JSON.parse(await multipart.body.get("case").text()).cityCode,
+    "minsk",
+  )
+  assert.equal(multipart.body.get("photo").name, "dog.png")
+  assert.equal(multipart.headers.get("Authorization"), "Bearer old-access")
+  await casesApi.addNeed("case-1", "NEW_TYPE")
+  assert.equal(received[2].url, "/api/v1/cases/case-1/needs")
+  assert.equal(JSON.parse(received[2].options.body).type, "NEW_TYPE")
 })

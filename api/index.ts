@@ -1,4 +1,5 @@
 export { authApi } from "./auth"
+export { casesApi } from "./cases"
 export { dictionariesApi } from "./dictionaries"
 export { accountApi } from "./account"
 export { ApiError, authorizedRequest } from "./instance"

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, UserRound, ChevronDown } from "lucide-react"
+import { LogOut, UserRound, ChevronDown, Plus } from "lucide-react"
 import { useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Loader, UserAvatar } from "@/components/common"
@@ -58,6 +58,12 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
               {user.email}
             </span>
           </DropdownMenuLabel>
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={ROUTES.CREATE_CASE}>
+              <Plus />
+              Создать объявление
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild className="min-h-11">
             <Link href={ROUTES.ACCOUNT}>
               <UserRound />

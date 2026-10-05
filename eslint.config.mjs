@@ -25,6 +25,7 @@ const eslintConfig = defineConfig([
                 "@/lib/constants/*",
                 "@/lib/forms/*",
                 "@/lib/dictionaries/*",
+                "@/lib/images/*",
                 "@/lib/validation/*",
               ],
               message:

@@ -1,11 +1,7 @@
 "use client"
 import { useAuth } from "@/hooks"
-import {
-  RequireAuth,
-  AccountSkeleton,
-  AvatarCard,
-  EmailChangeCard,
-} from "./common"
+import { RequireAuth } from "@/components/common"
+import { AccountSkeleton, AvatarCard, EmailChangeCard } from "./common"
 
 export function Account() {
   const { user } = useAuth()
