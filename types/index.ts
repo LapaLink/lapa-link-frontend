@@ -1,4 +1,12 @@
 export type {
+  DictionaryLocale,
+  DictionaryEntry,
+  City,
+  CityGroup,
+  NeedType,
+  CaseCloseReason,
+} from "./dictionaries"
+export type {
   Tokens,
   CurrentUser,
   LoginDto,

@@ -413,3 +413,107 @@ test("refresh cannot retry an account mutation with another session's tokens", a
   assert.equal(calls, 2)
   assert.equal(api.readTokens().accessToken, next.accessToken)
 })
+
+test("dictionary names follow locale and retain unknown codes", () => {
+  const { resolveDictionaryLocale, getDictionaryName, getCityName } = load(
+    "lib/dictionaries/helpers.ts",
+  )
+  const entries = [{ code: "NEW_TYPE", nameRu: "Помощь", nameBe: "Дапамога" }]
+  assert.equal(resolveDictionaryLocale("be", "ru"), "be")
+  assert.equal(resolveDictionaryLocale(null, "be-BY"), "be")
+  assert.equal(resolveDictionaryLocale("ru", "be"), "ru")
+  assert.equal(getDictionaryName(entries, "NEW_TYPE", "be"), "Дапамога")
+  assert.equal(getDictionaryName(entries, "DISABLED", "ru"), "DISABLED")
+  assert.equal(getDictionaryName(undefined, "NEW_TYPE", "ru"), "NEW_TYPE")
+  assert.equal(getCityName(undefined, null, "ru"), "")
+})
+
+test("city search matches both names and codes, preserves grouping and center", () => {
+  const { filterCities, getCityName } = load("lib/dictionaries/helpers.ts")
+  const center = {
+    code: "mogilev",
+    nameRu: "Могилёв",
+    nameBe: "Магілёў",
+    latitude: 53,
+    longitude: 30,
+  }
+  const city = {
+    code: "gorki",
+    nameRu: "Горки",
+    nameBe: "Горкі",
+    latitude: 54,
+    longitude: 31,
+  }
+  const groups = [{ region: "MOGILEV", center, cities: [center, city] }]
+  assert.equal(filterCities(groups, " МОГИЛЕВ ")[0].cities[0].code, "mogilev")
+  const filtered = filterCities(groups, "ГОРКІ")
+  assert.equal(filtered[0].center.code, "mogilev")
+  assert.equal(filtered[0].cities.length, 1)
+  assert.equal(filterCities(groups, "GORKI")[0].cities[0].code, "gorki")
+  assert.equal(filterCities(groups, "unknown").length, 0)
+  assert.equal(groups[0].cities.length, 2)
+  assert.equal(getCityName(groups, "gorki", "be"), "Горкі")
+})
+
+test("dictionary endpoints are public and preserve backend errors", async () => {
+  const paths = []
+  const { dictionariesApi } = load(
+    "api/dictionaries.ts",
+    async (url, options) => {
+      paths.push(url)
+      assert.equal(options.headers.has("Authorization"), false)
+      return response(200, [])
+    },
+  )
+  await dictionariesApi.cities()
+  await dictionariesApi.needTypes()
+  await dictionariesApi.closeReasons()
+  assert.deepEqual(paths, [
+    "/api/v1/cities",
+    "/api/v1/need-types",
+    "/api/v1/case-close-reasons",
+  ])
+  const failed = load("api/dictionaries.ts", async () =>
+    response(503, {
+      message: "Текст сервера",
+      details: { error: "TECHNICAL_ERROR" },
+    }),
+  )
+  await assert.rejects(
+    failed.dictionariesApi.cities(),
+    (error) => error.message === "Текст сервера",
+  )
+})
+
+test("dictionary cache shares requests and survives sign-in and logout", async () => {
+  const { QueryClient } = nodeRequire("@tanstack/react-query")
+  let calls = 0
+  const modules = load("hooks/model/dictionaryQueries.ts", async () => {
+    calls++
+    return response(200, [])
+  })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const options = modules.dictionaryQueries.cities()
+  assert.equal(options.staleTime, Infinity)
+  assert.equal(options.gcTime, Infinity)
+  await Promise.all([client.fetchQuery(options), client.fetchQuery(options)])
+  await client.fetchQuery(options)
+  assert.equal(calls, 1)
+  client.setQueryData(["account", "me", "old"], { id: "old" })
+  const actions = load("hooks/model/sessionActions.ts", async (url) =>
+    url.endsWith("/account/logout")
+      ? response(204)
+      : response(200, { id: "new" }),
+  )
+  await actions.completeSignIn(client, old)
+  assert.ok(client.getQueryData(options.queryKey))
+  assert.equal(client.getQueryData(["account", "me", "old"]), undefined)
+  await actions.logoutSession(client)
+  assert.ok(client.getQueryData(options.queryKey))
+  await client.invalidateQueries({ queryKey: options.queryKey })
+  await client.fetchQuery(options)
+  assert.equal(calls, 2)
+  client.clear()
+})

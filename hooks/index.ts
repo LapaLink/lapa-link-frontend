@@ -1,4 +1,12 @@
 export { useAuth } from "./useAuth"
+export { dictionaryQueries } from "./model/dictionaryQueries"
+export {
+  useCities,
+  useNeedTypes,
+  useCaseCloseReasons,
+  useDictionaryLocale,
+  useRefreshNeedTypes,
+} from "./useDictionaries"
 export { useTransientNotice } from "./useTransientNotice"
 export {
   useLogin,
