@@ -23,6 +23,8 @@ const eslintConfig = defineConfig([
                 "@/components/ui/*",
                 "@/lib/auth/*",
                 "@/lib/constants/*",
+                "@/lib/forms/*",
+                "@/lib/validation/*",
               ],
               message:
                 "Use the module's public index.ts. Inside a module, use relative imports.",

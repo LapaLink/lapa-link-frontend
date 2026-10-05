@@ -1,4 +1,5 @@
 export { useAuth } from "./useAuth"
+export { useTransientNotice } from "./useTransientNotice"
 export {
   useLogin,
   useRegister,
@@ -7,3 +8,9 @@ export {
   useLogout,
 } from "./useAuthMutations"
 export { useCountdown, useCooldown } from "./useCountdown"
+export {
+  useUploadAvatar,
+  useDeleteAvatar,
+  useRequestEmailChange,
+  useConfirmEmailChange,
+} from "./useAccountMutations"

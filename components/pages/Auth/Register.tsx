@@ -1,5 +1,5 @@
 import { AuthLayout } from "@/components/layouts"
-import { RegisterForm } from "./common/RegisterForm"
+import { RegisterForm } from "./common"
 export function Register() {
   return (
     <AuthLayout

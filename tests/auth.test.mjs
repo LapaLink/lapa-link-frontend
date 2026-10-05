@@ -15,6 +15,8 @@ function load(file, fetch, sharedStorage, locks) {
     Response,
     Event,
     TextEncoder,
+    FormData,
+    File,
     localStorage: {
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
@@ -247,4 +249,167 @@ test("logout during refresh never restores the session", async () => {
   api.saveTokens(old)
   await assert.rejects(api.authorizedRequest("/account/me"))
   assert.equal(api.readTokens(), null)
+})
+
+for (const code of ["OTP_INVALID", "OTP_EXPIRED"])
+  for (const expiredToken of [false, true])
+    test(`${code} keeps session${expiredToken ? " after token refresh" : ""}`, async () => {
+      let refreshes = 0
+      const api = load("api/instance.ts", async (url, options) => {
+        if (url.endsWith("/auth/refresh")) {
+          refreshes++
+          return response(200, next)
+        }
+        if (
+          expiredToken &&
+          options.headers.get("Authorization") === "Bearer old-access"
+        )
+          return response(401, { details: { error: "TOKEN_EXPIRED" } })
+        return response(401, {
+          message: "Код не подошёл",
+          details: { error: code },
+        })
+      })
+      api.saveTokens(old)
+      await assert.rejects(api.authorizedRequest("/account/email/confirm"), {
+        code,
+      })
+      assert.equal(
+        api.readTokens().accessToken,
+        expiredToken ? next.accessToken : old.accessToken,
+      )
+      assert.equal(refreshes, expiredToken ? 1 : 0)
+    })
+
+test("multipart avatar upload leaves boundary header to fetch and survives refresh", async () => {
+  const file = new File(["image"], "avatar.png", { type: "image/png" })
+  const body = new FormData()
+  body.append("file", file)
+  let uploads = 0
+  const api = load("api/instance.ts", async (url, options) => {
+    if (url.endsWith("/auth/refresh")) return response(200, next)
+    uploads++
+    assert.equal(options.headers.has("Content-Type"), false)
+    assert.equal(options.body.get("file").name, "avatar.png")
+    assert.equal(options.method, "PUT")
+    return options.headers.get("Authorization") === "Bearer old-access"
+      ? response(401, { details: { error: "TOKEN_EXPIRED" } })
+      : response(200, { avatarUrl: "/avatar.png" })
+  })
+  api.saveTokens(old)
+  const profile = await api.authorizedRequest("/account/avatar", {
+    method: "PUT",
+    body,
+  })
+  assert.equal(profile.avatarUrl, "/avatar.png")
+  assert.equal(uploads, 2)
+})
+
+test("avatar validation rejects empty, oversized and unsupported files", () => {
+  const { avatarSchema, emailChangeSchema } = load(
+    "components/pages/Account/schemas.ts",
+  )
+  for (const type of ["image/jpeg", "image/png", "image/gif", "image/webp"])
+    assert.equal(
+      avatarSchema.safeParse(new File(["photo"], "photo", { type })).success,
+      true,
+    )
+  assert.equal(
+    avatarSchema.safeParse(new File([], "empty.png", { type: "image/png" }))
+      .success,
+    false,
+  )
+  assert.equal(
+    avatarSchema.safeParse(
+      new File(["photo"], "photo.svg", { type: "image/svg+xml" }),
+    ).success,
+    false,
+  )
+  assert.equal(
+    avatarSchema.safeParse(
+      new File([new Uint8Array(5 * 1024 * 1024)], "max.png", {
+        type: "image/png",
+      }),
+    ).success,
+    true,
+  )
+  assert.equal(
+    avatarSchema.safeParse(
+      new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.png", {
+        type: "image/png",
+      }),
+    ).success,
+    false,
+  )
+  assert.equal(
+    emailChangeSchema.parse({ newEmail: " new@example.com ", password: "old" })
+      .newEmail,
+    "new@example.com",
+  )
+  assert.equal(
+    emailChangeSchema.safeParse({ newEmail: "invalid", password: "" }).success,
+    false,
+  )
+})
+
+test("logout accepts 204 without a JSON body", async () => {
+  const api = load("api/instance.ts", async () => response(204))
+  api.saveTokens(old)
+  assert.equal(
+    await api.authorizedRequest("/account/logout", { method: "POST" }),
+    null,
+  )
+})
+
+test("logout with an expired token does not refresh a closing session", async () => {
+  let calls = 0
+  const api = load("api/instance.ts", async () => {
+    calls++
+    return response(401, { details: { error: "TOKEN_EXPIRED" } })
+  })
+  api.saveTokens(old)
+  await assert.rejects(
+    api.authorizedRequest(
+      "/account/logout",
+      { method: "POST" },
+      { refreshOnExpired: false },
+    ),
+  )
+  assert.equal(calls, 1)
+  assert.equal(api.readTokens(), null)
+})
+
+test("an old account mutation is not retried after another sign-in", async () => {
+  let api,
+    calls = 0
+  api = load("api/instance.ts", async () => {
+    calls++
+    api.replaceSession(next)
+    return response(401, { details: { error: "TOKEN_EXPIRED" } })
+  })
+  api.saveTokens(old)
+  await assert.rejects(
+    api.authorizedRequest("/account/avatar", { method: "DELETE" }),
+  )
+  assert.equal(calls, 1)
+  assert.equal(api.readTokens().accessToken, next.accessToken)
+})
+
+test("refresh cannot retry an account mutation with another session's tokens", async () => {
+  let api,
+    calls = 0
+  api = load("api/instance.ts", async (url) => {
+    calls++
+    if (url.endsWith("/auth/refresh")) {
+      api.replaceSession(next)
+      return response(200, next)
+    }
+    return response(401, { details: { error: "TOKEN_EXPIRED" } })
+  })
+  api.saveTokens(old)
+  await assert.rejects(
+    api.authorizedRequest("/account/avatar", { method: "DELETE" }),
+  )
+  assert.equal(calls, 2)
+  assert.equal(api.readTokens().accessToken, next.accessToken)
 })

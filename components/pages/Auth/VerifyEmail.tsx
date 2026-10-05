@@ -1,5 +1,5 @@
 import { AuthLayout } from "@/components/layouts"
-import { VerificationForm } from "./common/VerificationForm"
+import { VerificationForm } from "./common"
 export function VerifyEmail() {
   return (
     <AuthLayout

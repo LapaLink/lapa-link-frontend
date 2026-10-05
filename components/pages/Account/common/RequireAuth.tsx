@@ -4,20 +4,21 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Button } from "@/components/ui"
-import { FormAlert } from "../FormAlert/FormAlert"
+import { FormAlert, PageLoader } from "@/components/common"
 
-export function RequireAuth({ children }: { children: React.ReactNode }) {
+type RequireAuthProps = {
+  children: React.ReactNode
+  fallback?: React.ReactNode
+}
+
+export function RequireAuth({ children, fallback }: RequireAuthProps) {
   const { user, isLoading, error, checkSession } = useAuth()
   const router = useRouter()
   useEffect(() => {
     if (!isLoading && !user && !error) router.replace(ROUTES.LOGIN)
   }, [user, isLoading, error, router])
   if (isLoading)
-    return (
-      <p role="status" className="p-8 text-center">
-        Загружаем ваш профиль…
-      </p>
-    )
+    return fallback ?? <PageLoader label="Загружаем ваш профиль…" />
   if (error)
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4 p-8">

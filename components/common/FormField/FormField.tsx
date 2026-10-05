@@ -10,18 +10,18 @@ import {
 } from "@/components/ui"
 import type { ComponentProps } from "react"
 
-type AuthFormFieldProps = ComponentProps<typeof Input> & {
+type FormFieldProps = ComponentProps<typeof Input> & {
   name: string
   label: string
   description?: string
 }
 
-export function AuthFormField({
+export function FormField({
   name,
   label,
   description,
   ...props
-}: AuthFormFieldProps) {
+}: FormFieldProps) {
   const { register, getFieldState, formState } = useFormContext()
   const { error } = getFieldState(name, formState)
   return (

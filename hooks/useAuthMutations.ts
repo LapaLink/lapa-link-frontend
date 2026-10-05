@@ -1,15 +1,15 @@
 "use client"
 
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/api"
 import type { LoginDto, VerificationDto } from "@/types"
-import { useAuth } from "./useAuth"
+import { completeSignIn, logoutSession } from "./model/sessionActions"
 
 export function useLogin() {
-  const { completeSignIn } = useAuth()
+  const client = useQueryClient()
   return useMutation({
     mutationFn: async (values: LoginDto) =>
-      completeSignIn(await authApi.login(values)),
+      completeSignIn(client, await authApi.login(values)),
   })
 }
 
@@ -18,10 +18,10 @@ export function useRegister() {
 }
 
 export function useVerifyEmail() {
-  const { completeSignIn } = useAuth()
+  const client = useQueryClient()
   return useMutation({
     mutationFn: async (values: VerificationDto) =>
-      completeSignIn(await authApi.verify(values)),
+      completeSignIn(client, await authApi.verify(values)),
   })
 }
 
@@ -30,6 +30,6 @@ export function useResendCode() {
 }
 
 export function useLogout() {
-  const { logout } = useAuth()
-  return useMutation({ mutationFn: logout })
+  const client = useQueryClient()
+  return useMutation({ mutationFn: () => logoutSession(client) })
 }

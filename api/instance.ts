@@ -1,5 +1,5 @@
 import type { Tokens } from "@/types"
-import { readTokens, saveTokens } from "@/lib/auth"
+import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
 
 export class ApiError extends Error {
   constructor(
@@ -18,7 +18,8 @@ export async function request<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers)
   headers.set("Accept-Language", "ru")
-  if (options.body) headers.set("Content-Type", "application/json")
+  if (options.body && !(options.body instanceof FormData))
+    headers.set("Content-Type", "application/json")
   let response: Response
   try {
     response = await fetch(`/api/v1${path}`, {
@@ -62,6 +63,15 @@ export const post = <T>(path: string, body?: unknown) =>
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
 let refreshPromise: Promise<Tokens> | null = null
+function isSessionError(error: ApiError) {
+  return (
+    error.status === 401 &&
+    (!error.code ||
+      error.code.startsWith("TOKEN_") ||
+      error.code.startsWith("REFRESH_TOKEN_") ||
+      error.code === "SESSION_NOT_FOUND")
+  )
+}
 async function refresh(stale: Tokens): Promise<Tokens> {
   const rotate = async () => {
     const current = readTokens()
@@ -98,9 +108,11 @@ async function refresh(stale: Tokens): Promise<Tokens> {
 export async function authorizedRequest<T>(
   path: string,
   options: RequestInit = {},
+  { refreshOnExpired = true }: { refreshOnExpired?: boolean } = {},
 ): Promise<T> {
   const tokens = readTokens()
   if (!tokens) throw new ApiError("Войдите в аккаунт.", 401)
+  const revision = getSessionRevision()
   const send = (token: string) => {
     const headers = new Headers(options.headers)
     headers.set("Authorization", `Bearer ${token}`)
@@ -109,15 +121,22 @@ export async function authorizedRequest<T>(
   try {
     return await send(tokens.accessToken)
   } catch (error) {
-    if (!(error instanceof ApiError) || error.status !== 401) throw error
-    if (error.code === "TOKEN_EXPIRED") {
+    if (!(error instanceof ApiError) || !isSessionError(error)) throw error
+    if (revision !== getSessionRevision()) throw error
+    if (error.code === "TOKEN_EXPIRED" && refreshOnExpired) {
       const next = await refresh(tokens)
+      if (
+        revision !== getSessionRevision() ||
+        readTokens()?.accessToken !== next.accessToken
+      )
+        throw new ApiError("Сессия изменилась. Попробуйте ещё раз.", 401)
       try {
         return await send(next.accessToken)
       } catch (retryError) {
         if (
           retryError instanceof ApiError &&
-          retryError.status === 401 &&
+          isSessionError(retryError) &&
+          revision === getSessionRevision() &&
           readTokens()?.accessToken === next.accessToken
         )
           saveTokens(null)

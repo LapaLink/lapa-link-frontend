@@ -6,3 +6,8 @@ export type {
   VerificationDto,
   OtpResponse,
 } from "./auth"
+export type {
+  UserProfile,
+  EmailChangeDto,
+  EmailConfirmationDto,
+} from "./account"

@@ -1,5 +1,5 @@
 import { AuthLayout } from "@/components/layouts"
-import { LoginForm } from "./common/LoginForm"
+import { LoginForm } from "./common"
 export function Login() {
   return (
     <AuthLayout
