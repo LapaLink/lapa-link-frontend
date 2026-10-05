@@ -1,5 +1,6 @@
 export * from "./button"
 export { Input } from "./input"
+export { InputOTP, InputOTPGroup, InputOTPSlot } from "./input-otp"
 export {
   Field,
   FieldGroup,

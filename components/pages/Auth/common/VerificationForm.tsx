@@ -3,14 +3,23 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { FormProvider, useForm } from "react-hook-form"
+import { Controller, FormProvider, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError } from "@/api"
 import { useVerifyEmail, useResendCode, useCountdown } from "@/hooks"
 import { savePendingVerification, clearPendingVerification } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
-import { AuthFormField, FormAlert } from "@/components/common"
-import { Button } from "@/components/ui"
+import { FormAlert } from "@/components/common"
+import {
+  Button,
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldError,
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui"
 import { verificationSchema, type VerificationValues } from "../schemas"
 import { setFormError } from "../lib/setFormError"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
@@ -89,6 +98,7 @@ export function VerificationForm() {
       <form
         onSubmit={form.handleSubmit(submit)}
         noValidate
+        autoComplete="off"
         aria-busy={busy}
         className="flex flex-col gap-5"
       >
@@ -103,17 +113,49 @@ export function VerificationForm() {
             {notice}
           </p>
         )}
-        <AuthFormField
-          name="code"
-          label="Код из письма"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="000000"
-          required
-          disabled={busy || !!codeUnavailable}
-        />
-        <p className="text-sm text-muted-foreground">
+        <FieldGroup>
+          <Controller
+            name="code"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field
+                data-invalid={!!fieldState.error}
+                data-disabled={busy || !!codeUnavailable}
+              >
+                <FieldLabel htmlFor="code">Код из письма</FieldLabel>
+                <InputOTP
+                  {...field}
+                  id="code"
+                  maxLength={6}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  data-1p-ignore
+                  data-lpignore="true"
+                  pushPasswordManagerStrategy="none"
+                  pasteTransformer={(text) => text.replace(/\D/g, "")}
+                  aria-invalid={!!fieldState.error}
+                  aria-describedby="code-error code-expiry"
+                  required
+                  disabled={busy || !!codeUnavailable}
+                >
+                  <InputOTPGroup>
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <InputOTPSlot
+                        key={index}
+                        index={index}
+                        aria-invalid={!!fieldState.error}
+                      />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+                <FieldError id="code-error">
+                  {fieldState.error?.message}
+                </FieldError>
+              </Field>
+            )}
+          />
+        </FieldGroup>
+        <p id="code-expiry" className="text-sm text-muted-foreground">
           {pending.exhausted
             ? "Слишком много неверных попыток. Запросите новый код."
             : expires > 0
