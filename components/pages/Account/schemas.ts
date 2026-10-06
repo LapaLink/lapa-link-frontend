@@ -1,13 +1,10 @@
 import { z } from "zod"
 import { emailSchema, passwordSchema, otpCodeSchema } from "@/lib/validation"
 
-const avatarFormats = ["image/jpeg", "image/png", "image/gif", "image/webp"]
-export const AVATAR_ACCEPT = avatarFormats.join(",")
-export const avatarSchema = z
-  .file()
-  .min(1, "Этот файл пустой. Выберите другое фото.")
-  .max(5 * 1024 * 1024, "Фото слишком большое. Выберите файл до 5 МБ.")
-  .mime(avatarFormats, "Выберите фото в формате JPEG, PNG, GIF или WEBP.")
+export {
+  IMAGE_ACCEPT as AVATAR_ACCEPT,
+  imageSchema as avatarSchema,
+} from "@/lib/validation"
 
 export const emailChangeSchema = z.object({
   newEmail: emailSchema,

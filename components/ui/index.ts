@@ -1,5 +1,16 @@
 export * from "./button"
 export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "./select"
+export { Textarea } from "./textarea"
+export { Checkbox } from "./checkbox"
+export {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,6 +43,8 @@ export {
 } from "./dropdown-menu"
 export {
   Field,
+  FieldSet,
+  FieldLegend,
   FieldGroup,
   FieldLabel,
   FieldDescription,

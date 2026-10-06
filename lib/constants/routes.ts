@@ -4,4 +4,5 @@ export const ROUTES = {
   REGISTER: "/register",
   VERIFY_EMAIL: "/register/verify",
   ACCOUNT: "/account",
+  CREATE_CASE: "/cases/create",
 } as const
