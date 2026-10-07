@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { imageSchema } from "@/lib/validation"
+import { imageSchema, approximateAgeSchema } from "@/lib/validation"
 import type { CreateCaseDto } from "@/types"
 
 function coordinate(limit: number, label: string) {
@@ -30,10 +30,7 @@ export const createCaseSchema = z.object({
     .trim()
     .max(2000, "Описание должно быть не длиннее 2000 символов."),
   sex: z.enum(["MALE", "FEMALE", "UNKNOWN"]),
-  approximateAge: z
-    .string()
-    .trim()
-    .max(50, "Укажите возраст в пределах 50 символов."),
+  approximateAge: approximateAgeSchema,
   condition: z
     .string()
     .trim()

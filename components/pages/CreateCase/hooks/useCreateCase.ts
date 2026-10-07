@@ -59,7 +59,6 @@ export function useCreateCase() {
         setRevision(currentRevision)
         types = values.needTypes
         setPendingTypes(types)
-        client.setQueryData(["cases", "detail", animalCase.id], animalCase)
         form.reset()
       } else {
         if (revision !== currentRevision)
@@ -87,7 +86,11 @@ export function useCreateCase() {
           })
         throw error
       } finally {
+        void client.invalidateQueries({
+          queryKey: ["cases", "detail", animalCase.id],
+        })
         void client.invalidateQueries({ queryKey: ["cases", "list"] })
+        void client.invalidateQueries({ queryKey: ["account", "cases"] })
       }
     },
   })

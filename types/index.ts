@@ -1,4 +1,6 @@
 export type {
+  UpdateCaseDto,
+  MyCaseListItem,
   AnimalType,
   AnimalSex,
   CreateCaseDto,
@@ -34,6 +36,7 @@ export type {
 } from "./auth"
 export type {
   UserProfile,
+  UpdateProfileDto,
   EmailChangeDto,
   EmailConfirmationDto,
   MyHelpApplication,

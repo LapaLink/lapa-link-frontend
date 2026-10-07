@@ -8,9 +8,13 @@ import { createRequire } from "node:module"
 
 const nodeRequire = createRequire(import.meta.url)
 
-function load(file, fetch, sharedStorage, locks) {
+function load(file, fetch, sharedStorage, locks, overrides = {}) {
   const storage = sharedStorage || new Map()
   const context = {
+    AbortSignal: overrides.AbortSignal ?? AbortSignal,
+    setTimeout,
+    clearTimeout,
+    URLSearchParams,
     Headers,
     Response,
     Event,
@@ -23,7 +27,7 @@ function load(file, fetch, sharedStorage, locks) {
       setItem: (key, value) => storage.set(key, value),
       removeItem: (key) => storage.delete(key),
     },
-    window: { dispatchEvent() {} },
+    window: overrides.window ?? { dispatchEvent() {} },
     navigator: { locks },
     fetch,
   }
@@ -34,12 +38,15 @@ function load(file, fetch, sharedStorage, locks) {
     const exports = {}
     modules.set(resolved, exports)
     const compiled = ts.transpileModule(fs.readFileSync(resolved, "utf8"), {
+      fileName: resolved,
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
         target: ts.ScriptTarget.ES2017,
+        jsx: ts.JsxEmit.ReactJSX,
       },
     }).outputText
     const requireModule = (specifier) => {
+      if (specifier in overrides) return overrides[specifier]
       if (!specifier.startsWith("@/") && !specifier.startsWith("."))
         return nodeRequire(specifier)
       const base = specifier.startsWith("@/")
@@ -69,6 +76,209 @@ const response = (status, body) =>
   })
 const old = { accessToken: "old-access", refreshToken: "old-refresh" }
 const next = { accessToken: "new-access", refreshToken: "new-refresh" }
+
+test("debounce cancels intermediate input and publishes only the settled search", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  let cleanup
+  const updates = []
+  const { useDebouncedValue } = load(
+    "hooks/useDebouncedValue.ts",
+    undefined,
+    undefined,
+    undefined,
+    {
+      react: {
+        useState: (initial) => [initial, (value) => updates.push(value)],
+        useEffect: (effect) => {
+          cleanup?.()
+          cleanup = effect()
+        },
+      },
+    },
+  )
+  useDebouncedValue("к", 350)
+  t.mock.timers.tick(200)
+  useDebouncedValue("кот", 350)
+  t.mock.timers.tick(349)
+  assert.equal(updates.length, 0)
+  t.mock.timers.tick(1)
+  assert.deepEqual(updates, ["кот"])
+  cleanup()
+})
+
+test("creating a case never seeds details cache with a partial POST response", async () => {
+  const { QueryClient } = nodeRequire("@tanstack/react-query")
+  const client = new QueryClient()
+  let mutation
+  const storage = new Map([["lapalink.session", JSON.stringify(old)]])
+  const fetch = async (_url, options) =>
+    response(
+      200,
+      options?.method === "POST"
+        ? { id: "new-case", authorId: "owner", title: "Кот", animalType: "CAT" }
+        : { id: "new-case", author: { id: "owner" }, needs: [] },
+    )
+  const { useCreateCase } = load(
+    "components/pages/CreateCase/hooks/useCreateCase.ts",
+    fetch,
+    storage,
+    undefined,
+    {
+      react: {
+        useRef: (value) => ({ current: value }),
+        useState: (value) => [value, () => {}],
+      },
+      "react-hook-form": { useForm: () => ({ reset() {}, formState: {} }) },
+      "@/hooks": { dictionaryQueries: {} },
+      "@tanstack/react-query": {
+        useQueryClient: () => client,
+        useMutation: (options) => {
+          mutation = options
+          return {}
+        },
+      },
+    },
+  )
+  useCreateCase()
+  await mutation.mutationFn({
+    animalType: "CAT",
+    title: "Кот",
+    cityCode: "minsk",
+    latitude: "53.9",
+    longitude: "27.56",
+    needTypes: [],
+  })
+  assert.equal(client.getQueryData(["cases", "detail", "new-case"]), undefined)
+  const { casesApi } = load("api/cases.ts", fetch, storage)
+  const details = await client.fetchQuery({
+    queryKey: ["cases", "detail", "new-case"],
+    queryFn: () => casesApi.getById("new-case"),
+  })
+  assert.equal(details.author.id, "owner")
+  assert.ok(Array.isArray(details.needs))
+  client.clear()
+})
+
+test("my cases uses the authenticated paginated account endpoint", async () => {
+  const received = []
+  const { accountApi } = load(
+    "api/account.ts",
+    async (url, options) => {
+      received.push({ url, options })
+      return response(200, { content: [], totalPages: 0 })
+    },
+    new Map([["lapalink.session", JSON.stringify(old)]]),
+  )
+  await accountApi.getCases(2, 20)
+  assert.equal(received[0].url, "/api/v1/account/cases?page=2&size=20")
+  assert.equal(
+    received[0].options.headers.get("Authorization"),
+    "Bearer old-access",
+  )
+  let calls = 0
+  const anonymous = load("api/account.ts", () => {
+    calls++
+    return response(200, {})
+  })
+  await assert.rejects(anonymous.accountApi.getCases(), { status: 401 })
+  assert.equal(calls, 0)
+})
+
+test("editing hydrates current values, enforces limits and sends only editable changes", async () => {
+  const { editCaseSchema, getEditCaseValues, toUpdateCaseDto, canEditCase } =
+    load("components/pages/EditCase/schemas.ts")
+  const item = {
+    id: "case-1",
+    title: "Найдена кошка",
+    description: null,
+    sex: "UNKNOWN",
+    approximateAge: null,
+    condition: "Нужен осмотр",
+    cityCode: "minsk",
+    author: { id: "owner" },
+    status: "OPEN",
+  }
+  const values = getEditCaseValues(item)
+  assert.equal(values.description, "")
+  assert.equal(values.condition, item.condition)
+  assert.equal(canEditCase(item, "owner"), true)
+  assert.equal(canEditCase(item, "other"), false)
+  assert.equal(canEditCase(item), false)
+  assert.equal(canEditCase({ ...item, status: "CLOSED" }, "owner"), false)
+  for (const patch of [
+    { title: " " },
+    { title: "x".repeat(151) },
+    { description: "x".repeat(2001) },
+    { approximateAge: "x".repeat(51) },
+    { condition: "x".repeat(501) },
+    { cityCode: "" },
+    { sex: "OTHER" },
+  ]) {
+    assert.equal(
+      editCaseSchema.safeParse({ ...values, ...patch }).success,
+      false,
+    )
+  }
+  const updated = editCaseSchema.parse({
+    ...values,
+    title: " Новое название ",
+    condition: "",
+    id: "injected",
+    status: "CLOSED",
+  })
+  const dto = toUpdateCaseDto(updated, item)
+  assert.equal(
+    JSON.stringify(dto),
+    JSON.stringify({ title: "Новое название", condition: "" }),
+  )
+  assert.equal(JSON.stringify(toUpdateCaseDto(values, item)), "{}")
+  const received = []
+  const { casesApi } = load(
+    "api/cases.ts",
+    async (url, options) => {
+      received.push({ url, options })
+      return response(200, { ...item, ...dto })
+    },
+    new Map([["lapalink.session", JSON.stringify(old)]]),
+  )
+  await casesApi.update(item.id, dto)
+  assert.equal(received[0].url, "/api/v1/cases/case-1")
+  assert.equal(received[0].options.method, "PATCH")
+  assert.equal(
+    received[0].options.headers.get("Authorization"),
+    "Bearer old-access",
+  )
+  assert.deepEqual(JSON.parse(received[0].options.body), {
+    title: "Новое название",
+    condition: "",
+  })
+})
+
+test("editing invalidates detail, own pages and the public list; backend messages take priority", async () => {
+  const { QueryClient } = nodeRequire("@tanstack/react-query")
+  const { queryKeys, invalidateCaseData } = load("lib/queryKeys.ts")
+  const client = new QueryClient()
+  const keys = [
+    queryKeys.caseDetail("case-1"),
+    queryKeys.myCases(0),
+    queryKeys.myCases(1),
+    [...queryKeys.casesList, { cityCode: "minsk" }],
+  ]
+  keys.forEach((key) => client.setQueryData(key, { value: 1 }))
+  await invalidateCaseData(client, "case-1")
+  keys.forEach((key) =>
+    assert.equal(client.getQueryState(key).isInvalidated, true),
+  )
+  client.clear()
+  const { ApiError, getErrorMessage } = load("api/instance.ts")
+  assert.equal(
+    getErrorMessage(
+      new ApiError("Сообщение бэка", 403, "NOT_CASE_AUTHOR"),
+      "Ошибка",
+    ),
+    "Сообщение бэка",
+  )
+})
 
 test("validation enforces UTF-8 byte limit and registration fields", () => {
   const { registerSchema } = load("components/pages/Auth/schemas.ts")
@@ -616,4 +826,181 @@ test("case creation sends JSON without photo and typed multipart with photo", as
   await casesApi.addNeed("case-1", "NEW_TYPE")
   assert.equal(received[2].url, "/api/v1/cases/case-1/needs")
   assert.equal(JSON.parse(received[2].options.body).type, "NEW_TYPE")
+})
+
+test("animal age accepts numeric years/months and rejects free-form letters", () => {
+  const { approximateAgeSchema } = load("lib/validation/age.ts")
+  for (const value of ["", "2", "2 лет", "6 месяцев", "1 год"])
+    assert.equal(approximateAgeSchema.safeParse(value).success, true, value)
+  for (const value of ["котёнок", "abc", "-2", "2e4", "1.5", "1234"])
+    assert.equal(approximateAgeSchema.safeParse(value).success, false, value)
+})
+
+test("API propagates cancellation and turns a deadline into a recoverable error", async () => {
+  const cancelled = new AbortController()
+  cancelled.abort()
+  const api = load("api/instance.ts", async (_url, options) => {
+    throw options.signal.reason
+  })
+  await assert.rejects(api.request("/cases", { signal: cancelled.signal }), {
+    name: "AbortError",
+  })
+  const expired = AbortSignal.abort(new DOMException("Expired", "TimeoutError"))
+  const timed = load(
+    "api/instance.ts",
+    async (_url, options) => {
+      throw options.signal.reason
+    },
+    undefined,
+    undefined,
+    {
+      AbortSignal: {
+        timeout: (ms) => {
+          assert.equal(ms, 20_000)
+          return expired
+        },
+        any: AbortSignal.any,
+      },
+    },
+  )
+  await assert.rejects(timed.request("/cases"), {
+    message: "Сервер отвечает слишком долго. Попробуйте ещё раз.",
+  })
+})
+
+test("navigation serializes rapid links and recovers a stalled transition", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const React = nodeRequire("react")
+  let pending = false
+  let pathname = "/cases"
+  let effect
+  const ref = { current: null }
+  const pushed = []
+  const assigned = []
+  const { NavigationProvider } = load(
+    "components/providers/NavigationProvider.tsx",
+    undefined,
+    undefined,
+    undefined,
+    {
+      react: {
+        ...React,
+        useRef: () => ref,
+        useTransition: () => [pending, (callback) => callback()],
+        useEffect: (callback) => {
+          effect = callback
+        },
+      },
+      "next/navigation": {
+        usePathname: () => pathname,
+        useRouter: () => ({ push: (href) => pushed.push(href) }),
+      },
+      "next/link": { default: "a" },
+      window: { location: { assign: (href) => assigned.push(href) } },
+    },
+  )
+  let tree = NavigationProvider({ children: null })
+  effect()
+  tree.props.value("/cases")
+  assert.equal(pushed.length, 0)
+  tree.props.value("/account")
+  tree.props.value("/my-tasks")
+  tree.props.value("/account")
+  assert.deepEqual(pushed, ["/account"])
+  pathname = "/account"
+  tree = NavigationProvider({ children: null })
+  effect()
+  tree.props.value("/my-cases")
+  assert.deepEqual(pushed, ["/account", "/my-cases"])
+  pending = true
+  NavigationProvider({ children: null })
+  const cleanup = effect()
+  t.mock.timers.tick(20_000)
+  assert.deepEqual(assigned, ["/my-cases"])
+  cleanup()
+})
+
+test("profile validation enforces backend limits and trims the name", () => {
+  const { profileSchema } = load("components/pages/Account/schemas.ts")
+  assert.equal(
+    profileSchema.parse({ displayName: " Анна ", cityCode: "minsk", bio: "" })
+      .displayName,
+    "Анна",
+  )
+  for (const fields of [
+    { displayName: " " },
+    { displayName: "a".repeat(101) },
+    { cityCode: "a".repeat(65) },
+    { bio: "a".repeat(1001) },
+  ]) {
+    assert.equal(
+      profileSchema.safeParse({
+        displayName: "Анна",
+        cityCode: "__none",
+        bio: "",
+        ...fields,
+      }).success,
+      false,
+    )
+  }
+})
+
+test("profile saves the exact DTO and publishes the current user without reloading", async () => {
+  const updated = {
+    id: "user",
+    displayName: "Анна",
+    profile: { cityCode: null, bio: null },
+  }
+  let received
+  const api = load("api/instance.ts", async (url, options) => {
+    received = { url, method: options.method, body: JSON.parse(options.body) }
+    return response(200, updated)
+  })
+  api.saveTokens(old)
+  const { accountApi } = load(
+    "api/account.ts",
+    async (url, options) => {
+      received = { url, method: options.method, body: JSON.parse(options.body) }
+      return response(200, updated)
+    },
+    undefined,
+    undefined,
+    { "./instance": api },
+  )
+  const dto = { displayName: "Анна", cityCode: null, bio: null }
+  assert.equal((await accountApi.updateProfile(dto)).displayName, "Анна")
+  assert.equal(received.url, "/api/v1/account/profile")
+  assert.equal(received.method, "PUT")
+  assert.deepEqual(received.body, dto)
+  let cached = { id: "user", displayName: "До изменения" }
+  let invalidated = false
+  const { useUpdateProfile } = load(
+    "hooks/useAccountMutations.ts",
+    undefined,
+    undefined,
+    undefined,
+    {
+      "@/api": {
+        accountApi: { updateProfile: async () => updated },
+        ApiError: api.ApiError,
+      },
+      "@/lib/auth": { getSessionRevision: () => 1, readTokens: () => old },
+      "./model/accountQuery": { ACCOUNT_QUERY_KEY: ["account", "me"] },
+      "@tanstack/react-query": {
+        useMutation: (options) => options,
+        useQueryClient: () => ({
+          cancelQueries: async () => {},
+          setQueriesData: (_, apply) => {
+            cached = apply(cached)
+          },
+          invalidateQueries: () => {
+            invalidated = true
+          },
+        }),
+      },
+    },
+  )
+  await useUpdateProfile().mutationFn(dto)
+  assert.equal(cached, updated)
+  assert.equal(invalidated, true)
 })

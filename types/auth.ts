@@ -11,6 +11,7 @@ export type CurrentUser = {
   avatarUrl?: string | null
   locale?: string | null
   cityCode?: string | null
+  bio?: string | null
 }
 
 export type LoginDto = {

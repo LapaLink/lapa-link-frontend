@@ -3,9 +3,35 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { accountApi, ApiError } from "@/api"
 import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
-import type { CurrentUser, EmailConfirmationDto, UserProfile } from "@/types"
+import type {
+  CurrentUser,
+  EmailConfirmationDto,
+  UserProfile,
+  UpdateProfileDto,
+} from "@/types"
 
 import { ACCOUNT_QUERY_KEY } from "./model/accountQuery"
+
+export function useUpdateProfile() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: UpdateProfileDto) => {
+      const revision = getSessionRevision()
+      const user = await accountApi.updateProfile(data)
+      if (revision !== getSessionRevision() || !readTokens())
+        throw new ApiError("Сессия завершена. Войдите заново.", 401)
+      await client.cancelQueries({ queryKey: ACCOUNT_QUERY_KEY })
+      if (revision !== getSessionRevision() || !readTokens())
+        throw new ApiError("Сессия завершена. Войдите заново.", 401)
+      client.setQueriesData<CurrentUser>(
+        { queryKey: ACCOUNT_QUERY_KEY },
+        (current) => (current?.id === user.id ? user : current),
+      )
+      void client.invalidateQueries({ queryKey: ACCOUNT_QUERY_KEY })
+      return user
+    },
+  })
+}
 
 function useAvatarMutation<T>(action: (value: T) => Promise<UserProfile>) {
   const client = useQueryClient()

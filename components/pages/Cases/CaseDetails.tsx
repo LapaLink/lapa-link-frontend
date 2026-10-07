@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image"
+import Link from "next/link"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { accountApi, casesApi, getErrorMessage } from "@/api"
@@ -9,11 +9,13 @@ import {
   useCaseCloseReasons,
   useDictionaryLocale,
   useNeedTypes,
+  useCities,
 } from "@/hooks"
-import { getDictionaryName } from "@/lib/dictionaries"
-import { normalizeRemoteImageUrl } from "@/lib/images"
+import { getDictionaryName, getCityName } from "@/lib/dictionaries"
+import { ROUTES } from "@/lib/constants"
+
 import type { CaseNeed, HelpApplication, NeedStatus } from "@/types"
-import { FormAlert, LoadingButton } from "@/components/common"
+import { FormAlert, LoadingButton, CasePhoto } from "@/components/common"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
+  Skeleton,
 } from "@/components/ui"
 import {
   caseStatusLabels,
@@ -55,6 +58,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   const { user } = useAuth()
   const locale = useDictionaryLocale()
   const needTypes = useNeedTypes()
+  const cities = useCities()
   const closeReasons = useCaseCloseReasons()
   const [messageByNeed, setMessageByNeed] = useState<Record<string, string>>({})
   const [error, setError] = useState("")
@@ -70,9 +74,10 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
   const details = useQuery({
     queryKey: queryKeys.caseDetail(caseId),
-    queryFn: () => casesApi.getById(caseId),
+    queryFn: ({ signal }) => casesApi.getById(caseId, signal),
+    refetchOnMount: "always",
   })
-  const isAuthor = !!user && user.id === details.data?.author.id
+  const isAuthor = !!user && user.id === details.data?.author?.id
   const responses = useQuery({
     queryKey: queryKeys.caseResponses(caseId),
     queryFn: () => casesApi.getResponses(caseId),
@@ -222,8 +227,19 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     }
   }
 
-  if (details.isLoading)
-    return <p className="text-muted-foreground">Загружаем объявление…</p>
+  if (details.isLoading || (details.data && !details.data.author && !details.error))
+    return (
+      <div
+        role="status"
+        aria-label="Загружаем объявление"
+        className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-6"
+      >
+        <Skeleton className="aspect-video w-full rounded-xl" />
+        <Skeleton className="h-10 w-2/3" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    )
   if (details.error)
     return (
       <FormAlert
@@ -237,7 +253,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   if (!details.data) return null
 
   const animalCase = details.data
-  const photoUrl = normalizeRemoteImageUrl(animalCase.photoUrl)
+
   const canAct = animalCase.status === "OPEN"
   const selectedReason = closeReasons.data?.find(
     (reason) => reason.code === closeReason,
@@ -255,35 +271,79 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     )
 
   return (
-    <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+    <section className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-6 [overflow-wrap:anywhere]">
       <div className="flex flex-col gap-4">
-        {photoUrl && (
-          <Image
-            src={photoUrl}
+        <div className="overflow-hidden rounded-xl">
+          <CasePhoto
+            src={animalCase.photoUrl}
             alt={animalCase.title}
-            width={960}
-            height={540}
             priority
-            className="aspect-video w-full rounded-xl object-cover"
           />
-        )}
+        </div>
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold text-primary">
             {animalCase.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
             {caseStatusLabels[animalCase.status]}
           </p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight [overflow-wrap:anywhere] sm:text-4xl">
             {animalCase.title}
           </h1>
           <p className="text-sm text-muted-foreground">
             Автор: {animalCase.author.displayName || "Пользователь"}
           </p>
           {animalCase.description && (
-            <p className="text-muted-foreground">{animalCase.description}</p>
+            <p className="whitespace-pre-wrap text-muted-foreground [overflow-wrap:anywhere]">
+              {animalCase.description}
+            </p>
           )}
         </div>
       </div>
 
+      {isAuthor && animalCase.status === "OPEN" && (
+        <Button asChild variant="outline" className="w-full sm:w-fit">
+          <Link href={ROUTES.EDIT_CASE(caseId)}>Редактировать объявление</Link>
+        </Button>
+      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>О животном</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid gap-4 text-sm sm:grid-cols-2">
+            {[
+              [
+                "Пол",
+                animalCase.sex === "MALE"
+                  ? "Самец"
+                  : animalCase.sex === "FEMALE"
+                    ? "Самка"
+                    : "Неизвестно",
+              ],
+              ["Примерный возраст", animalCase.approximateAge || "Не указан"],
+              ["Состояние", animalCase.condition || "Не указано"],
+              [
+                "Город",
+                animalCase.cityCode
+                  ? getCityName(cities.data, animalCase.cityCode, locale)
+                  : "Не указан",
+              ],
+              [
+                "Объявление создано",
+                new Intl.DateTimeFormat("ru-RU").format(
+                  new Date(animalCase.createdAt),
+                ),
+              ],
+            ].map(([label, value]) => (
+              <div key={label} className="flex min-w-0 flex-col gap-1">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+                  {value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
       {isAuthor && animalCase.status === "CLOSED" && (
         <Card>
           <CardHeader>
@@ -483,7 +543,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                                     {responseStatusLabels[application.status]}
                                   </span>
                                 </div>
-                                <p className="mt-1 wrap-break-word">
+                                <p className="mt-1 [overflow-wrap:anywhere]">
                                   {application.message}
                                 </p>
                               </li>

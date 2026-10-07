@@ -12,6 +12,7 @@ export { Textarea } from "./textarea"
 export { Checkbox } from "./checkbox"
 export {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,

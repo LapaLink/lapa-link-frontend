@@ -1,174 +1,226 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { casesApi } from "@/api"
-import { useCities, useDictionaryLocale } from "@/hooks"
+import { casesApi, getErrorMessage } from "@/api"
+import {
+  useAuth,
+  useCities,
+  useDictionaryLocale,
+  useDebouncedValue,
+} from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { getCityName } from "@/lib/dictionaries"
-import { normalizeRemoteImageUrl } from "@/lib/images"
 import type { AnimalType } from "@/types"
 import {
   Button,
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
   Input,
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Field,
+  FieldLabel,
 } from "@/components/ui"
-import { FormAlert } from "@/components/common"
-
-const animalTypeOptions: Array<{ value: AnimalType; label: string }> = [
-  { value: "CAT", label: "Кошка" },
-  { value: "DOG", label: "Собака" },
-]
+import {
+  FormAlert,
+  CasePhoto,
+  CaseCardsSkeleton,
+  ListPagination,
+} from "@/components/common"
 
 export function CasesList() {
+  const { user } = useAuth()
   const locale = useDictionaryLocale()
   const cities = useCities()
-  const [animalType, setAnimalType] = useState<AnimalType | "all">("all")
-  const [cityCode, setCityCode] = useState("")
-  const [title, setTitle] = useState("")
-
+  const [filters, setFilters] = useState({
+    animalType: "all",
+    cityCode: "all",
+    title: "",
+  })
+  const search = useDebouncedValue(filters.title.trim())
+  const [position, setPosition] = useState({
+    page: 0,
+    search: "",
+    animalType: "all",
+    cityCode: "all",
+  })
+  const matches =
+    position.search === search &&
+    position.animalType === filters.animalType &&
+    position.cityCode === filters.cityCode
+  const page = matches ? position.page : 0
+  const setPage = (next: number) =>
+    setPosition({
+      page: next,
+      search,
+      animalType: filters.animalType,
+      cityCode: filters.cityCode,
+    })
   const cases = useQuery({
     queryKey: [
       "cases",
       "list",
-      { animalType, cityCode, title, page: 0, size: 20 },
+      {
+        animalType: filters.animalType,
+        cityCode: filters.cityCode,
+        title: search,
+        page,
+        size: 6,
+      },
     ],
-    queryFn: () =>
-      casesApi.list({
-        animalType: animalType === "all" ? undefined : animalType,
-        cityCode: cityCode || undefined,
-        title: title.trim() || undefined,
-        page: 0,
-        size: 20,
-      }),
+    queryFn: ({ signal }) =>
+      casesApi.list(
+        {
+          animalType:
+            filters.animalType === "all"
+              ? undefined
+              : (filters.animalType as AnimalType),
+          cityCode: filters.cityCode === "all" ? undefined : filters.cityCode,
+          title: search || undefined,
+          page,
+          size: 6,
+        },
+        signal,
+      ),
   })
-
   return (
-    <section className="flex w-full flex-col gap-6">
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <p className="text-sm font-semibold text-primary">Объявления</p>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Кому сейчас нужна помощь
           </h1>
         </div>
-        <Button asChild>
-          <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          {user && (
+            <Button variant="outline" asChild>
+              <Link href={ROUTES.MY_CASES}>Мои объявления</Link>
+            </Button>
+          )}
+          <Button asChild>
+            <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
+          </Button>
+        </div>
       </div>
-
-      <div className="grid gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-3">
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Тип животного</label>
+      <div className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-3">
+        <Field>
+          <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
           <Select
-            value={animalType}
-            onValueChange={(value) =>
-              setAnimalType(value as AnimalType | "all")
+            value={filters.animalType}
+            onValueChange={(animalType) =>
+              setFilters((current) => ({ ...current, animalType }))
             }
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Все" />
+            <SelectTrigger id="animal-filter">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Все</SelectItem>
-              {animalTypeOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="all">Все животные</SelectItem>
+                <SelectItem value="CAT">Кошка</SelectItem>
+                <SelectItem value="DOG">Собака</SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Город</label>
-          <Select value={cityCode} onValueChange={setCityCode}>
-            <SelectTrigger>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="city-filter">Город</FieldLabel>
+          <Select
+            value={filters.cityCode}
+            onValueChange={(cityCode) =>
+              setFilters((current) => ({ ...current, cityCode }))
+            }
+          >
+            <SelectTrigger id="city-filter">
               <SelectValue placeholder="Любой город" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Любой город</SelectItem>
-              {cities.data?.flatMap((group) =>
-                group.cities.map((city) => (
-                  <SelectItem key={city.code} value={city.code}>
-                    {getCityName(cities.data, city.code, locale)}
-                  </SelectItem>
-                )),
-              )}
+              <SelectGroup>
+                <SelectItem value="all">Любой город</SelectItem>
+                {cities.data?.flatMap((group) =>
+                  group.cities.map((city) => (
+                    <SelectItem key={city.code} value={city.code}>
+                      {getCityName(cities.data, city.code, locale)}
+                    </SelectItem>
+                  )),
+                )}
+              </SelectGroup>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium">Название</label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="title-filter">Название</FieldLabel>
           <Input
+            id="title-filter"
             placeholder="Поиск по названию"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
+            value={filters.title}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                title: event.target.value,
+              }))
+            }
           />
-        </div>
+        </Field>
       </div>
-
-      <FormAlert
-        message={
-          cases.error instanceof Error
-            ? cases.error.message
-            : cases.isError
-              ? "Не удалось загрузить объявления."
-              : undefined
-        }
-      />
-      {cases.isLoading ? (
-        <p className="text-muted-foreground">Загружаем объявления…</p>
-      ) : cases.data?.content.length ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          {cases.data.content.map((item) => {
-            const photoUrl = normalizeRemoteImageUrl(item.photoUrl)
-            return (
-              <Card key={item.id}>
-                {photoUrl && (
-                  <Image
-                    src={photoUrl}
-                    alt={item.title}
-                    width={640}
-                    height={360}
-                    className="aspect-video w-full object-cover"
-                  />
-                )}
+      {cases.isPending ? (
+        <CaseCardsSkeleton />
+      ) : cases.isError ? (
+        <div className="flex flex-col items-start gap-3">
+          <FormAlert
+            message={getErrorMessage(
+              cases.error,
+              "Не удалось загрузить объявления.",
+            )}
+          />
+          <Button variant="outline" onClick={() => void cases.refetch()}>
+            Попробовать ещё раз
+          </Button>
+        </div>
+      ) : cases.data.content.length ? (
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {cases.data.content.map((item) => (
+            <Link
+              key={item.id}
+              href={ROUTES.CASE_DETAILS(item.id)}
+              className="group min-w-0 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+            >
+              <Card className="h-full min-w-0 pt-0 transition-shadow group-hover:shadow-md">
+                <CasePhoto src={item.photoUrl} alt={item.title} />
                 <CardHeader>
-                  <CardTitle>
-                    <Link href={ROUTES.CASE_DETAILS(item.id)}>
-                      {item.title}
-                    </Link>
+                  <CardTitle className="line-clamp-2 [overflow-wrap:anywhere]">
+                    {item.title}
                   </CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                  <p className="text-sm text-muted-foreground">
+                  <CardDescription className="[overflow-wrap:anywhere]">
                     {item.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
                     {getCityName(cities.data, item.cityCode, locale)}
-                  </p>
-                  <Button variant="outline" asChild>
-                    <Link href={ROUTES.CASE_DETAILS(item.id)}>Открыть</Link>
-                  </Button>
-                </CardContent>
+                  </CardDescription>
+                </CardHeader>
               </Card>
-            )
-          })}
+            </Link>
+          ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">
+        <p className="py-8 text-center text-muted-foreground">
           Пока нет объявлений по выбранным фильтрам.
         </p>
+      )}
+      {cases.data && (
+        <ListPagination
+          page={page}
+          totalPages={cases.data.totalPages}
+          busy={cases.isFetching}
+          onPageChange={setPage}
+        />
       )}
     </section>
   )

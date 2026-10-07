@@ -1,5 +1,7 @@
 import type {
   CurrentUser,
+  UpdateProfileDto,
+  MyCaseListItem,
   UserProfile,
   EmailChangeDto,
   EmailConfirmationDto,
@@ -23,6 +25,16 @@ function query(params: Record<string, string | number | undefined>) {
 }
 
 export const accountApi = {
+  updateProfile: (data: UpdateProfileDto) =>
+    authorizedRequest<CurrentUser>("/account/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  getCases: (page = 0, size = 20, signal?: AbortSignal) =>
+    authorizedRequest<PageResponse<MyCaseListItem>>(
+      `/account/cases${query({ page, size })}`,
+      { signal },
+    ),
   getMe: (signal?: AbortSignal) =>
     authorizedRequest<CurrentUser>("/account/me", { signal }),
   logout: () =>

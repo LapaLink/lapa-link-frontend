@@ -5,6 +5,12 @@ import type {
   HelpApplicationStatus,
 } from "./cases"
 
+export type UpdateProfileDto = {
+  displayName: string
+  cityCode: string | null
+  bio: string | null
+}
+
 export type UserProfile = {
   userId: string
   cityCode: string | null
