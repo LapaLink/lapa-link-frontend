@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Nunito_Sans } from "next/font/google"
 import "./globals.css"
-import { QueryProvider } from "@/components/providers"
+import { QueryProvider, NavigationProvider } from "@/components/providers"
 
 const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
@@ -17,9 +17,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className={`${nunitoSans.variable} h-full antialiased`}>
+    <html
+      lang="ru"
+      suppressHydrationWarning
+      className={`${nunitoSans.variable} h-full antialiased`}
+    >
       <body className="min-h-full flex flex-col">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider><NavigationProvider>{children}</NavigationProvider></QueryProvider>
       </body>
     </html>
   )

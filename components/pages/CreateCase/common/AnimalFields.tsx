@@ -1,6 +1,6 @@
 "use client"
 
-import { FormField } from "@/components/common"
+import { FormField, CaseAgeField } from "@/components/common"
 import { FieldGroup, SelectGroup, SelectItem } from "@/components/ui"
 import { CaseTextField } from "./CaseTextField"
 import { CaseSelectField } from "./CaseSelectField"
@@ -40,12 +40,7 @@ export function AnimalFields() {
         placeholder="Расскажите, где нашли животное и что о нём известно"
         maxLength={2000}
       />
-      <FormField
-        name="approximateAge"
-        label="Примерный возраст"
-        placeholder="Например, около года или взрослый"
-        maxLength={50}
-      />
+      <CaseAgeField />
       <CaseTextField
         name="condition"
         label="Состояние животного"

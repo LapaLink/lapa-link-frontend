@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { NavigationLink as Link } from "@/components/providers"
 import { useRouter } from "next/navigation"
 import {
   LogOut,
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Plus,
   ClipboardList,
+  Newspaper,
 } from "lucide-react"
 import { useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
@@ -80,6 +81,12 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
             <Link href={ROUTES.MY_TASKS}>
               <ClipboardList />
               Мои задачи
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={ROUTES.MY_CASES}>
+              <Newspaper />
+              Мои объявления
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import Link from "next/link"
+import { NavigationLink as Link } from "@/components/providers"
 import { ROUTES } from "@/lib/constants"
 import { Button } from "@/components/ui"
 import { AccountNavigation, Brand } from "./common"

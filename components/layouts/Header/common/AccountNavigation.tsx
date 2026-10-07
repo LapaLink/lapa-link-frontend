@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { NavigationLink as Link } from "@/components/providers"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Button, Skeleton } from "@/components/ui"

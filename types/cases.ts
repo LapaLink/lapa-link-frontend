@@ -1,4 +1,21 @@
 export type AnimalType = "CAT" | "DOG"
+export type UpdateCaseDto = Partial<{
+  title: string | null
+  description: string | null
+  sex: AnimalSex | null
+  approximateAge: string | null
+  condition: string | null
+  cityCode: string | null
+  latitude: number | null
+  longitude: number | null
+}>
+
+export type MyCaseListItem = Omit<CaseListItem, "cityCode"> & {
+  cityCode?: string | null
+  status: CaseStatus
+  openNeedsCount: number
+  applicationsCount: number
+}
 export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
 export type CaseStatus = "OPEN" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"

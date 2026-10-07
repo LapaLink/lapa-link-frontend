@@ -308,7 +308,7 @@ export function MyTasks() {
           ) : (
             <div className="grid gap-5 lg:grid-cols-2">
               {taskGroupsData.map((group) => (
-                <section key={group.key} className="flex flex-col gap-3">
+                <section id={group.key} key={group.key} className="flex scroll-mt-6 flex-col gap-3">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold">{group.title}</h2>
                     <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">

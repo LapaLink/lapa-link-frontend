@@ -9,6 +9,7 @@ function getPreferredLocale() {
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message
   if (error instanceof ApiError) {
     const codeMap: Record<string, string> = {
       ALREADY_APPLIED:
@@ -56,20 +57,29 @@ export async function request<T>(
   if (options.body && !(options.body instanceof FormData))
     headers.set("Content-Type", "application/json")
   let response: Response
+  const timeout = AbortSignal.timeout(20_000)
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
   try {
     response = await fetch(`/api/v1${path}`, {
       ...options,
+      signal,
       headers,
       cache: "no-store",
     })
   } catch (error) {
+    if (timeout.aborted) throw new ApiError("Сервер отвечает слишком долго. Попробуйте ещё раз.", 0)
+    if (signal.aborted) throw error
     if (error instanceof Error && error.name === "AbortError") throw error
     throw new ApiError(
       "Не удалось связаться с сервером. Попробуйте ещё раз.",
       0,
     )
   }
-  const body = await response.json().catch(() => null)
+  const body = await response.json().catch((error) => {
+    if (timeout.aborted) throw new ApiError("Сервер отвечает слишком долго. Попробуйте ещё раз.", 0)
+    if (signal.aborted) throw error
+    return null
+  })
   if (!response.ok) {
     const details = body?.details || {}
     const fields: Record<string, string> = {}

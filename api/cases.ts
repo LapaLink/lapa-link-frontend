@@ -1,5 +1,6 @@
 import type {
   AnimalCase,
+  UpdateCaseDto,
   AnimalType,
   Assignment,
   CaseDetails,
@@ -31,11 +32,16 @@ function query(params: Record<string, string | number | undefined>) {
 }
 
 export const casesApi = {
-  list: (params: CaseListParams = {}) =>
-    request<PageResponse<CaseListItem>>(`/cases${query(params)}`),
+  update: (caseId: string, data: UpdateCaseDto) =>
+    authorizedRequest<AnimalCase>(`/cases/${encodeURIComponent(caseId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  list: (params: CaseListParams = {}, signal?: AbortSignal) =>
+    request<PageResponse<CaseListItem>>(`/cases${query(params)}`, { signal }),
   getCases: (params: CaseListParams = {}) => casesApi.list(params),
-  getById: (caseId: string) =>
-    request<CaseDetails>(`/cases/${encodeURIComponent(caseId)}`),
+  getById: (caseId: string, signal?: AbortSignal) =>
+    request<CaseDetails>(`/cases/${encodeURIComponent(caseId)}`, { signal }),
   getCaseById: (caseId: string) => casesApi.getById(caseId),
   create: (data: CreateCaseDto, photo?: File) => {
     if (!photo)
