@@ -63,6 +63,8 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     nextStatus: NeedStatus
     prompt: string
   } | null>(null)
+  const [pendingAssignment, setPendingAssignment] =
+    useState<HelpApplication | null>(null)
 
   const details = useQuery({
     queryKey: ["cases", "detail", caseId],
@@ -86,6 +88,10 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     void client.invalidateQueries({ queryKey: ["cases", "responses", caseId] })
     void client.invalidateQueries({ queryKey: ["cases", "list"] })
     void client.invalidateQueries({ queryKey: ["account", "helpApplications"] })
+    void client.invalidateQueries({
+      queryKey: ["account", "my-help-applications"],
+    })
+    void client.invalidateQueries({ queryKey: ["account", "my-assignments"] })
   }
 
   const createResponse = useMutation({
@@ -146,7 +152,14 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
             ? error.message
             : "Не удалось назначить исполнителя.",
       )
+    } finally {
+      setPendingAssignment(null)
     }
+  }
+
+  async function requestAssignment(application: HelpApplication) {
+    setError("")
+    setPendingAssignment(application)
   }
 
   async function commitNeedStatusChange(
@@ -334,6 +347,34 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={!!pendingAssignment}
+        onOpenChange={(open) => {
+          if (!open) setPendingAssignment(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Подтвердить назначение</AlertDialogTitle>
+            <AlertDialogDescription>
+              Назначить {pendingAssignment?.user.displayName || "пользователя"}{" "}
+              исполнителем этой потребности?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingAssignment) return
+                void assign(pendingAssignment)
+              }}
+            >
+              Назначить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <FormAlert message={error} />
 
       {isAuthor && animalCase.status === "OPEN" && (
@@ -507,7 +548,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                     need={need}
                     busy={assignResponse.isPending}
                     canAssign={canAct && need.status === "OPEN"}
-                    onAssign={assign}
+                    onAssign={requestAssignment}
                   />
                 )}
               </CardContent>

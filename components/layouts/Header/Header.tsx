@@ -19,6 +19,9 @@ export function Header({ children }: HeaderProps) {
             <Button variant="ghost" size="sm" asChild>
               <Link href={ROUTES.CREATE_CASE}>Подать объявление</Link>
             </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={ROUTES.MY_TASKS}>Мои задачи</Link>
+            </Button>
           </nav>
         </div>
         {children ?? <AccountNavigation />}

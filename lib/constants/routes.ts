@@ -4,6 +4,7 @@ export const ROUTES = {
   REGISTER: "/register",
   VERIFY_EMAIL: "/register/verify",
   ACCOUNT: "/account",
+  MY_TASKS: "/my-tasks",
   CASES: "/cases",
   CASE_DETAILS: (caseId: string) => `/cases/${caseId}`,
   CREATE_CASE: "/cases/create",
