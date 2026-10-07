@@ -456,15 +456,25 @@ test("city search matches both names and codes, preserves grouping and center", 
   assert.equal(getCityName(groups, "gorki", "be"), "Горкі")
 })
 
-test("dictionary endpoints are public and preserve backend errors", async () => {
+test("dictionary endpoints use expected auth and preserve backend errors", async () => {
+  const storage = new Map()
+  storage.set(
+    "lapalink.session",
+    JSON.stringify({ accessToken: "access", refreshToken: "refresh" }),
+  )
   const paths = []
   const { dictionariesApi } = load(
     "api/dictionaries.ts",
     async (url, options) => {
       paths.push(url)
-      assert.equal(options.headers.has("Authorization"), false)
+      const hasAuth = options.headers.has("Authorization")
+      assert.equal(
+        hasAuth,
+        url.endsWith("/need-types") || url.endsWith("/case-close-reasons"),
+      )
       return response(200, [])
     },
+    storage,
   )
   await dictionariesApi.cities()
   await dictionariesApi.needTypes()

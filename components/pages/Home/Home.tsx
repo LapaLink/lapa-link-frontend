@@ -32,11 +32,16 @@ export function Home() {
             Помогайте найденным и бездомным кошкам и собакам. Найти друг друга и
             сделать первый шаг проще вместе.
           </p>
-          <Button size="lg" asChild>
-            <Link href={user ? ROUTES.CREATE_CASE : ROUTES.REGISTER}>
-              {user ? "Я нашёл животное" : "Присоединиться"}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button size="lg" asChild>
+              <Link href={user ? ROUTES.CREATE_CASE : ROUTES.REGISTER}>
+                {user ? "Я нашёл животное" : "Присоединиться"}
+              </Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href={ROUTES.CASES}>Посмотреть объявления</Link>
+            </Button>
+          </div>
         </div>
         <Image
           src="/lapalink-logo.png"
