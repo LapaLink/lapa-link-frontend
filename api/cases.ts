@@ -88,9 +88,19 @@ export const casesApi = {
     authorizedRequest<PageResponse<HelpApplication>>(
       `/cases/${encodeURIComponent(caseId)}/responses${query({ page, size })}`,
     ),
+  cancelResponse: (responseId: string) =>
+    authorizedRequest<HelpApplication>(
+      `/responses/${encodeURIComponent(responseId)}/cancel`,
+      { method: "POST" },
+    ),
   assignResponse: (responseId: string) =>
     authorizedRequest<Assignment>(
       `/responses/${encodeURIComponent(responseId)}/assign`,
+      { method: "POST" },
+    ),
+  completeAssignment: (assignmentId: string) =>
+    authorizedRequest<Assignment>(
+      `/assignments/${encodeURIComponent(assignmentId)}/complete`,
       { method: "POST" },
     ),
 }

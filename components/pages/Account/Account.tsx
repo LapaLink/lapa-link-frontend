@@ -7,6 +7,8 @@ import { accountApi } from "@/api"
 import { useAuth, useDictionaryLocale, useNeedTypes } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { getDictionaryName } from "@/lib/dictionaries"
+import { queryKeys } from "@/lib/queryKeys"
+import { filterValidTaskRecords } from "@/lib/tasks"
 import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
 import { RequireAuth } from "@/components/common"
 import {
@@ -76,13 +78,48 @@ export function Account() {
     enabled: !!user,
   })
 
+  const helpSummary = useQuery({
+    queryKey: queryKeys.myApplications(),
+    queryFn: () => accountApi.getHelpApplications(),
+    enabled: !!user,
+  })
+
+  const assignmentSummary = useQuery({
+    queryKey: queryKeys.myAssignments(),
+    queryFn: () => accountApi.getAssignments(),
+    enabled: !!user,
+  })
+
+  const validHelpApplications = filterValidTaskRecords(
+    helpApplications.data?.content ?? [],
+  )
+  const validAssignments = filterValidTaskRecords(
+    assignments.data?.content ?? [],
+  )
+  const validHelpSummary = filterValidTaskRecords(
+    helpSummary.data?.content ?? [],
+  )
+  const validAssignmentSummary = filterValidTaskRecords(
+    assignmentSummary.data?.content ?? [],
+  )
+
+  const pendingCount = validHelpSummary.filter(
+    (item) => item.status === "PENDING",
+  ).length
+  const activeCount = validAssignmentSummary.filter(
+    (item) => item.status === "ACTIVE",
+  ).length
+  const doneCount = validAssignmentSummary.filter(
+    (item) => item.status === "COMPLETED",
+  ).length
+
   return (
     <RequireAuth fallback={<AccountSkeleton />}>
       {user && (
         <section className="mx-auto flex w-full max-w-5xl flex-col gap-8">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold">Мой профиль</h1>
-            <p className="break-words text-muted-foreground">
+            <p className="wrap-break-word text-muted-foreground">
               {user.displayName}, здесь можно обновить фото и почту, а также
               следить за откликами и назначениями.
             </p>
@@ -91,6 +128,42 @@ export function Account() {
           <div className="grid items-start gap-6 md:grid-cols-2">
             <AvatarCard user={user} />
             <EmailChangeCard email={user.email} />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Ожидают решения</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-3 text-sm">
+                <span>{pendingCount}</span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`${ROUTES.MY_TASKS}?tab=pending`}>Открыть</Link>
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>В работе</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-3 text-sm">
+                <span>{activeCount}</span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`${ROUTES.MY_TASKS}?tab=active`}>Открыть</Link>
+                </Button>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Выполнено</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-3 text-sm">
+                <span>{doneCount}</span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`${ROUTES.MY_TASKS}?tab=completed`}>Открыть</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-2">
@@ -118,9 +191,9 @@ export function Account() {
 
               {helpApplications.isLoading ? (
                 <p className="text-muted-foreground">Загружаем отклики…</p>
-              ) : helpApplications.data?.content.length ? (
+              ) : validHelpApplications.length ? (
                 <div className="flex flex-col gap-3">
-                  {helpApplications.data.content.map((item) => (
+                  {validHelpApplications.map((item) => (
                     <Card key={item.id}>
                       <CardHeader>
                         <CardTitle>
@@ -183,9 +256,9 @@ export function Account() {
 
               {assignments.isLoading ? (
                 <p className="text-muted-foreground">Загружаем назначения…</p>
-              ) : assignments.data?.content.length ? (
+              ) : validAssignments.length ? (
                 <div className="flex flex-col gap-3">
-                  {assignments.data.content.map((item) => (
+                  {validAssignments.map((item) => (
                     <Card key={item.id}>
                       <CardHeader>
                         <CardTitle>

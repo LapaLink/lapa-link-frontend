@@ -3,8 +3,8 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { accountApi } from "@/api"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { accountApi, casesApi, getErrorMessage } from "@/api"
 import { RequireAuth } from "@/components/common"
 import {
   AlertDialog,
@@ -25,23 +25,16 @@ import {
 import { useAuth, useDictionaryLocale, useNeedTypes } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { getDictionaryName } from "@/lib/dictionaries"
-import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
-import {
-  assignmentStatusLabels,
-  responseStatusLabels,
-} from "../Cases/statusLabels"
 import { normalizeRemoteImageUrl } from "@/lib/images"
+import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
+import { filterValidTaskRecords } from "@/lib/tasks"
+import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
+import { assignmentStatusLabels, responseStatusLabels } from "../Cases/statusLabels"
 
-type TaskGroupKey =
-  | "responses"
-  | "assigned"
-  | "in_work"
-  | "completed"
-  | "cancelled"
+type TaskGroupKey = "pending" | "active" | "completed" | "cancelled"
 
 type TaskCardItem = {
   id: string
-  group: TaskGroupKey
   caseId: string
   title: string
   photoUrl?: string | null
@@ -51,13 +44,13 @@ type TaskCardItem = {
   dateLabel: string
   summary: string
   type: "response" | "assignment"
+  needId: string
 }
 
 const TASK_GROUPS: Array<{ key: TaskGroupKey; title: string }> = [
-  { key: "responses", title: "Отклики" },
-  { key: "assigned", title: "Назначено" },
-  { key: "in_work", title: "В работе" },
-  { key: "completed", title: "Завершено" },
+  { key: "pending", title: "Ожидают решения" },
+  { key: "active", title: "В работе" },
+  { key: "completed", title: "Выполнено" },
   { key: "cancelled", title: "Отменено" },
 ]
 
@@ -76,146 +69,191 @@ export function MyTasks() {
   const { user } = useAuth()
   const locale = useDictionaryLocale()
   const needTypes = useNeedTypes()
-  const [taskStateOverrides, setTaskStateOverrides] = useState<
-    Record<string, Partial<TaskCardItem>>
-  >({})
+  const client = useQueryClient()
   const [pendingTaskAction, setPendingTaskAction] = useState<{
     item: TaskCardItem
-    action: "cancel-response" | "start-task" | "complete-task"
+    action: "cancel-response" | "complete-task"
     prompt: string
   } | null>(null)
+  const [pendingActionError, setPendingActionError] = useState("")
+  const [actionInFlight, setActionInFlight] = useState(false)
 
-  const helpApplications = useQuery({
-    queryKey: ["account", "my-help-applications"],
-    queryFn: () => accountApi.getHelpApplications(),
+  const pendingResponses = useQuery({
+    queryKey: queryKeys.myApplications("PENDING"),
+    queryFn: () => accountApi.getHelpApplications("PENDING"),
     enabled: !!user,
   })
 
-  const assignments = useQuery({
-    queryKey: ["account", "my-assignments"],
-    queryFn: () => accountApi.getAssignments(),
+  const activeAssignments = useQuery({
+    queryKey: queryKeys.myAssignments("ACTIVE"),
+    queryFn: () => accountApi.getAssignments("ACTIVE"),
+    enabled: !!user,
+  })
+
+  const completedAssignments = useQuery({
+    queryKey: queryKeys.myAssignments("COMPLETED"),
+    queryFn: () => accountApi.getAssignments("COMPLETED"),
+    enabled: !!user,
+  })
+
+  const cancelledResponses = useQuery({
+    queryKey: queryKeys.myApplications("CANCELLED"),
+    queryFn: () => accountApi.getHelpApplications("CANCELLED"),
+    enabled: !!user,
+  })
+
+  const cancelledAssignments = useQuery({
+    queryKey: queryKeys.myAssignments("CANCELLED"),
+    queryFn: () => accountApi.getAssignments("CANCELLED"),
     enabled: !!user,
   })
 
   const taskGroupsData = useMemo(() => {
     const items: TaskCardItem[] = [
-      ...(helpApplications.data?.content ?? []).map(
-        (item): TaskCardItem => ({
-          id: item.id,
-          group:
-            item.status === "PENDING"
-              ? "responses"
-              : item.status === "ACCEPTED"
-                ? "assigned"
-                : "cancelled",
-          caseId: item.animalCase.id,
-          title: item.animalCase.title,
-          photoUrl: item.animalCase.photoUrl,
-          needType: item.need.type,
-          status: item.status,
-          statusLabel: responseStatusLabels[item.status],
-          dateLabel: formatDate(item.createdAt),
-          summary:
-            item.message && item.message.trim().length > 0
-              ? item.message
-              : "Пользователь оставил комментарий без текста.",
-          type: "response",
-        }),
-      ),
-      ...(assignments.data?.content ?? []).map(
-        (item): TaskCardItem => ({
-          id: item.id,
-          group:
-            item.status === "ACTIVE"
-              ? "in_work"
-              : item.status === "COMPLETED"
-                ? "completed"
-                : "cancelled",
-          caseId: item.animalCase.id,
-          title: item.animalCase.title,
-          photoUrl: item.animalCase.photoUrl,
-          needType: item.need.type,
-          status: item.status,
-          statusLabel: assignmentStatusLabels[item.status],
-          dateLabel: formatDate(item.updatedAt ?? item.createdAt),
-          summary:
-            "Задание находится в этом статусе. Подробности доступны в объявлении.",
-          type: "assignment",
-        }),
-      ),
-    ].map((item) => {
-      const override = taskStateOverrides[`${item.type}:${item.id}`]
-      return override ? { ...item, ...override } : item
-    })
+      ...filterValidTaskRecords(pendingResponses.data?.content ?? []).map((item) => ({
+        id: item.id,
+        caseId: item.animalCase.id,
+        title: item.animalCase.title,
+        photoUrl: item.animalCase.photoUrl,
+        needType: item.need.type,
+        status: item.status,
+        statusLabel: responseStatusLabels[item.status],
+        dateLabel: formatDate(item.createdAt),
+        summary:
+          item.message && item.message.trim().length > 0
+            ? item.message
+            : "Пользователь оставил комментарий без текста.",
+        type: "response" as const,
+        needId: item.need.id,
+      })),
+      ...filterValidTaskRecords(activeAssignments.data?.content ?? []).map((item) => ({
+        id: item.id,
+        caseId: item.animalCase.id,
+        title: item.animalCase.title,
+        photoUrl: item.animalCase.photoUrl,
+        needType: item.need.type,
+        status: item.status,
+        statusLabel: assignmentStatusLabels[item.status],
+        dateLabel: formatDate(item.updatedAt ?? item.createdAt),
+        summary: "Вы назначены исполнителем. Когда поможете — отметьте задачу выполненной.",
+        type: "assignment" as const,
+        needId: item.need.id,
+      })),
+      ...filterValidTaskRecords(completedAssignments.data?.content ?? []).map((item) => ({
+        id: item.id,
+        caseId: item.animalCase.id,
+        title: item.animalCase.title,
+        photoUrl: item.animalCase.photoUrl,
+        needType: item.need.type,
+        status: item.status,
+        statusLabel: assignmentStatusLabels[item.status],
+        dateLabel: formatDate(item.updatedAt ?? item.createdAt),
+        summary: `Выполнено ${formatDate(item.updatedAt ?? item.createdAt)}.`,
+        type: "assignment" as const,
+        needId: item.need.id,
+      })),
+      ...filterValidTaskRecords(cancelledResponses.data?.content ?? []).map((item) => ({
+        id: item.id,
+        caseId: item.animalCase.id,
+        title: item.animalCase.title,
+        photoUrl: item.animalCase.photoUrl,
+        needType: item.need.type,
+        status: item.status,
+        statusLabel: responseStatusLabels[item.status],
+        dateLabel: formatDate(item.createdAt),
+        summary: "Отклик отозван или потребность закрыта.",
+        type: "response" as const,
+        needId: item.need.id,
+      })),
+      ...filterValidTaskRecords(cancelledAssignments.data?.content ?? []).map((item) => ({
+        id: item.id,
+        caseId: item.animalCase.id,
+        title: item.animalCase.title,
+        photoUrl: item.animalCase.photoUrl,
+        needType: item.need.type,
+        status: item.status,
+        statusLabel: assignmentStatusLabels[item.status],
+        dateLabel: formatDate(item.updatedAt ?? item.createdAt),
+        summary: "Автор снял вас с задачи или объявление закрыто.",
+        type: "assignment" as const,
+        needId: item.need.id,
+      })),
+    ]
 
     return TASK_GROUPS.map((group) => ({
       ...group,
-      items: items.filter((item) => item.group === group.key),
+      items: items.filter((item) => {
+        if (group.key === "pending") return item.type === "response" && item.status === "PENDING"
+        if (group.key === "active") return item.type === "assignment" && item.status === "ACTIVE"
+        if (group.key === "completed") return item.type === "assignment" && item.status === "COMPLETED"
+        return item.status === "CANCELLED"
+      }),
     }))
-  }, [assignments.data, helpApplications.data, taskStateOverrides])
+  }, [activeAssignments.data, cancelledAssignments.data, cancelledResponses.data, completedAssignments.data, pendingResponses.data])
 
-  const isLoading = helpApplications.isLoading || assignments.isLoading
-  const hasError = helpApplications.isError || assignments.isError
+  const isLoading =
+    pendingResponses.isLoading ||
+    activeAssignments.isLoading ||
+    completedAssignments.isLoading ||
+    cancelledResponses.isLoading ||
+    cancelledAssignments.isLoading
+
+  const hasError =
+    pendingResponses.isError ||
+    activeAssignments.isError ||
+    completedAssignments.isError ||
+    cancelledResponses.isError ||
+    cancelledAssignments.isError
+
   const errorMessage =
-    helpApplications.error instanceof Error
-      ? helpApplications.error.message
-      : assignments.error instanceof Error
-        ? assignments.error.message
-        : "Не удалось загрузить задачи."
+    pendingResponses.error instanceof Error
+      ? pendingResponses.error.message
+      : activeAssignments.error instanceof Error
+        ? activeAssignments.error.message
+        : completedAssignments.error instanceof Error
+          ? completedAssignments.error.message
+          : cancelledResponses.error instanceof Error
+            ? cancelledResponses.error.message
+            : cancelledAssignments.error instanceof Error
+              ? cancelledAssignments.error.message
+              : "Не удалось загрузить задачи."
+
+  const doTaskAction = async () => {
+    if (!pendingTaskAction) return
+    setActionInFlight(true)
+    setPendingActionError("")
+
+    try {
+      if (pendingTaskAction.action === "cancel-response") {
+        await casesApi.cancelResponse(pendingTaskAction.item.id)
+      } else {
+        await casesApi.completeAssignment(pendingTaskAction.item.id)
+      }
+      await invalidateTaskData(client, pendingTaskAction.item.caseId)
+      setPendingTaskAction(null)
+    } catch (error) {
+      setPendingActionError(getErrorMessage(error, "Не удалось выполнить действие."))
+    } finally {
+      setActionInFlight(false)
+    }
+  }
 
   const taskActionForItem = (item: TaskCardItem) => {
-    if (item.type === "response" && item.group === "responses") {
+    if (item.type === "response" && item.status === "PENDING") {
       return {
-        label: "Отменить отклик",
+        label: "Отозвать отклик",
         action: "cancel-response" as const,
-        prompt: "Отменить отклик на эту потребность?",
+        prompt: `Отозвать отклик на “${getDictionaryName(needTypes.data, item.needType, locale)}” в объявлении “${item.title}”? Откликнуться на эту потребность повторно будет нельзя.`,
       }
     }
-    if (item.type === "response" && item.group === "assigned") {
-      return {
-        label: "Начать выполнение",
-        action: "start-task" as const,
-        prompt: "Перевести эту задачу в статус «В работе»?",
-      }
-    }
-    if (item.type === "assignment" && item.group === "in_work") {
+    if (item.type === "assignment" && item.status === "ACTIVE") {
       return {
         label: "Отметить выполненной",
         action: "complete-task" as const,
-        prompt: "Подтвердите завершение этой задачи?",
+        prompt: `Отметить задачу “${getDictionaryName(needTypes.data, item.needType, locale)}” выполненной? Потребность будет закрыта, остальные отклики на неё отменятся. Действие нельзя отменить.`,
       }
     }
     return null
-  }
-
-  const applyTaskAction = () => {
-    if (!pendingTaskAction) return
-
-    const { item, action } = pendingTaskAction
-    const key = `${item.type}:${item.id}`
-
-    setTaskStateOverrides((current) => ({
-      ...current,
-      [key]:
-        action === "cancel-response"
-          ? {
-              group: "cancelled",
-              status: "CANCELLED" as const,
-              statusLabel: responseStatusLabels.CANCELLED,
-            }
-          : action === "start-task"
-            ? {
-                group: "in_work",
-                status: "ACCEPTED" as const,
-                statusLabel: "В работе",
-              }
-            : {
-                group: "completed",
-                status: "COMPLETED" as const,
-                statusLabel: assignmentStatusLabels.COMPLETED,
-              },
-    }))
-    setPendingTaskAction(null)
   }
 
   return (
@@ -232,7 +270,10 @@ export function MyTasks() {
           <AlertDialog
             open={!!pendingTaskAction}
             onOpenChange={(open) => {
-              if (!open) setPendingTaskAction(null)
+              if (!open) {
+                setPendingTaskAction(null)
+                setPendingActionError("")
+              }
             }}
           >
             <AlertDialogContent>
@@ -240,12 +281,13 @@ export function MyTasks() {
                 <AlertDialogTitle>Подтверждение действия</AlertDialogTitle>
                 <AlertDialogDescription>
                   {pendingTaskAction?.prompt}
+                  {pendingActionError ? <span className="mt-3 block text-destructive">{pendingActionError}</span> : null}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Отмена</AlertDialogCancel>
-                <AlertDialogAction onClick={applyTaskAction}>
-                  Подтвердить
+                <AlertDialogCancel disabled={actionInFlight}>Отмена</AlertDialogCancel>
+                <AlertDialogAction disabled={actionInFlight} onClick={() => void doTaskAction()}>
+                  {actionInFlight ? "Подождите…" : "Подтвердить"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -279,12 +321,8 @@ export function MyTasks() {
                       {group.items.map((item) => {
                         const taskAction = taskActionForItem(item)
                         const photo = normalizeRemoteImageUrl(item.photoUrl)
-
                         return (
-                          <Card
-                            key={`${item.type}-${item.id}`}
-                            className="overflow-hidden"
-                          >
+                          <Card key={`${item.type}-${item.id}`} className="overflow-hidden">
                             <CardHeader className="flex-row items-center gap-3 pb-3">
                               <div className="relative h-16 w-16 overflow-hidden rounded-md border bg-muted">
                                 {photo ? (
@@ -303,49 +341,31 @@ export function MyTasks() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <CardTitle className="line-clamp-2 text-base">
-                                  <Link
-                                    href={ROUTES.CASE_DETAILS(item.caseId)}
-                                    className="hover:underline"
-                                  >
+                                  <Link href={ROUTES.CASE_DETAILS(item.caseId)} className="hover:underline">
                                     {item.title}
                                   </Link>
                                 </CardTitle>
                                 <p className="mt-1 text-xs text-muted-foreground">
-                                  {getDictionaryName(
-                                    needTypes.data,
-                                    item.needType,
-                                    locale,
-                                  )}
+                                  {getDictionaryName(needTypes.data, item.needType, locale)}
                                 </p>
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-2 text-sm text-muted-foreground">
                               <div className="flex items-center justify-between gap-3">
-                                <span className="font-medium text-foreground">
-                                  {item.statusLabel}
-                                </span>
+                                <span className="font-medium text-foreground">{item.statusLabel}</span>
                                 <span>{item.dateLabel}</span>
                               </div>
-                              <p className="line-clamp-3 text-foreground/90">
-                                {item.summary}
-                              </p>
+                              <p className="line-clamp-3 text-foreground/90">{item.summary}</p>
                               <div className="flex flex-wrap gap-2">
                                 <Button variant="outline" size="sm" asChild>
-                                  <Link href={ROUTES.CASE_DETAILS(item.caseId)}>
-                                    Открыть объявление
-                                  </Link>
+                                  <Link href={ROUTES.CASE_DETAILS(item.caseId)}>Открыть объявление</Link>
                                 </Button>
                                 {taskAction && (
                                   <Button
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() =>
-                                      setPendingTaskAction({
-                                        item,
-                                        action: taskAction.action,
-                                        prompt: taskAction.prompt,
-                                      })
-                                    }
+                                    disabled={actionInFlight}
+                                    onClick={() => setPendingTaskAction({ item, action: taskAction.action, prompt: taskAction.prompt })}
                                   >
                                     {taskAction.label}
                                   </Button>

@@ -1,6 +1,41 @@
 import type { Tokens } from "@/types"
 import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
 
+function getPreferredLocale() {
+  if (typeof navigator !== "undefined" && navigator.language) {
+    return navigator.language.split("-")[0]
+  }
+  return "ru"
+}
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const codeMap: Record<string, string> = {
+      ALREADY_APPLIED:
+        "Вы уже откликались на эту потребность. Повторный отклик невозможен.",
+      ASSIGNMENT_NOT_ACTIVE:
+        "Задача уже завершена или отменена. Обновите список и попробуйте снова.",
+      NEED_CLOSED:
+        "Эта потребность уже закрыта. Состояние обновлено, проверьте страницу ещё раз.",
+      NOT_ASSIGNEE: "У вас нет прав выполнять это действие для этой задачи.",
+      NOT_RESPONSE_AUTHOR: "Вы не можете отменить чужой отклик.",
+      OPERATION_IN_PROGRESS:
+        "Объявление сейчас изменяется, попробуйте через пару секунд.",
+      RESPONSE_NOT_PENDING:
+        "Этот отклик уже обработан или отменён. Список обновлён.",
+      RESPONSE_NOT_FOUND: "Отклик не найден. Список обновлён.",
+    }
+
+    if (error.code && codeMap[error.code]) return codeMap[error.code]
+    if (error.status === 409) return "Операция недоступна в текущем состоянии."
+    if (error.status === 403) return "Доступ ограничен."
+    if (error.status === 404) return "Запись не найдена."
+  }
+
+  if (error instanceof Error && error.message) return error.message
+  return fallback
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -17,7 +52,7 @@ export async function request<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers)
-  headers.set("Accept-Language", "ru")
+  headers.set("Accept-Language", getPreferredLocale())
   if (options.body && !(options.body instanceof FormData))
     headers.set("Content-Type", "application/json")
   let response: Response

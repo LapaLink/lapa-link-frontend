@@ -3,7 +3,7 @@
 import Image from "next/image"
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { accountApi, ApiError, casesApi } from "@/api"
+import { accountApi, casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
   useCaseCloseReasons,
@@ -43,6 +43,8 @@ import {
   needStatusLabels,
   responseStatusLabels,
 } from "./statusLabels"
+import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
+import { filterValidTaskRecords } from "@/lib/tasks"
 
 type CaseDetailsProps = {
   caseId: string
@@ -67,31 +69,24 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     useState<HelpApplication | null>(null)
 
   const details = useQuery({
-    queryKey: ["cases", "detail", caseId],
+    queryKey: queryKeys.caseDetail(caseId),
     queryFn: () => casesApi.getById(caseId),
   })
   const isAuthor = !!user && user.id === details.data?.author.id
   const responses = useQuery({
-    queryKey: ["cases", "responses", caseId],
+    queryKey: queryKeys.caseResponses(caseId),
     queryFn: () => casesApi.getResponses(caseId),
     enabled: isAuthor,
   })
 
   const myCaseApplications = useQuery({
-    queryKey: ["account", "helpApplications"],
+    queryKey: queryKeys.myApplications(),
     queryFn: () => accountApi.getHelpApplications(),
     enabled: !!user && !isAuthor,
   })
 
   const refreshCase = () => {
-    void client.invalidateQueries({ queryKey: ["cases", "detail", caseId] })
-    void client.invalidateQueries({ queryKey: ["cases", "responses", caseId] })
-    void client.invalidateQueries({ queryKey: ["cases", "list"] })
-    void client.invalidateQueries({ queryKey: ["account", "helpApplications"] })
-    void client.invalidateQueries({
-      queryKey: ["account", "my-help-applications"],
-    })
-    void client.invalidateQueries({ queryKey: ["account", "my-assignments"] })
+    void invalidateTaskData(client, caseId)
   }
 
   const createResponse = useMutation({
@@ -134,9 +129,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     try {
       await createResponse.mutateAsync({ needId: need.id, message })
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Не удалось откликнуться.",
-      )
+      setError(getErrorMessage(error, "Не удалось откликнуться."))
     }
   }
 
@@ -145,13 +138,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     try {
       await assignResponse.mutateAsync(application.id)
     } catch (error) {
-      setError(
-        error instanceof ApiError && error.code === "OPERATION_IN_PROGRESS"
-          ? "Объявление уже изменяется. Попробуйте ещё раз через пару секунд."
-          : error instanceof Error
-            ? error.message
-            : "Не удалось назначить исполнителя.",
-      )
+      setError(getErrorMessage(error, "Не удалось назначить исполнителя."))
     } finally {
       setPendingAssignment(null)
     }
@@ -173,9 +160,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
         status: nextStatus,
       })
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Не удалось изменить статус.",
-      )
+      setError(getErrorMessage(error, "Не удалось изменить статус."))
     } finally {
       setPendingNeedAction(null)
     }
@@ -187,16 +172,25 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   ) {
     if (nextStatus === "ASSIGNED") return
 
-    const messageByTransition: Record<string, string> = {
-      "OPEN->CLOSED": "Закрыть потребность без назначения?",
-      "CLOSED->OPEN": "Переоткрыть потребность?",
-      "ASSIGNED->OPEN":
-        "Снять назначение и вернуть потребность в открытое состояние?",
-      "ASSIGNED->CLOSED": "Завершить назначение и закрыть потребность?",
-    }
-
     const transition = `${need.status}->${nextStatus}`
-    const prompt = messageByTransition[transition]
+    const needResponses = responses.data?.content.filter(
+      (response) => response.needId === need.id,
+    )
+    const countPending =
+      needResponses?.filter((response) => response.status === "PENDING")
+        .length ?? 0
+    const acceptedRequest = needResponses?.find(
+      (response) => response.status === "ACCEPTED",
+    )
+
+    const prompt =
+      transition === "OPEN->CLOSED"
+        ? `Закрыть потребность без исполнителя? Все ожидающие отклики (${countPending}) будут отменены. Открыть её снова будет нельзя.`
+        : transition === "ASSIGNED->OPEN"
+          ? `Снять ${acceptedRequest?.user.displayName || "исполнителя"} с задачи? Потребность снова станет открытой, можно будет выбрать другого из откликнувшихся.`
+          : transition === "ASSIGNED->CLOSED"
+            ? `Отметить помощь ${acceptedRequest?.user.displayName || "исполнителя"} выполненной и закрыть потребность? Остальные отклики (${countPending}) будут отменены.`
+            : undefined
     if (prompt) {
       setPendingNeedAction({ need, nextStatus, prompt })
       return
@@ -224,11 +218,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
         comment: closeComment.trim() || undefined,
       })
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Не удалось закрыть объявление.",
-      )
+      setError(getErrorMessage(error, "Не удалось закрыть объявление."))
     }
   }
 
@@ -260,9 +250,9 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     ])
   })
   const myCaseApplicationsForNeed = (needId: string) =>
-    myCaseApplications.data?.content.filter(
+    filterValidTaskRecords(myCaseApplications.data?.content ?? []).filter(
       (item) => item.need.id === needId,
-    ) ?? []
+    )
 
   return (
     <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -438,18 +428,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
               <CardContent className="flex flex-col gap-4">
                 {isAuthor && animalCase.status === "OPEN" && (
                   <div className="flex flex-wrap gap-2">
-                    {need.status !== "OPEN" && (
-                      <Button
-                        variant="outline"
-                        disabled={updateNeedStatus.isPending}
-                        onClick={() =>
-                          void handleNeedStatusChange(need, "OPEN")
-                        }
-                      >
-                        Переоткрыть
-                      </Button>
-                    )}
-                    {need.status !== "CLOSED" && (
+                    {need.status === "OPEN" && (
                       <Button
                         variant="outline"
                         disabled={updateNeedStatus.isPending}
@@ -463,22 +442,22 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                     {need.status === "ASSIGNED" && (
                       <>
                         <Button
+                          variant="default"
+                          disabled={updateNeedStatus.isPending}
+                          onClick={() =>
+                            void handleNeedStatusChange(need, "CLOSED")
+                          }
+                        >
+                          Подтвердить выполнение
+                        </Button>
+                        <Button
                           variant="outline"
                           disabled={updateNeedStatus.isPending}
                           onClick={() =>
                             void handleNeedStatusChange(need, "OPEN")
                           }
                         >
-                          Вернуть в открытые
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          disabled={updateNeedStatus.isPending}
-                          onClick={() =>
-                            void handleNeedStatusChange(need, "CLOSED")
-                          }
-                        >
-                          Завершить
+                          Снять исполнителя
                         </Button>
                       </>
                     )}
@@ -504,7 +483,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                                     {responseStatusLabels[application.status]}
                                   </span>
                                 </div>
-                                <p className="mt-1 break-words">
+                                <p className="mt-1 wrap-break-word">
                                   {application.message}
                                 </p>
                               </li>
