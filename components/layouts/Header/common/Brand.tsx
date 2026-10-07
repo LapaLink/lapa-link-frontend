@@ -19,7 +19,7 @@ export function Brand() {
           width={1254}
           height={1254}
           priority
-          className="absolute left-1/2 top-[-16px] w-24 max-w-none -translate-x-1/2"
+          className="absolute left-1/2 -top-4 w-24 max-w-none -translate-x-1/2"
         />
       </span>
       <span className="text-2xl font-extrabold tracking-tight">

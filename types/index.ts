@@ -4,6 +4,17 @@ export type {
   CreateCaseDto,
   AnimalCase,
   CaseNeed,
+  CaseStatus,
+  NeedStatus,
+  HelpApplicationStatus,
+  AssignmentStatus,
+  PageResponse,
+  CaseAuthor,
+  CaseListItem,
+  CaseDetails,
+  Applicant,
+  HelpApplication,
+  Assignment,
 } from "./cases"
 export type {
   DictionaryLocale,
@@ -25,4 +36,6 @@ export type {
   UserProfile,
   EmailChangeDto,
   EmailConfirmationDto,
+  MyHelpApplication,
+  MyAssignment,
 } from "./account"
