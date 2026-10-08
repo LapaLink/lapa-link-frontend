@@ -50,7 +50,7 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
   const cities = useCities()
   const locale = useDictionaryLocale()
   return (
-    <Card className="min-w-0 md:absolute md:inset-0">
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>Личные данные</CardTitle>
         <CardDescription>
@@ -59,7 +59,7 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
             : "Познакомимся поближе. Здесь то, что вы рассказали о себе."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain">
+      <CardContent className="flex flex-col gap-5">
         {editing ? (
           <ProfileEditForm
             user={user}
@@ -92,7 +92,7 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
               </div>
               <div className="flex min-w-0 flex-col gap-2">
                 <dt className="text-sm text-muted-foreground">О себе</dt>
-                <dd className="max-h-64 overflow-y-auto whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere] md:max-h-none">
+                <dd className="max-h-64 overflow-y-auto overscroll-contain whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">
                   {user.bio?.trim()
                     ? user.bio
                     : "Расскажите немного о себе и чем можете помочь животным."}

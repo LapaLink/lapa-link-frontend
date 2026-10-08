@@ -1,40 +1,24 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Clock3, HeartHandshake, CircleCheck, ArrowRight } from "lucide-react"
 import { accountApi } from "@/api"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { queryKeys } from "@/lib/queryKeys"
-import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
 import { RequireAuth, FormAlert } from "@/components/common"
 import { Card, CardContent, Skeleton } from "@/components/ui"
 import {
   AccountSkeleton,
   AvatarCard,
   EmailChangeCard,
-  ActivityList,
   ProfileCard,
   PasswordChangeCard,
   LanguageCard,
   NotificationsCard,
   SignOutCard,
 } from "./common"
-
-const responseOptions = [
-  { value: "ALL", label: "Все статусы" },
-  { value: "PENDING", label: "Ждёт ответа" },
-  { value: "ACCEPTED", label: "Выбран помощником" },
-  { value: "CANCELLED", label: "Отменено" },
-]
-const assignmentOptions = [
-  { value: "ALL", label: "Все статусы" },
-  { value: "ACTIVE", label: "Помощь в процессе" },
-  { value: "COMPLETED", label: "Помощь оказана" },
-  { value: "CANCELLED", label: "Отменено" },
-]
 
 export function Account() {
   return (
@@ -49,50 +33,6 @@ export function Account() {
 
 function AccountContent() {
   const { user } = useAuth()
-  const [responsesFilter, setResponsesFilter] = useState({
-    status: "ALL",
-    page: 0,
-  })
-  const [assignmentsFilter, setAssignmentsFilter] = useState({
-    status: "ALL",
-    page: 0,
-  })
-  const responses = useQuery({
-    queryKey: [
-      ...queryKeys.myApplications(
-        responsesFilter.status === "ALL"
-          ? undefined
-          : (responsesFilter.status as HelpApplicationStatus),
-      ),
-      { page: responsesFilter.page, size: 6 },
-    ],
-    queryFn: () =>
-      accountApi.getHelpApplications(
-        responsesFilter.status === "ALL"
-          ? undefined
-          : (responsesFilter.status as HelpApplicationStatus),
-        responsesFilter.page,
-        6,
-      ),
-  })
-  const assignments = useQuery({
-    queryKey: [
-      ...queryKeys.myAssignments(
-        assignmentsFilter.status === "ALL"
-          ? undefined
-          : (assignmentsFilter.status as AssignmentStatus),
-      ),
-      { page: assignmentsFilter.page, size: 6 },
-    ],
-    queryFn: () =>
-      accountApi.getAssignments(
-        assignmentsFilter.status === "ALL"
-          ? undefined
-          : (assignmentsFilter.status as AssignmentStatus),
-        assignmentsFilter.page,
-        6,
-      ),
-  })
   const pending = useQuery({
     queryKey: [...queryKeys.myApplications("PENDING"), "count"],
     queryFn: () => accountApi.getHelpApplications("PENDING", 0, 1),
@@ -169,11 +109,13 @@ function AccountContent() {
         ))}
       </div>
       <FormAlert message={summaryError?.message} />
-      <div className="grid items-stretch gap-6 md:grid-cols-2">
-        <div className="min-w-0 md:relative">
+      <div className="grid items-start gap-6 md:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-6">
           <ProfileCard user={user} />
+          <LanguageCard user={user} />
+          <PasswordChangeCard />
         </div>
-        <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-6">
           <AvatarCard user={user} />
           <EmailChangeCard
             email={user.email}
@@ -183,50 +125,10 @@ function AccountContent() {
                 : !!user.emailVerifiedAt
             }
           />
-        </div>
-      </div>
-      <div className="grid items-start gap-6 md:grid-cols-2">
-        <PasswordChangeCard />
-        <div className="flex min-w-0 flex-col gap-4">
-          <LanguageCard user={user} />
           <NotificationsCard user={user} />
+          <SignOutCard />
         </div>
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <ActivityList
-          title="Мои предложения помощи"
-          status={responsesFilter.status}
-          options={responseOptions}
-          onStatusChange={(status) => setResponsesFilter({ status, page: 0 })}
-          items={responses.data?.content ?? []}
-          loading={responses.isPending}
-          error={responses.error}
-          page={responsesFilter.page}
-          totalPages={responses.data?.totalPages ?? 0}
-          busy={responses.isFetching}
-          onPageChange={(page) =>
-            setResponsesFilter((current) => ({ ...current, page }))
-          }
-          empty="Предложений помощи с этим статусом пока нет."
-        />
-        <ActivityList
-          title="Где я помогаю"
-          status={assignmentsFilter.status}
-          options={assignmentOptions}
-          onStatusChange={(status) => setAssignmentsFilter({ status, page: 0 })}
-          items={assignments.data?.content ?? []}
-          loading={assignments.isPending}
-          error={assignments.error}
-          page={assignmentsFilter.page}
-          totalPages={assignments.data?.totalPages ?? 0}
-          busy={assignments.isFetching}
-          onPageChange={(page) =>
-            setAssignmentsFilter((current) => ({ ...current, page }))
-          }
-          empty="Задач с этим статусом пока нет."
-        />
-      </div>
-      <SignOutCard />
     </section>
   )
 }
