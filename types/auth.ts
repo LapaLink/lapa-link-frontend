@@ -10,6 +10,7 @@ export type CurrentUser = {
   roles: string[]
   avatarUrl?: string | null
   locale?: string | null
+  emailVerifiedAt?: string | null
   cityCode?: string | null
   bio?: string | null
 }

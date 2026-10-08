@@ -21,9 +21,18 @@ import {
 import { MyCaseCard } from "./common/MyCaseCard"
 import { MyCasesSkeleton } from "./common/MyCasesSkeleton"
 
+const steps = [
+  "Люди видят ваше объявление и предлагают помощь.",
+  "Вы открываете объявление и выбираете помощника.",
+  "Когда помощь получена — отмечаете это в объявлении.",
+]
+
 export function MyCases() {
   return (
-    <RequireAuth fallback={<MyCasesSkeleton />}>
+    <RequireAuth
+      fallback={<MyCasesSkeleton />}
+      guestMessage="Войдите, чтобы увидеть свои объявления и тех, кто предложил помощь."
+    >
       <MyCasesContent />
     </RequireAuth>
   )
@@ -45,8 +54,8 @@ function MyCasesContent() {
             Мои объявления
           </h1>
           <p className="text-muted-foreground">
-            Объявления, которые вы создали. Здесь можно следить за откликами и
-            обновлять информацию.
+            Объявления, которые вы создали. Здесь видно, кто предложил помощь,
+            и можно обновить информацию о животном.
           </p>
         </div>
         <Button asChild className="shrink-0">
@@ -56,6 +65,16 @@ function MyCasesContent() {
           </Link>
         </Button>
       </div>
+      <ol className="grid gap-3 rounded-2xl bg-secondary p-4 text-sm sm:grid-cols-3 sm:p-5">
+        {steps.map((step, index) => (
+          <li key={step} className="flex items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-xs font-bold text-primary">
+              {index + 1}
+            </span>
+            <span className="pt-1">{step}</span>
+          </li>
+        ))}
+      </ol>
       {cases.isPending ? (
         <MyCasesSkeleton />
       ) : cases.isError ? (

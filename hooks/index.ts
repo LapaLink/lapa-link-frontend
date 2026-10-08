@@ -22,5 +22,8 @@ export {
   useDeleteAvatar,
   useRequestEmailChange,
   useConfirmEmailChange,
+  useChangePassword,
+  useUpdateLocale,
+  useUpdateNotification,
 } from "./useAccountMutations"
 export { useDebouncedValue } from "./useDebouncedValue"

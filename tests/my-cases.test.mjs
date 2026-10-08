@@ -68,6 +68,8 @@ function renderPage(
       isPending: false,
       mutateAsync: async () => user,
     }),
+    useUpdateNotification: () => ({ isPending: false, mutate() {} }),
+    useUpdateLocale: () => ({ isPending: false }),
   }
   const result = {
     data,
@@ -209,8 +211,8 @@ test("my cases route renders real card fields, details and edit navigation", () 
     item.title,
     "Активно",
     "Минск",
-    "Открытых потребностей",
-    "Откликов",
+    "Ждут помощи",
+    "Предложили помощь",
     "1 из 3",
   ])
     assert.ok(html.includes(text), text)
@@ -233,7 +235,10 @@ test("my cases handles anonymous, empty, loading and backend error states separa
   assert.ok(empty.includes("У вас пока нет объявлений."))
   assert.ok(empty.includes('href="/cases/create"'))
   const anonymous = renderPage(file, "MyCases", { user: null })
-  assert.equal(anonymous, "")
+  assert.ok(anonymous.includes("Нужно войти"))
+  assert.ok(anonymous.includes('href="/login"'))
+  assert.ok(anonymous.includes('href="/register"'))
+  assert.ok(!anonymous.includes("Мои объявления"))
   const loading = renderPage(file, "MyCases", { pending: true })
   assert.ok(loading.includes("Загружаем объявления"))
   const failed = renderPage(file, "MyCases", {
@@ -327,4 +332,95 @@ test("details tolerate incomplete cached data and preserve paragraph wrapping", 
   assert.ok(html.includes("whitespace-pre-wrap"))
   assert.ok(html.includes("[overflow-wrap:anywhere]"))
   assert.ok(html.includes("Первый абзац\n"))
+})
+
+test("case details invite guests to sign in and keep closing disabled until a reason is chosen", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const withNeed = {
+    ...item,
+    needs: [{ id: "need-1", caseId: item.id, type: "FOSTER", status: "OPEN" }],
+  }
+  const guest = renderPage(file, "CaseDetails", {
+    user: null,
+    data: withNeed,
+    props: { caseId: item.id },
+  })
+  assert.ok(guest.includes("Чем можно помочь"))
+  assert.ok(guest.includes("Войдите, чтобы предложить помощь"))
+  assert.ok(guest.includes('href="/login"'))
+  assert.ok(!guest.includes("Закрыть объявление"))
+  const author = renderPage(file, "CaseDetails", {
+    data: withNeed,
+    props: { caseId: item.id },
+  })
+  assert.match(author, /<button[^>]*disabled[^>]*>Закрыть объявление<\/button>/)
+  assert.ok(
+    author.indexOf("Чем можно помочь") < author.indexOf("Закрыть объявление"),
+  )
+})
+
+test("my tasks shows a helpful empty state with a link to the catalog", () => {
+  const html = renderPage("components/pages/MyTasks/MyTasks.tsx", "MyTasks", {
+    data: { content: [] },
+  })
+  assert.ok(html.includes("Вы ещё никому не предлагали помощь"))
+  assert.ok(html.includes('href="/cases"'))
+})
+
+test("case notifications switch is shown only to participants of an open case", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const render = (data, user) =>
+    renderPage(file, "CaseDetails", { data, user, props: { caseId: item.id } })
+  const author = render({ ...item, notificationsEnabled: true })
+  assert.ok(author.includes("Получать уведомления по этому объявлению на email"))
+  assert.ok(author.includes("предложит помощь или отменит"))
+  assert.match(author, /role="switch"[^>]*aria-checked="true"/)
+  const helper = render(
+    { ...item, notificationsEnabled: false },
+    { id: "helper" },
+  )
+  assert.ok(helper.includes("выберет вас помощником"))
+  assert.match(helper, /role="switch"[^>]*aria-checked="false"/)
+  for (const hidden of [
+    render({ ...item, notificationsEnabled: null }, null),
+    render({ ...item, notificationsEnabled: null }, { id: "stranger" }),
+    render({ ...item, notificationsEnabled: true, status: "CLOSED" }),
+  ])
+    assert.ok(!hidden.includes("Получать уведомления"))
+})
+
+test("notification settings are built from the API list with a code fallback", () => {
+  const html = renderPage(
+    "components/pages/Account/common/NotificationsCard.tsx",
+    "NotificationsCard",
+    {
+      data: [
+        { eventType: "WELCOME", channel: "EMAIL", enabled: true },
+        { eventType: "NEW_FEATURE_DIGEST", channel: "EMAIL", enabled: false },
+      ],
+      props: { user: { ...owner, emailVerifiedAt: null } },
+    },
+  )
+  assert.ok(html.includes("Приветственное письмо после регистрации"))
+  assert.ok(html.includes("NEW_FEATURE_DIGEST"))
+  assert.match(html, /role="switch"[^>]*aria-checked="true"/)
+  assert.match(html, /role="switch"[^>]*aria-checked="false"/)
+  assert.ok(html.includes("email не подтверждён"))
+  assert.ok(html.includes("настраиваются на странице объявления"))
+  const verified = renderPage(
+    "components/pages/Account/common/NotificationsCard.tsx",
+    "NotificationsCard",
+    { data: [], props: { user: { ...owner, emailVerifiedAt: "2026-01-01T00:00:00Z" } } },
+  )
+  assert.ok(!verified.includes("email не подтверждён"))
+})
+
+test("language card marks the account locale as selected", () => {
+  const html = renderPage(
+    "components/pages/Account/common/LanguageCard.tsx",
+    "LanguageCard",
+    { props: { user: { ...owner, locale: "be" } } },
+  )
+  assert.match(html, /aria-checked="true"[^>]*>Беларуская</)
+  assert.match(html, /aria-checked="false"[^>]*>Русский</)
 })

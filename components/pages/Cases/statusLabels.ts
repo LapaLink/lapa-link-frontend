@@ -11,19 +11,19 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
 }
 
 export const needStatusLabels: Record<NeedStatus, string> = {
-  OPEN: "Открыто",
-  ASSIGNED: "Исполнитель выбран",
+  OPEN: "Ищем помощника",
+  ASSIGNED: "Помощник выбран",
   CLOSED: "Закрыто",
 }
 
 export const responseStatusLabels: Record<HelpApplicationStatus, string> = {
-  PENDING: "Ожидает решения",
-  ACCEPTED: "Принят",
-  CANCELLED: "Отменён",
+  PENDING: "Ждёт ответа",
+  ACCEPTED: "Выбран помощником",
+  CANCELLED: "Отменено",
 }
 
 export const assignmentStatusLabels: Record<AssignmentStatus, string> = {
-  ACTIVE: "В работе",
+  ACTIVE: "Помощь в процессе",
   CANCELLED: "Отменено",
-  COMPLETED: "Завершено",
+  COMPLETED: "Помощь оказана",
 }

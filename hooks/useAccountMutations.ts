@@ -3,9 +3,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { accountApi, ApiError } from "@/api"
 import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
+import { queryKeys } from "@/lib/queryKeys"
 import type {
   CurrentUser,
   EmailConfirmationDto,
+  NotificationSetting,
+  PasswordChangeDto,
+  UserLocale,
   UserProfile,
   UpdateProfileDto,
 } from "@/types"
@@ -89,5 +93,65 @@ export function useConfirmEmailChange() {
       }
       return tokens
     },
+  })
+}
+
+/** Changes the password and keeps this device signed in with the returned tokens. */
+export function useChangePassword() {
+  return useMutation({
+    gcTime: 0,
+    mutationFn: async (data: PasswordChangeDto) => {
+      const revision = getSessionRevision()
+      const tokens = await accountApi.changePassword(data)
+      if (revision !== getSessionRevision() || !readTokens())
+        throw new ApiError("Сессия завершена. Войдите заново.", 401)
+      // Old tokens are revoked by the backend, so replace both right away.
+      saveTokens(tokens)
+      return tokens
+    },
+  })
+}
+
+/** Saves the account language and applies it to the cached current user. */
+export function useUpdateLocale() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (locale: UserLocale) => {
+      const revision = getSessionRevision()
+      await accountApi.updateLocale(locale)
+      if (revision !== getSessionRevision() || !readTokens()) return locale
+      await client.cancelQueries({ queryKey: ACCOUNT_QUERY_KEY })
+      client.setQueriesData<CurrentUser>(
+        { queryKey: ACCOUNT_QUERY_KEY },
+        (current) => (current ? { ...current, locale } : current),
+      )
+      return locale
+    },
+  })
+}
+
+/** Toggles one notification setting optimistically and rolls back on error. */
+export function useUpdateNotification() {
+  const client = useQueryClient()
+  const apply = (setting: NotificationSetting) =>
+    client.setQueryData<NotificationSetting[]>(
+      queryKeys.notifications,
+      (current) =>
+        current?.map((item) =>
+          item.eventType === setting.eventType &&
+          item.channel === setting.channel
+            ? setting
+            : item,
+        ),
+    )
+  return useMutation({
+    mutationFn: accountApi.updateNotification,
+    onMutate: async (setting) => {
+      await client.cancelQueries({ queryKey: queryKeys.notifications })
+      apply(setting)
+    },
+    onSuccess: apply,
+    onError: (_error, setting) =>
+      apply({ ...setting, enabled: !setting.enabled }),
   })
 }

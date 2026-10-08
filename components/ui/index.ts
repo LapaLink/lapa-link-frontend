@@ -10,6 +10,7 @@ export {
 } from "./select"
 export { Textarea } from "./textarea"
 export { Checkbox } from "./checkbox"
+export { Switch } from "./switch"
 export {
   Dialog,
   DialogTrigger,

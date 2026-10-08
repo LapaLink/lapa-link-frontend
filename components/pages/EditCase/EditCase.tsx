@@ -26,7 +26,10 @@ function EditSkeleton() {
 
 export function EditCase({ caseId }: { caseId: string }) {
   return (
-    <RequireAuth fallback={<EditSkeleton />}>
+    <RequireAuth
+      fallback={<EditSkeleton />}
+      guestMessage="Войдите, чтобы редактировать своё объявление."
+    >
       <EditCaseContent caseId={caseId} />
     </RequireAuth>
   )

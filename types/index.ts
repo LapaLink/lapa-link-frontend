@@ -6,6 +6,7 @@ export type {
   CreateCaseDto,
   AnimalCase,
   CaseNeed,
+  CaseNotificationSettings,
   CaseStatus,
   NeedStatus,
   HelpApplicationStatus,
@@ -37,6 +38,9 @@ export type {
 export type {
   UserProfile,
   UpdateProfileDto,
+  PasswordChangeDto,
+  UserLocale,
+  NotificationSetting,
   EmailChangeDto,
   EmailConfirmationDto,
   MyHelpApplication,

@@ -1,8 +1,5 @@
 import type { ReactNode } from "react"
-import { NavigationLink as Link } from "@/components/providers"
-import { ROUTES } from "@/lib/constants"
-import { Button } from "@/components/ui"
-import { AccountNavigation, Brand } from "./common"
+import { AccountNavigation, Brand, MainNavigation } from "./common"
 
 type HeaderProps = { children?: ReactNode }
 
@@ -12,17 +9,7 @@ export function Header({ children }: HeaderProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
         <div className="flex items-center gap-3">
           <Brand />
-          <nav className="hidden items-center gap-2 sm:flex">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={ROUTES.CASES}>Объявления</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={ROUTES.CREATE_CASE}>Подать объявление</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={ROUTES.MY_TASKS}>Мои задачи</Link>
-            </Button>
-          </nav>
+          <MainNavigation />
         </div>
         {children ?? <AccountNavigation />}
       </div>

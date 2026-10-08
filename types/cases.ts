@@ -82,6 +82,13 @@ export type CaseDetails = Omit<AnimalCase, "authorId"> & {
   closedAt?: string | null
   author: CaseAuthor
   needs: CaseNeed[]
+  /** Current user's email notifications for this case; null when not a participant or anonymous. */
+  notificationsEnabled?: boolean | null
+}
+
+export type CaseNotificationSettings = {
+  caseId: string
+  enabled: boolean
 }
 
 export type Applicant = {

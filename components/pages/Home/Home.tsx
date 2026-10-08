@@ -50,12 +50,12 @@ const steps = [
   {
     icon: MessageCircle,
     title: "Предложите помощь",
-    text: "Оставьте отклик и расскажите, что вы можете сделать.",
+    text: "Напишите автору, чем можете помочь, и оставьте контакт.",
   },
   {
     icon: HeartHandshake,
     title: "Сделайте доброе дело",
-    text: "Договоритесь с автором и помогите животному.",
+    text: "Автор выберет помощника и свяжется с вами. Остаётся помочь животному.",
   },
 ]
 
@@ -83,7 +83,7 @@ export function Home() {
             <span className="text-primary">Большая перемена.</span>
           </h1>
           <p className="max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Для кошки или собаки ваш отклик может стать началом новой жизни.
+            Для кошки или собаки ваша помощь может стать началом новой жизни.
             Найдите тех, кому нужна помощь, и сделайте первый шаг вместе с
             LapaLink.
           </p>
@@ -168,7 +168,7 @@ export function Home() {
       <section className="flex flex-col gap-7" aria-labelledby="steps-heading">
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold text-primary">
-            От отклика к доброму делу
+            От первого сообщения к доброму делу
           </p>
           <h2
             id="steps-heading"

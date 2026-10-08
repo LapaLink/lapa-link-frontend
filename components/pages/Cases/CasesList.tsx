@@ -175,17 +175,28 @@ export function CasesList() {
       {cases.isPending ? (
         <CaseCardsSkeleton />
       ) : cases.isError ? (
-        <div className="flex flex-col items-start gap-3">
-          <FormAlert
-            message={getErrorMessage(
-              cases.error,
-              "Не удалось загрузить объявления.",
-            )}
-          />
-          <Button variant="outline" onClick={() => void cases.refetch()}>
-            Попробовать ещё раз
-          </Button>
-        </div>
+        <Card className="items-start">
+          <CardHeader className="w-full">
+            <CardTitle>Не получилось загрузить объявления</CardTitle>
+            <CardDescription>
+              Возможно, пропал интернет или сервис ненадолго недоступен.
+              Фильтры сохранятся — просто попробуйте ещё раз.
+            </CardDescription>
+            <FormAlert
+              message={getErrorMessage(
+                cases.error,
+                "Не удалось загрузить объявления.",
+              )}
+            />
+            <Button
+              variant="outline"
+              className="mt-2 w-fit"
+              onClick={() => void cases.refetch()}
+            >
+              Попробовать ещё раз
+            </Button>
+          </CardHeader>
+        </Card>
       ) : cases.data.content.length ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {cases.data.content.map((item) => (

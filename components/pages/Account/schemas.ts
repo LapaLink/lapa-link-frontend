@@ -10,6 +10,14 @@ export const emailChangeSchema = z.object({
   newEmail: emailSchema,
   password: passwordSchema,
 })
+export const passwordChangeSchema = z.object({
+  currentPassword: passwordSchema,
+  newPassword: passwordSchema.refine(
+    (value) => Array.from(value).length >= 8,
+    "Придумайте пароль хотя бы из 8 символов.",
+  ),
+})
+export type PasswordChangeValues = z.infer<typeof passwordChangeSchema>
 export const emailConfirmationSchema = z.object({ code: otpCodeSchema })
 export type EmailChangeValues = z.infer<typeof emailChangeSchema>
 export type EmailConfirmationValues = z.infer<typeof emailConfirmationSchema>
