@@ -27,7 +27,7 @@ import {
 
 export function CreateCase() {
   return (
-    <RequireAuth>
+    <RequireAuth guestMessage="Войдите, чтобы подать объявление о найденном животном. Так откликнувшиеся смогут связаться именно с вами.">
       <CreateCaseContent />
     </RequireAuth>
   )

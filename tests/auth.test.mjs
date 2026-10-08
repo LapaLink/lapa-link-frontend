@@ -1004,3 +1004,143 @@ test("profile saves the exact DTO and publishes the current user without reloadi
   assert.equal(cached, updated)
   assert.equal(invalidated, true)
 })
+
+test("case details send the token when signed in and fall back to anonymous on an invalid session", async () => {
+  const session = () => new Map([["lapalink.session", JSON.stringify(old)]])
+  const received = []
+  const signedIn = load(
+    "api/cases.ts",
+    async (url, options) => {
+      received.push(options.headers.get("Authorization"))
+      return response(200, { id: "case-1", notificationsEnabled: true })
+    },
+    session(),
+  )
+  const details = await signedIn.casesApi.getById("case-1")
+  assert.equal(details.notificationsEnabled, true)
+  assert.deepEqual(received, ["Bearer old-access"])
+
+  const fallback = []
+  const revoked = load(
+    "api/cases.ts",
+    async (url, options) => {
+      const auth = options.headers.get("Authorization")
+      fallback.push(auth)
+      return auth
+        ? response(401, { details: { error: "SESSION_NOT_FOUND" } })
+        : response(200, { id: "case-1", notificationsEnabled: null })
+    },
+    session(),
+  )
+  const anonymousDetails = await revoked.casesApi.getById("case-1")
+  assert.equal(anonymousDetails.notificationsEnabled, null)
+  assert.deepEqual(fallback, ["Bearer old-access", null])
+
+  const guest = []
+  const anonymous = load("api/cases.ts", async (url, options) => {
+    guest.push(options.headers.get("Authorization"))
+    return response(200, { id: "case-1", notificationsEnabled: null })
+  })
+  await anonymous.casesApi.getById("case-1")
+  assert.deepEqual(guest, [null])
+})
+
+test("case notifications toggle uses the authorized PUT endpoint and surfaces backend errors", async () => {
+  const received = []
+  const { casesApi } = load(
+    "api/cases.ts",
+    async (url, options) => {
+      received.push({ url, options })
+      return JSON.parse(options.body).enabled
+        ? response(403, {
+            message: "Вы не участвуете в объявлении",
+            details: { error: "NOT_CASE_PARTICIPANT" },
+          })
+        : response(200, { caseId: "case-1", enabled: false })
+    },
+    new Map([["lapalink.session", JSON.stringify(old)]]),
+  )
+  const result = await casesApi.setNotifications("case-1", false)
+  assert.deepEqual(result, { caseId: "case-1", enabled: false })
+  assert.equal(received[0].url, "/api/v1/cases/case-1/notifications")
+  assert.equal(received[0].options.method, "PUT")
+  assert.deepEqual(JSON.parse(received[0].options.body), { enabled: false })
+  assert.equal(
+    received[0].options.headers.get("Authorization"),
+    "Bearer old-access",
+  )
+  await assert.rejects(casesApi.setNotifications("case-1", true), {
+    status: 403,
+    code: "NOT_CASE_PARTICIPANT",
+    message: "Вы не участвуете в объявлении",
+  })
+})
+
+test("account settings endpoints use the documented paths, methods and bodies", async () => {
+  const received = []
+  const { accountApi } = load(
+    "api/account.ts",
+    async (url, options) => {
+      received.push({ url, method: options.method, body: options.body })
+      if (url.endsWith("/locale")) return new Response(null, { status: 204 })
+      if (url.endsWith("/notifications"))
+        return response(200, [
+          { eventType: "WELCOME", channel: "EMAIL", enabled: true },
+        ])
+      if (url.includes("/notifications/"))
+        return response(200, { eventType: "WELCOME", channel: "EMAIL", enabled: false })
+      return response(200, next)
+    },
+    new Map([["lapalink.session", JSON.stringify(old)]]),
+  )
+  assert.deepEqual(
+    await accountApi.changePassword({ currentPassword: "old-pass", newPassword: "NewStrongPass123" }),
+    next,
+  )
+  await accountApi.updateLocale("be")
+  const list = await accountApi.getNotifications()
+  assert.equal(list[0].eventType, "WELCOME")
+  await accountApi.updateNotification({ eventType: "WELCOME", channel: "EMAIL", enabled: false })
+  assert.deepEqual(
+    received.map(({ url, method, body }) => [url, method ?? "GET", body && JSON.parse(body)]),
+    [
+      ["/api/v1/account/password/change", "POST", { currentPassword: "old-pass", newPassword: "NewStrongPass123" }],
+      ["/api/v1/account/locale", "PUT", { locale: "be" }],
+      ["/api/v1/account/notifications", "GET", undefined],
+      ["/api/v1/account/notifications/WELCOME/EMAIL", "PUT", { enabled: false }],
+    ],
+  )
+})
+
+test("password change stores the new token pair and keeps wrong-password errors local", async () => {
+  const storage = new Map([["lapalink.session", JSON.stringify(old)]])
+  let mutation
+  const fetch = async (url, options) =>
+    JSON.parse(options.body).currentPassword === "wrong"
+      ? response(400, {
+          message: "Неверный текущий пароль.",
+          details: { error: "WRONG_PASSWORD" },
+        })
+      : response(200, next)
+  const hooks = load("hooks/useAccountMutations.ts", fetch, storage, undefined, {
+    "@tanstack/react-query": {
+      useQueryClient: () => ({}),
+      useMutation: (options) => {
+        mutation = options
+        return {}
+      },
+    },
+  })
+  hooks.useChangePassword()
+  await mutation.mutationFn({ currentPassword: "right", newPassword: "NewStrongPass123" })
+  assert.deepEqual(JSON.parse(storage.get("lapalink.session")), next)
+  await assert.rejects(
+    mutation.mutationFn({ currentPassword: "wrong", newPassword: "NewStrongPass123" }),
+    { status: 400, code: "WRONG_PASSWORD" },
+  )
+  assert.deepEqual(JSON.parse(storage.get("lapalink.session")), next)
+  const { passwordChangeSchema } = load("components/pages/Account/schemas.ts")
+  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "short" }).success, false)
+  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "я".repeat(37) }).success, false)
+  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "я".repeat(36) }).success, true)
+})

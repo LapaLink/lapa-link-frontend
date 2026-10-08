@@ -11,6 +11,7 @@ export const queryKeys = {
     ["account", "applications", status ?? "ALL"] as const,
   myAssignments: (status?: AssignmentStatus) =>
     ["account", "assignments", status ?? "ALL"] as const,
+  notifications: ["account", "notifications"] as const,
 }
 
 export async function invalidateCaseData(client: QueryClient, caseId: string) {

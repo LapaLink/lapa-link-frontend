@@ -17,24 +17,31 @@ import {
   EmailChangeCard,
   ActivityList,
   ProfileCard,
+  PasswordChangeCard,
+  LanguageCard,
+  NotificationsCard,
+  SignOutCard,
 } from "./common"
 
 const responseOptions = [
   { value: "ALL", label: "Все статусы" },
-  { value: "PENDING", label: "Ожидает решения" },
-  { value: "ACCEPTED", label: "Принят" },
-  { value: "CANCELLED", label: "Отменён" },
+  { value: "PENDING", label: "Ждёт ответа" },
+  { value: "ACCEPTED", label: "Выбран помощником" },
+  { value: "CANCELLED", label: "Отменено" },
 ]
 const assignmentOptions = [
   { value: "ALL", label: "Все статусы" },
-  { value: "ACTIVE", label: "В работе" },
-  { value: "COMPLETED", label: "Завершено" },
+  { value: "ACTIVE", label: "Помощь в процессе" },
+  { value: "COMPLETED", label: "Помощь оказана" },
   { value: "CANCELLED", label: "Отменено" },
 ]
 
 export function Account() {
   return (
-    <RequireAuth fallback={<AccountSkeleton />}>
+    <RequireAuth
+      fallback={<AccountSkeleton />}
+      guestMessage="Войдите, чтобы открыть свой профиль."
+    >
       <AccountContent />
     </RequireAuth>
   )
@@ -114,13 +121,13 @@ function AccountContent() {
       <div className="grid gap-3 sm:grid-cols-3">
         {[
           {
-            title: "Ожидают решения",
+            title: "Жду ответа",
             icon: Clock3,
             query: pending,
             anchor: "pending",
           },
           {
-            title: "В работе",
+            title: "Я помогаю",
             icon: HeartHandshake,
             query: active,
             anchor: "active",
@@ -168,12 +175,26 @@ function AccountContent() {
         </div>
         <div className="flex min-w-0 flex-col gap-4">
           <AvatarCard user={user} />
-          <EmailChangeCard email={user.email} />
+          <EmailChangeCard
+            email={user.email}
+            verified={
+              user.emailVerifiedAt === undefined
+                ? undefined
+                : !!user.emailVerifiedAt
+            }
+          />
+        </div>
+      </div>
+      <div className="grid items-start gap-6 md:grid-cols-2">
+        <PasswordChangeCard />
+        <div className="flex min-w-0 flex-col gap-4">
+          <LanguageCard user={user} />
+          <NotificationsCard user={user} />
         </div>
       </div>
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <ActivityList
-          title="Мои отклики"
+          title="Мои предложения помощи"
           status={responsesFilter.status}
           options={responseOptions}
           onStatusChange={(status) => setResponsesFilter({ status, page: 0 })}
@@ -186,10 +207,10 @@ function AccountContent() {
           onPageChange={(page) =>
             setResponsesFilter((current) => ({ ...current, page }))
           }
-          empty="Вы пока не оставляли откликов с этим статусом."
+          empty="Предложений помощи с этим статусом пока нет."
         />
         <ActivityList
-          title="Мои назначения"
+          title="Где я помогаю"
           status={assignmentsFilter.status}
           options={assignmentOptions}
           onStatusChange={(status) => setAssignmentsFilter({ status, page: 0 })}
@@ -202,9 +223,10 @@ function AccountContent() {
           onPageChange={(page) =>
             setAssignmentsFilter((current) => ({ ...current, page }))
           }
-          empty="Назначений с этим статусом пока нет."
+          empty="Задач с этим статусом пока нет."
         />
       </div>
+      <SignOutCard />
     </section>
   )
 }

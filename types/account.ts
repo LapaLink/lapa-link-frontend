@@ -24,6 +24,19 @@ export type EmailChangeDto = {
   password: string
 }
 
+export type PasswordChangeDto = {
+  currentPassword: string
+  newPassword: string
+}
+
+export type UserLocale = "ru" | "be"
+
+export type NotificationSetting = {
+  eventType: string
+  channel: string
+  enabled: boolean
+}
+
 export type EmailConfirmationDto = {
   requestId: string
   code: string

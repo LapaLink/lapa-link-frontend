@@ -6,13 +6,15 @@ import type {
   CaseDetails,
   CaseListItem,
   CaseNeed,
+  CaseNotificationSettings,
   CaseStatus,
   CreateCaseDto,
   HelpApplication,
   NeedStatus,
   PageResponse,
 } from "@/types"
-import { authorizedRequest, request } from "./instance"
+import { readTokens } from "@/lib/auth"
+import { ApiError, authorizedRequest, request } from "./instance"
 
 type CaseListParams = {
   animalType?: AnimalType
@@ -40,8 +42,22 @@ export const casesApi = {
   list: (params: CaseListParams = {}, signal?: AbortSignal) =>
     request<PageResponse<CaseListItem>>(`/cases${query(params)}`, { signal }),
   getCases: (params: CaseListParams = {}) => casesApi.list(params),
-  getById: (caseId: string, signal?: AbortSignal) =>
-    request<CaseDetails>(`/cases/${encodeURIComponent(caseId)}`, { signal }),
+  /**
+   * Public case details. Sent with the access token when signed in so the
+   * backend can fill `notificationsEnabled`; falls back to an anonymous
+   * request if the session turns out to be invalid.
+   */
+  getById: async (caseId: string, signal?: AbortSignal) => {
+    const path = `/cases/${encodeURIComponent(caseId)}`
+    if (!readTokens()) return request<CaseDetails>(path, { signal })
+    try {
+      return await authorizedRequest<CaseDetails>(path, { signal })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401)
+        return request<CaseDetails>(path, { signal })
+      throw error
+    }
+  },
   getCaseById: (caseId: string) => casesApi.getById(caseId),
   create: (data: CreateCaseDto, photo?: File) => {
     if (!photo)
@@ -57,6 +73,15 @@ export const casesApi = {
     body.append("photo", photo)
     return authorizedRequest<AnimalCase>("/cases", { method: "POST", body })
   },
+  /** Turns the current participant's email notifications for a case on or off. */
+  setNotifications: (caseId: string, enabled: boolean) =>
+    authorizedRequest<CaseNotificationSettings>(
+      `/cases/${encodeURIComponent(caseId)}/notifications`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ enabled }),
+      },
+    ),
   addNeed: (caseId: string, type: string) =>
     authorizedRequest<CaseNeed>(`/cases/${encodeURIComponent(caseId)}/needs`, {
       method: "POST",

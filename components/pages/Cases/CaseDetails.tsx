@@ -14,7 +14,12 @@ import {
 import { getDictionaryName, getCityName } from "@/lib/dictionaries"
 import { ROUTES } from "@/lib/constants"
 
-import type { CaseNeed, HelpApplication, NeedStatus } from "@/types"
+import type {
+  CaseDetails as CaseDetailsData,
+  CaseNeed,
+  HelpApplication,
+  NeedStatus,
+} from "@/types"
 import { FormAlert, LoadingButton, CasePhoto } from "@/components/common"
 import {
   AlertDialog,
@@ -32,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
   Field,
+  FieldDescription,
   FieldLabel,
   Select,
   SelectContent,
@@ -40,6 +46,7 @@ import {
   SelectValue,
   Textarea,
   Skeleton,
+  Switch,
 } from "@/components/ui"
 import {
   caseStatusLabels,
@@ -128,13 +135,13 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     setError("")
     const message = messageByNeed[need.id]?.trim()
     if (!message) {
-      setError("Напишите короткое сообщение автору.")
+      setError("Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.")
       return
     }
     try {
       await createResponse.mutateAsync({ needId: need.id, message })
     } catch (error) {
-      setError(getErrorMessage(error, "Не удалось откликнуться."))
+      setError(getErrorMessage(error, "Не удалось отправить предложение помощи."))
     }
   }
 
@@ -143,7 +150,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     try {
       await assignResponse.mutateAsync(application.id)
     } catch (error) {
-      setError(getErrorMessage(error, "Не удалось назначить исполнителя."))
+      setError(getErrorMessage(error, "Не удалось выбрать помощника."))
     } finally {
       setPendingAssignment(null)
     }
@@ -190,11 +197,11 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
     const prompt =
       transition === "OPEN->CLOSED"
-        ? `Закрыть потребность без исполнителя? Все ожидающие отклики (${countPending}) будут отменены. Открыть её снова будет нельзя.`
+        ? `Отметить, что эта помощь больше не нужна? Все предложения помощи, которые ждут ответа (${countPending}), будут отменены. Вернуть эту просьбу будет нельзя.`
         : transition === "ASSIGNED->OPEN"
-          ? `Снять ${acceptedRequest?.user.displayName || "исполнителя"} с задачи? Потребность снова станет открытой, можно будет выбрать другого из откликнувшихся.`
+          ? `Отменить выбор помощника ${acceptedRequest?.user.displayName || ""}? Просьба снова станет открытой, и вы сможете выбрать другого из тех, кто предложил помощь.`
           : transition === "ASSIGNED->CLOSED"
-            ? `Отметить помощь ${acceptedRequest?.user.displayName || "исполнителя"} выполненной и закрыть потребность? Остальные отклики (${countPending}) будут отменены.`
+            ? `Подтвердить, что ${acceptedRequest?.user.displayName || "помощник"} помог(ла)? Просьба будет закрыта, остальные предложения помощи (${countPending}) отменятся.`
             : undefined
     if (prompt) {
       setPendingNeedAction({ need, nextStatus, prompt })
@@ -304,6 +311,14 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
           <Link href={ROUTES.EDIT_CASE(caseId)}>Редактировать объявление</Link>
         </Button>
       )}
+      {typeof animalCase.notificationsEnabled === "boolean" &&
+        animalCase.status === "OPEN" && (
+          <CaseNotifications
+            caseId={caseId}
+            enabled={animalCase.notificationsEnabled}
+            isAuthor={isAuthor}
+          />
+        )}
       <Card>
         <CardHeader>
           <CardTitle>О животном</CardTitle>
@@ -375,7 +390,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Подтверждение действия</AlertDialogTitle>
+            <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingNeedAction?.prompt}
             </AlertDialogDescription>
@@ -405,10 +420,11 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Подтвердить назначение</AlertDialogTitle>
+            <AlertDialogTitle>Выбрать помощника</AlertDialogTitle>
             <AlertDialogDescription>
-              Назначить {pendingAssignment?.user.displayName || "пользователя"}{" "}
-              исполнителем этой потребности?
+              Выбрать {pendingAssignment?.user.displayName || "этого человека"}{" "}
+              помощником? Свяжитесь с ним по контактам из его сообщения и
+              договоритесь о деталях.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -419,7 +435,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                 void assign(pendingAssignment)
               }}
             >
-              Назначить
+              Выбрать
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -427,49 +443,18 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
       <FormAlert message={error} />
 
-      {isAuthor && animalCase.status === "OPEN" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Закрыть объявление</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Field>
-              <FieldLabel>Причина закрытия</FieldLabel>
-              <Select value={closeReason} onValueChange={setCloseReason}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите причину" />
-                </SelectTrigger>
-                <SelectContent>
-                  {closeReasons.data?.map((reason) => (
-                    <SelectItem key={reason.code} value={reason.code}>
-                      {reason.nameRu}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
 
-            {selectedReason?.requiresComment && (
-              <Field>
-                <FieldLabel>Комментарий</FieldLabel>
-                <Textarea
-                  value={closeComment}
-                  onChange={(event) => setCloseComment(event.target.value)}
-                  placeholder="Опишите детали закрытия объявления"
-                />
-              </Field>
-            )}
-
-            <LoadingButton
-              variant="destructive"
-              loading={closeCaseMutation.isPending}
-              loadingText="Закрываем…"
-              onClick={() => void handleCloseCase()}
-            >
-              Закрыть объявление
-            </LoadingButton>
-          </CardContent>
-        </Card>
+      {animalCase.needs.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Чем можно помочь
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {isAuthor
+              ? "Здесь появляются люди, которые готовы помочь. Выберите помощника и свяжитесь с ним по контактам из его сообщения."
+              : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."}
+          </p>
+        </div>
       )}
 
       <div className="grid gap-4">
@@ -496,7 +481,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                           void handleNeedStatusChange(need, "CLOSED")
                         }
                       >
-                        Закрыть потребность
+                        Помощь больше не нужна
                       </Button>
                     )}
                     {need.status === "ASSIGNED" && (
@@ -508,7 +493,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                             void handleNeedStatusChange(need, "CLOSED")
                           }
                         >
-                          Подтвердить выполнение
+                          Помощь получена
                         </Button>
                         <Button
                           variant="outline"
@@ -517,19 +502,49 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                             void handleNeedStatusChange(need, "OPEN")
                           }
                         >
-                          Снять исполнителя
+                          Выбрать другого помощника
                         </Button>
                       </>
                     )}
                   </div>
                 )}
 
-                {!isAuthor && canAct && need.status === "OPEN" && user && (
+                {!isAuthor && canAct && !user && need.status === "OPEN" && (
+                  <div className="flex flex-col gap-3 rounded-lg border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Войдите, чтобы предложить помощь и написать автору.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button asChild size="sm">
+                        <Link href={ROUTES.LOGIN}>Войти</Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={ROUTES.REGISTER}>Регистрация</Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {!isAuthor &&
+                  canAct &&
+                  user &&
+                  (need.status === "OPEN" ||
+                    myCaseApplicationsForNeed(need.id).length > 0) && (
                   <>
                     {myCaseApplicationsForNeed(need.id).length ? (
                       <div className="rounded-lg border bg-muted/30 p-3">
                         <p className="font-medium">
-                          Вы уже откликались на эту потребность.
+                          Вы уже предложили здесь помощь.
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Следите за ответом автора в разделе{" "}
+                          <Link
+                            href={ROUTES.MY_TASKS}
+                            className="font-medium text-primary hover:underline"
+                          >
+                            «Мои задачи»
+                          </Link>
+                          .
                         </p>
                         <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
                           {myCaseApplicationsForNeed(need.id).map(
@@ -557,6 +572,10 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                           <FieldLabel htmlFor={`message-${need.id}`}>
                             Сообщение автору
                           </FieldLabel>
+                          <FieldDescription>
+                            Расскажите, чем поможете, и обязательно оставьте
+                            контакт: телефон или Telegram.
+                          </FieldDescription>
                           <Textarea
                             id={`message-${need.id}`}
                             value={messageByNeed[need.id] ?? ""}
@@ -566,7 +585,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                                 [need.id]: event.target.value,
                               }))
                             }
-                            placeholder="Расскажите, чем можете помочь и когда будете на связи."
+                            placeholder="Например: могу отвезти к ветеринару в субботу. Телефон +375 29 000-00-00"
                           />
                         </Field>
                         <LoadingButton
@@ -574,7 +593,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                           loadingText="Отправляем…"
                           onClick={() => void applyForNeed(need)}
                         >
-                          Откликнуться
+                          Предложить помощь
                         </LoadingButton>
                       </div>
                     )}
@@ -595,6 +614,60 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
           )
         })}
       </div>
+
+      {isAuthor && animalCase.status === "OPEN" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Закрыть объявление</CardTitle>
+            <CardDescription>
+              Если животное уже нашло дом или помощь больше не нужна, закройте
+              объявление — оно пропадёт из общего списка.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Field>
+              <FieldLabel>Причина закрытия</FieldLabel>
+              <Select value={closeReason} onValueChange={setCloseReason}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите причину" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closeReasons.data?.map((reason) => (
+                    <SelectItem key={reason.code} value={reason.code}>
+                      {reason.nameRu}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {selectedReason?.requiresComment && (
+              <Field>
+                <FieldLabel>Комментарий (обязательно для этой причины)</FieldLabel>
+                <Textarea
+                  value={closeComment}
+                  onChange={(event) => setCloseComment(event.target.value)}
+                  placeholder="Опишите детали закрытия объявления"
+                />
+              </Field>
+            )}
+
+            <LoadingButton
+              variant="destructive"
+              loading={closeCaseMutation.isPending}
+              loadingText="Закрываем…"
+              disabled={
+                !closeReason ||
+                (!!selectedReason?.requiresComment && !closeComment.trim())
+              }
+              className="w-full sm:w-fit"
+              onClick={() => void handleCloseCase()}
+            >
+              Закрыть объявление
+            </LoadingButton>
+          </CardContent>
+        </Card>
+      )}
     </section>
   )
 }
@@ -613,7 +686,11 @@ function AuthorResponses({
   onAssign: (response: HelpApplication) => void
 }) {
   if (!responses.length)
-    return <p className="text-sm text-muted-foreground">Откликов пока нет.</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        Пока никто не предложил помощь. Мы покажем здесь всех, кто откликнется.
+      </p>
+    )
   return (
     <div className="flex flex-col gap-3">
       {responses.map((response) => (
@@ -625,7 +702,9 @@ function AuthorResponses({
             <p className="font-medium">
               {response.user.displayName || "Пользователь"}
             </p>
-            <p className="text-sm text-muted-foreground">{response.message}</p>
+            <p className="whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]">
+              {response.message}
+            </p>
             <p className="text-xs text-muted-foreground">
               {responseStatusLabels[response.status]}
             </p>
@@ -633,12 +712,82 @@ function AuthorResponses({
           {canAssign &&
             response.status === "PENDING" &&
             need.status === "OPEN" && (
-              <Button disabled={busy} onClick={() => onAssign(response)}>
-                Назначить
+              <Button
+                disabled={busy}
+                className="shrink-0"
+                onClick={() => onAssign(response)}
+              >
+                Выбрать помощником
               </Button>
             )}
         </div>
       ))}
     </div>
+  )
+}
+
+/** Per-case email notification switch for the author or a user who offered help. */
+function CaseNotifications({
+  caseId,
+  enabled,
+  isAuthor,
+}: {
+  caseId: string
+  enabled: boolean
+  isAuthor: boolean
+}) {
+  const client = useQueryClient()
+  const [error, setError] = useState("")
+  const setEnabled = (value: boolean) =>
+    client.setQueryData<CaseDetailsData>(
+      queryKeys.caseDetail(caseId),
+      (current) => current && { ...current, notificationsEnabled: value },
+    )
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => casesApi.setNotifications(caseId, next),
+    onMutate: async (next) => {
+      setError("")
+      await client.cancelQueries({ queryKey: queryKeys.caseDetail(caseId) })
+      setEnabled(next)
+    },
+    onSuccess: (result) => setEnabled(result.enabled),
+    onError: (mutationError, next) => {
+      setEnabled(!next)
+      setError(
+        getErrorMessage(
+          mutationError,
+          "Не удалось сохранить настройку уведомлений.",
+        ),
+      )
+    },
+  })
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <FieldLabel htmlFor="case-notifications" className="font-semibold">
+              Получать уведомления по этому объявлению на email
+            </FieldLabel>
+            <p
+              id="case-notifications-hint"
+              className="text-sm text-muted-foreground"
+            >
+              {isAuthor
+                ? "Напишем, когда кто-то предложит помощь или отменит своё предложение."
+                : "Напишем, когда автор выберет вас помощником, изменит статус просьбы или закроет объявление."}
+            </p>
+          </div>
+          <Switch
+            id="case-notifications"
+            checked={enabled}
+            disabled={toggle.isPending}
+            aria-describedby="case-notifications-hint"
+            onCheckedChange={(next) => toggle.mutate(next)}
+          />
+        </div>
+        <FormAlert message={error} />
+      </CardContent>
+    </Card>
   )
 }

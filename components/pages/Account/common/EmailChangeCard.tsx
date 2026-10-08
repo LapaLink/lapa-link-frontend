@@ -11,7 +11,13 @@ import { useEmailChange } from "../hooks/useEmailChange"
 import { EmailRequestForm } from "./EmailRequestForm"
 import { EmailConfirmationForm } from "./EmailConfirmationForm"
 
-export function EmailChangeCard({ email }: { email: string }) {
+export function EmailChangeCard({
+  email,
+  verified,
+}: {
+  email: string
+  verified?: boolean
+}) {
   const change = useEmailChange()
   return (
     <Card>
@@ -21,6 +27,17 @@ export function EmailChangeCard({ email }: { email: string }) {
         </CardTitle>
         <CardDescription>
           <span className="break-all">Сейчас: {email}</span>
+          {verified !== undefined && (
+            <span
+              className={
+                verified
+                  ? "ml-2 inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-primary"
+                  : "ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+              }
+            >
+              {verified ? "подтверждён" : "не подтверждён"}
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">

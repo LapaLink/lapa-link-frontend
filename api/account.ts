@@ -5,6 +5,9 @@ import type {
   UserProfile,
   EmailChangeDto,
   EmailConfirmationDto,
+  NotificationSetting,
+  PasswordChangeDto,
+  UserLocale,
   AssignmentStatus,
   HelpApplicationStatus,
   MyAssignment,
@@ -63,6 +66,30 @@ export const accountApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  /** Returns a new token pair; the previous session is revoked. */
+  changePassword: (data: PasswordChangeDto) =>
+    authorizedRequest<Tokens>("/account/password/change", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateLocale: (locale: UserLocale) =>
+    authorizedRequest<void>("/account/locale", {
+      method: "PUT",
+      body: JSON.stringify({ locale }),
+    }),
+  /** Configurable notifications only; mandatory and per-case events are not listed. */
+  getNotifications: (signal?: AbortSignal) =>
+    authorizedRequest<NotificationSetting[]>("/account/notifications", {
+      signal,
+    }),
+  updateNotification: ({ eventType, channel, enabled }: NotificationSetting) =>
+    authorizedRequest<NotificationSetting>(
+      `/account/notifications/${encodeURIComponent(eventType)}/${encodeURIComponent(channel)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ enabled }),
+      },
+    ),
   getHelpApplications: (
     status?: HelpApplicationStatus,
     page = 0,
