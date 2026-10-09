@@ -15,6 +15,7 @@ function load(file, fetch, sharedStorage, locks, overrides = {}) {
     setTimeout,
     clearTimeout,
     URLSearchParams,
+    URL,
     Headers,
     Response,
     Event,
@@ -1088,26 +1089,49 @@ test("account settings endpoints use the documented paths, methods and bodies", 
           { eventType: "WELCOME", channel: "EMAIL", enabled: true },
         ])
       if (url.includes("/notifications/"))
-        return response(200, { eventType: "WELCOME", channel: "EMAIL", enabled: false })
+        return response(200, {
+          eventType: "WELCOME",
+          channel: "EMAIL",
+          enabled: false,
+        })
       return response(200, next)
     },
     new Map([["lapalink.session", JSON.stringify(old)]]),
   )
   assert.deepEqual(
-    await accountApi.changePassword({ currentPassword: "old-pass", newPassword: "NewStrongPass123" }),
+    await accountApi.changePassword({
+      currentPassword: "old-pass",
+      newPassword: "NewStrongPass123",
+    }),
     next,
   )
   await accountApi.updateLocale("be")
   const list = await accountApi.getNotifications()
   assert.equal(list[0].eventType, "WELCOME")
-  await accountApi.updateNotification({ eventType: "WELCOME", channel: "EMAIL", enabled: false })
+  await accountApi.updateNotification({
+    eventType: "WELCOME",
+    channel: "EMAIL",
+    enabled: false,
+  })
   assert.deepEqual(
-    received.map(({ url, method, body }) => [url, method ?? "GET", body && JSON.parse(body)]),
+    received.map(({ url, method, body }) => [
+      url,
+      method ?? "GET",
+      body && JSON.parse(body),
+    ]),
     [
-      ["/api/v1/account/password/change", "POST", { currentPassword: "old-pass", newPassword: "NewStrongPass123" }],
+      [
+        "/api/v1/account/password/change",
+        "POST",
+        { currentPassword: "old-pass", newPassword: "NewStrongPass123" },
+      ],
       ["/api/v1/account/locale", "PUT", { locale: "be" }],
       ["/api/v1/account/notifications", "GET", undefined],
-      ["/api/v1/account/notifications/WELCOME/EMAIL", "PUT", { enabled: false }],
+      [
+        "/api/v1/account/notifications/WELCOME/EMAIL",
+        "PUT",
+        { enabled: false },
+      ],
     ],
   )
 })
@@ -1145,25 +1169,103 @@ test("password change stores the new token pair and keeps wrong-password errors 
           details: { error: "WRONG_PASSWORD" },
         })
       : response(200, next)
-  const hooks = load("hooks/useAccountMutations.ts", fetch, storage, undefined, {
-    "@tanstack/react-query": {
-      useQueryClient: () => ({}),
-      useMutation: (options) => {
-        mutation = options
-        return {}
+  const hooks = load(
+    "hooks/useAccountMutations.ts",
+    fetch,
+    storage,
+    undefined,
+    {
+      "@tanstack/react-query": {
+        useQueryClient: () => ({}),
+        useMutation: (options) => {
+          mutation = options
+          return {}
+        },
       },
     },
-  })
+  )
   hooks.useChangePassword()
-  await mutation.mutationFn({ currentPassword: "right", newPassword: "NewStrongPass123" })
+  await mutation.mutationFn({
+    currentPassword: "right",
+    newPassword: "NewStrongPass123",
+  })
   assert.deepEqual(JSON.parse(storage.get("lapalink.session")), next)
   await assert.rejects(
-    mutation.mutationFn({ currentPassword: "wrong", newPassword: "NewStrongPass123" }),
+    mutation.mutationFn({
+      currentPassword: "wrong",
+      newPassword: "NewStrongPass123",
+    }),
     { status: 400, code: "WRONG_PASSWORD" },
   )
   assert.deepEqual(JSON.parse(storage.get("lapalink.session")), next)
   const { passwordChangeSchema } = load("components/pages/Account/schemas.ts")
-  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "short" }).success, false)
-  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "я".repeat(37) }).success, false)
-  assert.equal(passwordChangeSchema.safeParse({ currentPassword: "x", newPassword: "я".repeat(36) }).success, true)
+  assert.equal(
+    passwordChangeSchema.safeParse({
+      currentPassword: "x",
+      newPassword: "short",
+    }).success,
+    false,
+  )
+  assert.equal(
+    passwordChangeSchema.safeParse({
+      currentPassword: "x",
+      newPassword: "я".repeat(37),
+    }).success,
+    false,
+  )
+  assert.equal(
+    passwordChangeSchema.safeParse({
+      currentPassword: "x",
+      newPassword: "я".repeat(36),
+    }).success,
+    true,
+  )
+})
+
+test("image URLs use the application origin for Supabase, MinIO and avatars", () => {
+  const { normalizeRemoteImageUrl } = load("lib/images/remote.ts")
+  for (const source of [
+    "https://storage.example/storage/v1/object/public/images/user/photo.png",
+    "http://localhost:9010/images/user/photo.png",
+    "/images/user/photo.png",
+  ]) {
+    assert.equal(normalizeRemoteImageUrl(source), "/images/user/photo.png")
+  }
+  assert.equal(
+    normalizeRemoteImageUrl("https://example.com/other/photo.png"),
+    null,
+  )
+  assert.equal(normalizeRemoteImageUrl("/images/%2e%2e/file"), null)
+})
+
+test("image proxy only fetches the configured bucket and never forwards redirects or upstream errors", async () => {
+  let target
+  const { GET } = load(
+    "app/images/[...path]/route.ts",
+    async (url, options) => {
+      target = String(url)
+      assert.equal(options.redirect, "error")
+      return new Response("image", { headers: { "Content-Type": "image/png" } })
+    },
+    undefined,
+    undefined,
+    {
+      "@/lib/config/server": {
+        getImageStorageUrl: () => "https://storage.example/bucket/",
+      },
+    },
+  )
+  const result = await GET(
+    new Request("https://app.example/images/user/photo.png"),
+    { params: Promise.resolve({ path: ["user", "photo.png"] }) },
+  )
+  assert.equal(target, "https://storage.example/bucket/user/photo.png")
+  assert.equal(result.status, 200)
+  assert.equal(result.headers.get("location"), null)
+  assert.equal(await result.text(), "image")
+  assert.equal(
+    (await GET(null, { params: Promise.resolve({ path: ["..", "secret"] }) }))
+      .status,
+    400,
+  )
 })

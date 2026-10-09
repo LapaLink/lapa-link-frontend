@@ -4,15 +4,7 @@ import { getBackendUrl } from "./lib/config/server"
 const backend = new URL(getBackendUrl())
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "gjdundmbdqssiftnhuqd.supabase.co",
-        pathname: "/storage/v1/object/public/images/**",
-      },
-    ],
-  },
+  images: { remotePatterns: [] },
 
   async rewrites() {
     return [

@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui"
 import type { CurrentUser } from "@/types"
+import { normalizeRemoteImageUrl } from "@/lib/images"
 
 type UserAvatarProps = {
   user: Pick<CurrentUser, "displayName" | "avatarUrl">
@@ -20,7 +21,7 @@ export function UserAvatar({ user, size = "default" }: UserAvatarProps) {
   return (
     <Avatar size={size}>
       <AvatarImage
-        src={user.avatarUrl || undefined}
+        src={normalizeRemoteImageUrl(user.avatarUrl) || undefined}
         alt={`Фото ${user.displayName}`}
       />
       <AvatarFallback>{initials}</AvatarFallback>
