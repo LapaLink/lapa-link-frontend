@@ -16,7 +16,8 @@ import type {
   OtpResponse,
   Tokens,
 } from "@/types"
-import { authorizedRequest } from "./instance"
+import { getSessionRevision } from "@/lib/auth"
+import { authorizedRequest, setRequestLocale } from "./instance"
 
 function query(params: Record<string, string | number | undefined>) {
   const search = new URLSearchParams()
@@ -38,8 +39,12 @@ export const accountApi = {
       `/account/cases${query({ page, size })}`,
       { signal },
     ),
-  getMe: (signal?: AbortSignal) =>
-    authorizedRequest<CurrentUser>("/account/me", { signal }),
+  getMe: async (signal?: AbortSignal) => {
+    const revision = getSessionRevision()
+    const user = await authorizedRequest<CurrentUser>("/account/me", { signal })
+    setRequestLocale(user.locale, revision)
+    return user
+  },
   logout: () =>
     authorizedRequest<void>(
       "/account/logout",
@@ -72,11 +77,14 @@ export const accountApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  updateLocale: (locale: UserLocale) =>
-    authorizedRequest<void>("/account/locale", {
+  updateLocale: async (locale: UserLocale) => {
+    const revision = getSessionRevision()
+    await authorizedRequest<void>("/account/locale", {
       method: "PUT",
       body: JSON.stringify({ locale }),
-    }),
+    })
+    setRequestLocale(locale, revision)
+  },
   /** Configurable notifications only; mandatory and per-case events are not listed. */
   getNotifications: (signal?: AbortSignal) =>
     authorizedRequest<NotificationSetting[]>("/account/notifications", {

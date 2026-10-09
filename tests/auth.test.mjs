@@ -65,7 +65,7 @@ function load(file, fetch, sharedStorage, locks, overrides = {}) {
     return exports
   }
   const result = loadModule(file)
-  return file === "api/instance.ts"
+  return file.startsWith("api/")
     ? { ...result, ...loadModule("lib/auth/session.ts") }
     : result
 }
@@ -1110,6 +1110,29 @@ test("account settings endpoints use the documented paths, methods and bodies", 
       ["/api/v1/account/notifications/WELCOME/EMAIL", "PUT", { enabled: false }],
     ],
   )
+})
+
+test("Accept-Language follows the account locale within its session", async () => {
+  const languages = []
+  const user = { id: "u1", locale: "be" }
+  const { accountApi, replaceSession } = load(
+    "api/account.ts",
+    async (url, options) => {
+      languages.push(new Headers(options.headers).get("Accept-Language"))
+      if (url.endsWith("/locale")) return new Response(null, { status: 204 })
+      return response(200, url.endsWith("/account/me") ? user : [])
+    },
+    new Map([["lapalink.session", JSON.stringify(old)]]),
+  )
+  await accountApi.getMe()
+  await accountApi.getNotifications()
+  await accountApi.updateLocale("ru")
+  await accountApi.getNotifications()
+  await accountApi.updateLocale("be")
+  replaceSession(old)
+  await accountApi.getNotifications()
+  // Browser fallback is "ru" here because the test navigator has no language.
+  assert.deepEqual(languages, ["ru", "be", "be", "ru", "ru", "ru"])
 })
 
 test("password change stores the new token pair and keeps wrong-password errors local", async () => {

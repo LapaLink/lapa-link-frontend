@@ -1,7 +1,22 @@
 import type { Tokens } from "@/types"
 import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
 
+// Account locale is bound to the session it was loaded in, so a logout or a
+// login as another user falls back to the browser language until /me resolves.
+let accountLocale: { revision: number; locale: string } | null = null
+
+export function setRequestLocale(
+  locale: string | null | undefined,
+  revision = getSessionRevision(),
+) {
+  if (revision !== getSessionRevision()) return
+  accountLocale = locale ? { revision, locale } : null
+}
+
 function getPreferredLocale() {
+  if (accountLocale?.revision === getSessionRevision()) {
+    return accountLocale.locale
+  }
   if (typeof navigator !== "undefined" && navigator.language) {
     return navigator.language.split("-")[0]
   }
