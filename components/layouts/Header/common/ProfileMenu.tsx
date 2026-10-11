@@ -2,14 +2,7 @@
 
 import { NavigationLink as Link } from "@/components/providers"
 import { useRouter } from "next/navigation"
-import {
-  LogOut,
-  UserRound,
-  ChevronDown,
-  Plus,
-  ClipboardList,
-  Newspaper,
-} from "lucide-react"
+import { LogOut, UserRound, ChevronDown } from "lucide-react"
 import { useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Loader, UserAvatar } from "@/components/common"
@@ -44,6 +37,7 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
           type="button"
           variant="ghost"
           size="lg"
+          className="size-10 shrink-0 rounded-full p-0 sm:h-11 sm:w-auto sm:rounded-lg sm:px-3"
           disabled={logout.isPending}
           aria-label="Меню профиля"
         >
@@ -66,27 +60,9 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuItem asChild className="min-h-11">
-            <Link href={ROUTES.CREATE_CASE}>
-              <Plus />
-              Создать объявление
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className="min-h-11">
             <Link href={ROUTES.ACCOUNT}>
               <UserRound />
               Мой профиль
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className="min-h-11">
-            <Link href={ROUTES.MY_TASKS}>
-              <ClipboardList />
-              Мои задачи
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild className="min-h-11">
-            <Link href={ROUTES.MY_CASES}>
-              <Newspaper />
-              Мои объявления
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

@@ -2,6 +2,10 @@ import type { QueryClient } from "@tanstack/react-query"
 import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
 
 export const queryKeys = {
+  inbox: ["account", "inbox"] as const,
+  inboxPage: (page = 0) => ["account", "inbox", "list", page] as const,
+  unreadCount: ["account", "inbox", "unread-count"] as const,
+  notificationChannels: ["account", "notification-channels"] as const,
   myCases: (page = 0, size = 20) =>
     ["account", "cases", { page, size }] as const,
   casesList: ["cases", "list"] as const,

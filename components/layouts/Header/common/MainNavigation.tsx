@@ -1,13 +1,7 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import {
-  ClipboardList,
-  Menu,
-  Newspaper,
-  Plus,
-  Search,
-} from "lucide-react"
+import { ClipboardList, Menu, Newspaper, Plus, Search } from "lucide-react"
 import { NavigationLink as Link } from "@/components/providers"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
@@ -15,6 +9,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui"
@@ -40,7 +35,10 @@ export function MainNavigation() {
   const pathname = usePathname() ?? ""
   return (
     <>
-      <nav aria-label="Основное меню" className="hidden items-center gap-1 lg:flex">
+      <nav
+        aria-label="Основное меню"
+        className="hidden items-center gap-1 lg:flex"
+      >
         {links.map(({ href, label }) => {
           const active = isActive(pathname, href)
           return (
@@ -64,28 +62,36 @@ export function MainNavigation() {
             type="button"
             variant="outline"
             size="icon-lg"
-            className="-order-1 lg:hidden"
+            className="-order-1 size-10 shrink-0 lg:hidden"
             aria-label="Открыть меню"
           >
             <Menu />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64 max-w-[calc(100vw-2rem)]">
-          {links.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href)
-            return (
-              <DropdownMenuItem
-                key={href}
-                asChild
-                className={cn("min-h-11", active && "bg-secondary text-primary")}
-              >
-                <Link href={href} aria-current={active ? "page" : undefined}>
-                  <Icon />
-                  {label}
-                </Link>
-              </DropdownMenuItem>
-            )
-          })}
+        <DropdownMenuContent
+          align="start"
+          className="w-64 max-w-[calc(100vw-2rem)]"
+        >
+          <DropdownMenuGroup>
+            {links.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href)
+              return (
+                <DropdownMenuItem
+                  key={href}
+                  asChild
+                  className={cn(
+                    "min-h-11",
+                    active && "bg-secondary text-primary",
+                  )}
+                >
+                  <Link href={href} aria-current={active ? "page" : undefined}>
+                    <Icon />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              )
+            })}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </>

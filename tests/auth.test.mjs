@@ -12,6 +12,7 @@ function load(file, fetch, sharedStorage, locks, overrides = {}) {
   const storage = sharedStorage || new Map()
   const context = {
     AbortSignal: overrides.AbortSignal ?? AbortSignal,
+    AbortController,
     setTimeout,
     clearTimeout,
     URLSearchParams,
@@ -77,6 +78,56 @@ const response = (status, body) =>
   })
 const old = { accessToken: "old-access", refreshToken: "old-refresh" }
 const next = { accessToken: "new-access", refreshToken: "new-refresh" }
+
+test("inbox uses authenticated REST endpoints and preserves backend messages", async () => {
+  const calls = []
+  const api = load("api/inbox.ts", async (url, options) => {
+    calls.push([url, options.method ?? "GET", options.headers.get("Authorization"), options.body])
+    return url.endsWith("read-all") ? response(204) : response(200, url.includes("unread-count") ? { count: 2 } : {})
+  })
+  api.saveTokens(old)
+  await api.inboxApi.list(2, 10)
+  await api.inboxApi.unreadCount()
+  await api.inboxApi.read("notification-id")
+  await api.inboxApi.readAll()
+  await api.inboxApi.channels()
+  await api.inboxApi.updateChannel({ channel: "IN_APP", enabled: false })
+  assert.deepEqual(calls, [
+    ["/api/v1/account/inbox?page=2&size=10", "GET", "Bearer old-access", undefined],
+    ["/api/v1/account/inbox/unread-count", "GET", "Bearer old-access", undefined],
+    ["/api/v1/account/inbox/notification-id/read", "POST", "Bearer old-access", undefined],
+    ["/api/v1/account/inbox/read-all", "POST", "Bearer old-access", undefined],
+    ["/api/v1/account/notification-channels", "GET", "Bearer old-access", undefined],
+    ["/api/v1/account/notification-channels/IN_APP", "PUT", "Bearer old-access", '{"enabled":false}'],
+  ])
+  const failing = load("api/inbox.ts", async () => response(404, { message: "Уведомление не найдено.", details: { error: "NOTIFICATION_NOT_FOUND" } }))
+  failing.saveTokens(old)
+  await assert.rejects(failing.inboxApi.read("missing"), { message: "Уведомление не найдено.", code: "NOTIFICATION_NOT_FOUND" })
+})
+
+test("SSE refreshes expired tokens and keeps the established stream beyond the REST deadline", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const calls = []
+  let streamSignal
+  const api = load("api/inbox.ts", async (url, options) => {
+    calls.push([url, options.headers.get("Authorization")])
+    if (url.endsWith("refresh")) return response(200, next)
+    if (options.headers.get("Authorization") === "Bearer old-access") return response(401, { message: "Истёк токен", details: { error: "TOKEN_EXPIRED" } })
+    assert.equal(options.headers.get("Accept"), "text/event-stream")
+    streamSignal = options.signal
+    return new Response("event: unread-count\ndata: {\"count\":2}\n\n", { headers: { "Content-Type": "text/event-stream" } })
+  })
+  api.saveTokens(old)
+  const controller = new AbortController()
+  const stream = await api.inboxApi.stream(controller.signal)
+  t.mock.timers.tick(25_000)
+  assert.equal(streamSignal.aborted, false)
+  assert.ok((await stream.text()).includes("unread-count"))
+  assert.equal(calls.length, 3)
+  assert.equal(calls[2][1], "Bearer new-access")
+  controller.abort()
+  assert.equal(streamSignal.aborted, true)
+})
 
 test("debounce cancels intermediate input and publishes only the settled search", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] })
