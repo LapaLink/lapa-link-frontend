@@ -3,7 +3,11 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { accountApi, getErrorMessage } from "@/api"
-import { useUpdateNotification } from "@/hooks"
+import {
+  useUpdateNotification,
+  useNotificationChannels,
+  useUpdateNotificationChannel,
+} from "@/hooks"
 import { queryKeys } from "@/lib/queryKeys"
 import { FormAlert } from "@/components/common"
 import {
@@ -32,6 +36,10 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
     queryFn: ({ signal }) => accountApi.getNotifications(signal),
   })
   const update = useUpdateNotification()
+  const channels = useNotificationChannels()
+  const updateChannel = useUpdateNotificationChannel()
+  const emailEnabled =
+    channels.data?.find((item) => item.channel === "EMAIL")?.enabled ?? false
   const [error, setError] = useState("")
 
   return (
@@ -41,18 +49,78 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
           <h2>Уведомления</h2>
         </CardTitle>
         <CardDescription>
-          Выберите, какие письма вы хотите получать.
+          Выберите, где хотите получать новости и отклики.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {channels.isPending ? (
+          <Skeleton className="h-20 w-full" />
+        ) : channels.isError ? (
+          <div className="space-y-3">
+            <FormAlert
+              message={getErrorMessage(
+                channels.error,
+                "Не удалось загрузить настройки уведомлений.",
+              )}
+            />
+            <Button variant="outline" onClick={() => void channels.refetch()}>
+              Попробовать ещё раз
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4 rounded-xl bg-secondary/50 p-4">
+            {channels.data?.map((setting) => (
+              <div
+                key={setting.channel}
+                className="flex items-center justify-between gap-4"
+              >
+                <label
+                  htmlFor={`channel-${setting.channel}`}
+                  className="text-sm font-medium"
+                >
+                  {setting.channel === "EMAIL"
+                    ? "На электронную почту"
+                    : "В приложении"}
+                </label>
+                <Switch
+                  id={`channel-${setting.channel}`}
+                  checked={setting.enabled}
+                  disabled={updateChannel.isPending}
+                  onCheckedChange={(enabled) => {
+                    setError("")
+                    updateChannel.mutate(
+                      { ...setting, enabled },
+                      {
+                        onError: (mutationError) =>
+                          setError(
+                            getErrorMessage(
+                              mutationError,
+                              "Не удалось сохранить настройку.",
+                            ),
+                          ),
+                      },
+                    )
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
         {user.emailVerifiedAt === null && (
-          <p role="status" className="rounded-lg bg-secondary px-3 py-2 text-sm text-primary">
-            Ваш email не подтверждён — письма не будут приходить, пока вы его
-            не подтвердите.
+          <p
+            role="status"
+            className="rounded-lg bg-secondary px-3 py-2 text-sm text-primary"
+          >
+            Ваш email не подтверждён — письма не будут приходить, пока вы его не
+            подтвердите.
           </p>
         )}
         {settings.isPending ? (
-          <div role="status" aria-label="Загружаем уведомления" className="flex flex-col gap-3">
+          <div
+            role="status"
+            aria-label="Загружаем уведомления"
+            className="flex flex-col gap-3"
+          >
             <Skeleton className="h-6 w-full" />
             <Skeleton className="h-6 w-2/3" />
           </div>
@@ -88,7 +156,10 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
                   <Switch
                     id={id}
                     checked={setting.enabled}
-                    disabled={update.isPending}
+                    disabled={
+                      update.isPending ||
+                      (setting.channel === "EMAIL" && !emailEnabled)
+                    }
                     onCheckedChange={(enabled) => {
                       setError("")
                       update.mutate(
@@ -116,7 +187,8 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
         )}
         <FormAlert message={error} />
         <p className="text-xs text-muted-foreground">
-          Уведомления по объявлениям настраиваются на странице объявления.
+          Уведомления по объявлениям настраиваются на странице объявления. Коды
+          подтверждения и восстановления пароля приходят всегда.
         </p>
       </CardContent>
     </Card>

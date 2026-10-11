@@ -46,3 +46,4 @@ export type {
   MyHelpApplication,
   MyAssignment,
 } from "./account"
+export type { InboxNotification, NotificationChannelSetting } from "./inbox"

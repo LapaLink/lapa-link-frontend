@@ -5,16 +5,18 @@ export function ListPagination({
   totalPages,
   busy,
   onPageChange,
+  label = "Страницы объявлений",
 }: {
   page: number
   totalPages: number
   busy?: boolean
+  label?: string
   onPageChange: (page: number) => void
 }) {
   if (totalPages <= 1) return null
   return (
     <nav
-      aria-label="Страницы объявлений"
+      aria-label={label}
       className="flex items-center justify-center gap-2 sm:gap-4"
     >
       <Button

@@ -1,7 +1,12 @@
 import type { Metadata } from "next"
 import { Nunito_Sans } from "next/font/google"
 import "./globals.css"
-import { QueryProvider, NavigationProvider } from "@/components/providers"
+import {
+  QueryProvider,
+  NavigationProvider,
+  NotificationsProvider,
+} from "@/components/providers"
+import { Toaster } from "@/components/ui"
 
 const nunitoSans = Nunito_Sans({
   variable: "--font-nunito-sans",
@@ -23,7 +28,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${nunitoSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <QueryProvider><NavigationProvider>{children}</NavigationProvider></QueryProvider>
+        <QueryProvider>
+          <NavigationProvider>
+            <NotificationsProvider>
+              {children}
+              <Toaster position="top-right" closeButton />
+            </NotificationsProvider>
+          </NavigationProvider>
+        </QueryProvider>
       </body>
     </html>
   )

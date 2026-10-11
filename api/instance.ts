@@ -66,14 +66,21 @@ export class ApiError extends Error {
 export async function request<T>(
   path: string,
   options: RequestInit = {},
+  { stream = false }: { stream?: boolean } = {},
 ): Promise<T> {
   const headers = new Headers(options.headers)
   headers.set("Accept-Language", getPreferredLocale())
   if (options.body && !(options.body instanceof FormData))
     headers.set("Content-Type", "application/json")
   let response: Response
-  const timeout = AbortSignal.timeout(20_000)
-  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
+  const handshake = stream ? new AbortController() : null
+  const timer = handshake
+    ? setTimeout(() => handshake.abort(), 20_000)
+    : undefined
+  const timeout = handshake?.signal ?? AbortSignal.timeout(20_000)
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, timeout])
+    : timeout
   try {
     response = await fetch(`/api/v1${path}`, {
       ...options,
@@ -82,16 +89,36 @@ export async function request<T>(
       cache: "no-store",
     })
   } catch (error) {
-    if (timeout.aborted) throw new ApiError("Сервер отвечает слишком долго. Попробуйте ещё раз.", 0)
+    if (timeout.aborted)
+      throw new ApiError(
+        "Сервер отвечает слишком долго. Попробуйте ещё раз.",
+        0,
+      )
     if (signal.aborted) throw error
     if (error instanceof Error && error.name === "AbortError") throw error
     throw new ApiError(
       "Не удалось связаться с сервером. Попробуйте ещё раз.",
       0,
     )
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+  if (stream && response.ok) {
+    if (
+      !response.headers.get("content-type")?.includes("text/event-stream") ||
+      !response.body
+    ) {
+      await response.body?.cancel()
+      throw new ApiError("Не удалось подключить уведомления.", 0)
+    }
+    return response as T
   }
   const body = await response.json().catch((error) => {
-    if (timeout.aborted) throw new ApiError("Сервер отвечает слишком долго. Попробуйте ещё раз.", 0)
+    if (timeout.aborted)
+      throw new ApiError(
+        "Сервер отвечает слишком долго. Попробуйте ещё раз.",
+        0,
+      )
     if (signal.aborted) throw error
     return null
   })
@@ -168,7 +195,10 @@ async function refresh(stale: Tokens): Promise<Tokens> {
 export async function authorizedRequest<T>(
   path: string,
   options: RequestInit = {},
-  { refreshOnExpired = true }: { refreshOnExpired?: boolean } = {},
+  {
+    refreshOnExpired = true,
+    stream = false,
+  }: { refreshOnExpired?: boolean; stream?: boolean } = {},
 ): Promise<T> {
   const tokens = readTokens()
   if (!tokens) throw new ApiError("Войдите в аккаунт.", 401)
@@ -176,7 +206,7 @@ export async function authorizedRequest<T>(
   const send = (token: string) => {
     const headers = new Headers(options.headers)
     headers.set("Authorization", `Bearer ${token}`)
-    return request<T>(path, { ...options, headers })
+    return request<T>(path, { ...options, headers }, { stream })
   }
   try {
     return await send(tokens.accessToken)

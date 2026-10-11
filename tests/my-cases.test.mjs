@@ -53,6 +53,7 @@ function renderPage(
     pending = false,
     props = {},
     onFormDefaults,
+    emailEnabled = true,
   } = {},
 ) {
   const modules = new Map()
@@ -69,6 +70,8 @@ function renderPage(
       mutateAsync: async () => user,
     }),
     useUpdateNotification: () => ({ isPending: false, mutate() {} }),
+    useNotificationChannels: () => ({ data: [{ channel: "EMAIL", enabled: emailEnabled }, { channel: "IN_APP", enabled: true }], isPending: false, isError: false }),
+    useUpdateNotificationChannel: () => ({ isPending: false, mutate() {} }),
     useUpdateLocale: () => ({ isPending: false }),
   }
   const result = {
@@ -387,6 +390,18 @@ test("case notifications switch is shown only to participants of an open case", 
     render({ ...item, notificationsEnabled: true, status: "CLOSED" }),
   ])
     assert.ok(!hidden.includes("Получать уведомления"))
+})
+
+test("disabled email channel also disables the welcome email switch", () => {
+  const html = renderPage("components/pages/Account/common/NotificationsCard.tsx", "NotificationsCard", {
+    data: [{ eventType: "WELCOME", channel: "EMAIL", enabled: true }],
+    emailEnabled: false,
+    props: { user: { ...owner, emailVerifiedAt: "2026-10-11" } },
+  })
+  const welcomeSwitch = html.match(/<button[^>]*id="notification-WELCOME-EMAIL"[^>]*>/)?.[0]
+  assert.ok(welcomeSwitch)
+  assert.ok(welcomeSwitch.includes("disabled"))
+  assert.ok(html.includes("В приложении"))
 })
 
 test("notification settings are built from the API list with a code fallback", () => {

@@ -67,3 +67,4 @@ export {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "./alert-dialog"
+export { Toaster } from "./sonner"
