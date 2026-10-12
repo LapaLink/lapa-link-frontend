@@ -11,8 +11,10 @@ export { useTransientNotice } from "./useTransientNotice"
 export {
   useLogin,
   useRegister,
-  useVerifyEmail,
-  useResendCode,
+  useCompleteRegistration,
+  useConfirmOtp,
+  useForgotPassword,
+  useResetPassword,
   useLogout,
 } from "./useAuthMutations"
 export { useCountdown, useCooldown } from "./useCountdown"
@@ -23,6 +25,7 @@ export {
   useRequestEmailChange,
   useConfirmEmailChange,
   useChangePassword,
+  useDeleteAccount,
   useUpdateLocale,
   useUpdateNotification,
 } from "./useAccountMutations"

@@ -3,6 +3,7 @@ import { accountApi, ApiError } from "@/api"
 import {
   getSessionSnapshot,
   getSessionRevision,
+  markAccountDeleted,
   readTokens,
   replaceSession,
 } from "@/lib/auth"
@@ -37,4 +38,26 @@ export async function logoutSession(client: QueryClient) {
       replaceSession(null)
     }
   }
+}
+
+/**
+ * Ends the session of a deleted account. Tokens go first so that no request
+ * or refresh can reuse them (refresh would fail with USER_NOT_FOUND anyway);
+ * the inbox stream closes once the session snapshot turns anonymous.
+ */
+export async function endDeletedSession(client: QueryClient) {
+  replaceSession(null)
+  markAccountDeleted()
+  await client.cancelQueries(privateQueries)
+  client.removeQueries(privateQueries)
+}
+
+/**
+ * Drops local tokens and private caches without calling /logout: used when the
+ * server has already revoked every session (e.g. after a password reset).
+ */
+export async function clearLocalSession(client: QueryClient) {
+  await client.cancelQueries(privateQueries)
+  client.removeQueries(privateQueries)
+  replaceSession(null)
 }

@@ -1,3 +1,6 @@
 export { LoginForm } from "./LoginForm"
 export { RegisterForm } from "./RegisterForm"
-export { VerificationForm } from "./VerificationForm"
+export { CompleteRegistrationForm } from "./CompleteRegistrationForm"
+export { OtpCodeForm } from "./OtpCodeForm"
+export { ForgotPasswordForm } from "./ForgotPasswordForm"
+export { NewPasswordForm } from "./NewPasswordForm"

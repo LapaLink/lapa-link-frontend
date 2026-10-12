@@ -1,4 +1,5 @@
 import type {
+  AccountDeletionDto,
   CurrentUser,
   UpdateProfileDto,
   MyCaseListItem,
@@ -74,6 +75,12 @@ export const accountApi = {
   /** Returns a new token pair; the previous session is revoked. */
   changePassword: (data: PasswordChangeDto) =>
     authorizedRequest<Tokens>("/account/password/change", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  /** Permanently deletes the account; on 204 the server has revoked every session. */
+  deleteAccount: (data: AccountDeletionDto) =>
+    authorizedRequest<void>("/account/delete", {
       method: "POST",
       body: JSON.stringify(data),
     }),

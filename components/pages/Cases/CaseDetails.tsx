@@ -36,8 +36,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Field,
-  FieldDescription,
   FieldLabel,
   Select,
   SelectContent,
@@ -69,6 +74,8 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   const closeReasons = useCaseCloseReasons()
   const [messageByNeed, setMessageByNeed] = useState<Record<string, string>>({})
   const [error, setError] = useState("")
+  const [offerNeed, setOfferNeed] = useState<CaseNeed | null>(null)
+  const [offerError, setOfferError] = useState("")
   const [closeReason, setCloseReason] = useState("")
   const [closeComment, setCloseComment] = useState("")
   const [pendingNeedAction, setPendingNeedAction] = useState<{
@@ -106,6 +113,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
       casesApi.createResponse(needId, message),
     onSuccess: (_created, variables) => {
       setMessageByNeed((current) => ({ ...current, [variables.needId]: "" }))
+      setOfferNeed(null)
       refreshCase()
     },
   })
@@ -131,17 +139,22 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     },
   })
 
+  function openOffer(need: CaseNeed) {
+    setOfferError("")
+    setOfferNeed(need)
+  }
+
   async function applyForNeed(need: CaseNeed) {
-    setError("")
+    setOfferError("")
     const message = messageByNeed[need.id]?.trim()
     if (!message) {
-      setError("Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.")
+      setOfferError("Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.")
       return
     }
     try {
       await createResponse.mutateAsync({ needId: need.id, message })
     } catch (error) {
-      setError(getErrorMessage(error, "Не удалось отправить предложение помощи."))
+      setOfferError(getErrorMessage(error, "Не удалось отправить предложение помощи."))
     }
   }
 
@@ -567,35 +580,12 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                         </ul>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-3">
-                        <Field>
-                          <FieldLabel htmlFor={`message-${need.id}`}>
-                            Сообщение автору
-                          </FieldLabel>
-                          <FieldDescription>
-                            Расскажите, чем поможете, и обязательно оставьте
-                            контакт: телефон или Telegram.
-                          </FieldDescription>
-                          <Textarea
-                            id={`message-${need.id}`}
-                            value={messageByNeed[need.id] ?? ""}
-                            onChange={(event) =>
-                              setMessageByNeed((current) => ({
-                                ...current,
-                                [need.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Например: могу отвезти к ветеринару в субботу. Телефон +375 29 000-00-00"
-                          />
-                        </Field>
-                        <LoadingButton
-                          loading={createResponse.isPending}
-                          loadingText="Отправляем…"
-                          onClick={() => void applyForNeed(need)}
-                        >
-                          Предложить помощь
-                        </LoadingButton>
-                      </div>
+                      <Button
+                        className="self-start"
+                        onClick={() => openOffer(need)}
+                      >
+                        Предложить помощь
+                      </Button>
                     )}
                   </>
                 )}
@@ -614,6 +604,60 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
           )
         })}
       </div>
+
+      <Dialog
+        open={!!offerNeed}
+        onOpenChange={(open) => {
+          if (!open && !createResponse.isPending) setOfferNeed(null)
+        }}
+      >
+        {offerNeed && (
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {getDictionaryName(needTypes.data, offerNeed.type, locale)}
+              </DialogTitle>
+              <DialogDescription>
+                Расскажите, чем поможете, и обязательно оставьте контакт:
+                телефон или Telegram.
+              </DialogDescription>
+            </DialogHeader>
+            <FormAlert message={offerError} />
+            <Field>
+              <FieldLabel htmlFor="offer-message">Сообщение автору</FieldLabel>
+              <Textarea
+                id="offer-message"
+                autoFocus
+                className="min-h-28"
+                value={messageByNeed[offerNeed.id] ?? ""}
+                onChange={(event) =>
+                  setMessageByNeed((current) => ({
+                    ...current,
+                    [offerNeed.id]: event.target.value,
+                  }))
+                }
+                placeholder="Например: могу отвезти к ветеринару в субботу. Телефон +375 29 000-00-00"
+              />
+            </Field>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                disabled={createResponse.isPending}
+                onClick={() => setOfferNeed(null)}
+              >
+                Отмена
+              </Button>
+              <LoadingButton
+                loading={createResponse.isPending}
+                loadingText="Отправляем…"
+                onClick={() => void applyForNeed(offerNeed)}
+              >
+                Отправить
+              </LoadingButton>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
 
       {isAuthor && animalCase.status === "OPEN" && (
         <Card>

@@ -5,6 +5,7 @@ import { accountApi, ApiError } from "@/api"
 import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
 import { queryKeys } from "@/lib/queryKeys"
 import type {
+  AccountDeletionDto,
   CurrentUser,
   EmailConfirmationDto,
   NotificationSetting,
@@ -15,6 +16,7 @@ import type {
 } from "@/types"
 
 import { ACCOUNT_QUERY_KEY } from "./model/accountQuery"
+import { endDeletedSession } from "./model/sessionActions"
 
 export function useUpdateProfile() {
   const client = useQueryClient()
@@ -108,6 +110,21 @@ export function useChangePassword() {
       // Old tokens are revoked by the backend, so replace both right away.
       saveTokens(tokens)
       return tokens
+    },
+  })
+}
+
+/**
+ * Permanently deletes the account by current password. On success the local
+ * session and private caches are dropped without calling /logout or refresh.
+ */
+export function useDeleteAccount() {
+  const client = useQueryClient()
+  return useMutation({
+    gcTime: 0,
+    mutationFn: async (data: AccountDeletionDto) => {
+      await accountApi.deleteAccount(data)
+      await endDeletedSession(client)
     },
   })
 }

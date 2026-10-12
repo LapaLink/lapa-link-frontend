@@ -333,28 +333,29 @@ test("editing invalidates detail, own pages and the public list; backend message
 })
 
 test("validation enforces UTF-8 byte limit and registration fields", () => {
-  const { registerSchema } = load("components/pages/Auth/schemas.ts")
+  const { completeRegistrationSchema } = load("components/pages/Auth/schemas.ts")
+  const values = (password) => ({
+    displayName: "Иван",
+    password,
+    confirmPassword: password,
+  })
+  assert.equal(completeRegistrationSchema.safeParse(values("я".repeat(36))).success, true)
+  assert.equal(completeRegistrationSchema.safeParse(values("я".repeat(37))).success, false)
   assert.equal(
-    registerSchema.safeParse({
-      email: "user@example.com",
-      password: "я".repeat(36),
-      displayName: "Иван",
-    }).success,
-    true,
-  )
-  assert.equal(
-    registerSchema.safeParse({
-      email: "user@example.com",
-      password: "я".repeat(37),
-      displayName: "Иван",
-    }).success,
-    false,
-  )
-  assert.equal(
-    registerSchema.safeParse({ email: "bad", password: "", displayName: " " })
+    completeRegistrationSchema.safeParse({ displayName: " ", password: "", confirmPassword: "" })
       .success,
     false,
   )
+  assert.equal(
+    completeRegistrationSchema.safeParse({ ...values("GoodPass123"), displayName: "я".repeat(101) })
+      .success,
+    false,
+  )
+  const mismatch = completeRegistrationSchema.safeParse({
+    ...values("GoodPass123"),
+    confirmPassword: "OtherPass123",
+  })
+  assert.deepEqual(mismatch.error.issues.map((issue) => issue.path), [["confirmPassword"]])
 })
 test("anonymous protected request does not call backend", async () => {
   let calls = 0
@@ -366,15 +367,19 @@ test("anonymous protected request does not call backend", async () => {
 })
 
 test("Zod trims identity fields and keeps login and registration requirements separate", () => {
-  const { registerSchema, loginSchema, verificationSchema } = load(
+  const { registerSchema, completeRegistrationSchema, loginSchema, verificationSchema } = load(
     "components/pages/Auth/schemas.ts",
   )
-  const parsed = registerSchema.parse({
-    email: " user@example.com ",
+  assert.deepEqual(
+    { ...registerSchema.parse({ email: " user@example.com " }) },
+    { email: "user@example.com" },
+  )
+  assert.equal(registerSchema.safeParse({ email: "bad" }).success, false)
+  const parsed = completeRegistrationSchema.parse({
     displayName: " Анна ",
     password: "GoodPass123",
+    confirmPassword: "GoodPass123",
   })
-  assert.equal(parsed.email, "user@example.com")
   assert.equal(parsed.displayName, "Анна")
   assert.equal(
     loginSchema.safeParse({ email: "user@example.com", password: "old" })
@@ -382,20 +387,20 @@ test("Zod trims identity fields and keeps login and registration requirements se
     true,
   )
   assert.equal(
-    registerSchema.safeParse({
-      email: "user@example.com",
+    completeRegistrationSchema.safeParse({
       displayName: "Анна",
       password: "old",
+      confirmPassword: "old",
     }).success,
     false,
   )
   for (const code of ["12345", "abcdef", "123456\n"])
     assert.equal(verificationSchema.safeParse({ code }).success, false)
   assert.equal(verificationSchema.safeParse({ code: "012345" }).success, true)
-  const invalidPassword = registerSchema.safeParse({
-    email: "user@example.com",
+  const invalidPassword = completeRegistrationSchema.safeParse({
     displayName: "Анна",
     password: "я".repeat(37),
+    confirmPassword: "я".repeat(37),
   })
   assert.ok(
     invalidPassword.error.issues.every(

@@ -56,6 +56,17 @@ export function getSessionSnapshot() {
   // Stable string for useSyncExternalStore; do not put JWTs in query keys.
   return tokens ? `${revision}:authenticated` : "anonymous"
 }
+// One-shot hand-off of the "account deleted" notice to the login screen.
+const ACCOUNT_DELETED_KEY = "lapalink.account-deleted"
+export function markAccountDeleted() {
+  sessionStorage.setItem(ACCOUNT_DELETED_KEY, "1")
+}
+export function takeAccountDeleted() {
+  const deleted = sessionStorage.getItem(ACCOUNT_DELETED_KEY) === "1"
+  sessionStorage.removeItem(ACCOUNT_DELETED_KEY)
+  return deleted
+}
+
 export function getServerSessionSnapshot() {
   return "initializing"
 }

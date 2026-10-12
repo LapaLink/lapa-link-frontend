@@ -29,6 +29,10 @@ export type PasswordChangeDto = {
   newPassword: string
 }
 
+export type AccountDeletionDto = {
+  password: string
+}
+
 export type UserLocale = "ru" | "be"
 
 export type NotificationSetting = {

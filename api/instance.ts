@@ -125,9 +125,16 @@ export async function request<T>(
   if (!response.ok) {
     const details = body?.details || {}
     const fields: Record<string, string> = {}
-    if (response.status === 400 && !details.error)
+    if (
+      response.status === 400 &&
+      (!details.error || details.error === "VALIDATION_FAILED")
+    )
       for (const [key, value] of Object.entries(details))
-        if (typeof value === "string") fields[key] = value
+        if (
+          typeof value === "string" &&
+          !["error", "errorId", "errorCode"].includes(key)
+        )
+          fields[key] = value
     const retry = Number(
       details.retryAfterSeconds ?? response.headers.get("Retry-After"),
     )
