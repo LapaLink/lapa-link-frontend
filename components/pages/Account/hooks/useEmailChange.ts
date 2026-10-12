@@ -26,7 +26,11 @@ type PendingEmailChange = OtpResponse & {
   resendAt: number
 }
 
-export function useEmailChange() {
+/**
+ * Two-step email change: request a code (new email + current password),
+ * then confirm it. `onChanged` fires once the new email is confirmed.
+ */
+export function useEmailChange(onChanged?: () => void) {
   const requestForm = useForm<EmailChangeValues>({
     resolver: zodResolver(emailChangeSchema),
     defaultValues: { newEmail: "", password: "" },
@@ -158,6 +162,7 @@ export function useEmailChange() {
       codeForm.reset()
       requestForm.reset({ newEmail: "", password: "" })
       setNotice("Email изменён")
+      onChanged?.()
     } catch (error) {
       if (error instanceof ApiError) {
         handleLimit(error)
