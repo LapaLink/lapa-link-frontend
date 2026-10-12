@@ -25,6 +25,7 @@ export {
   useRequestEmailChange,
   useConfirmEmailChange,
   useChangePassword,
+  useDeleteAccount,
   useUpdateLocale,
   useUpdateNotification,
 } from "./useAccountMutations"

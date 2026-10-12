@@ -8,7 +8,11 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import { ApiError } from "@/api"
 import { useLogin, useCooldown, useRegister } from "@/hooks"
-import { setPasswordResetEmail, takePasswordResetDone } from "@/lib/auth"
+import {
+  setPasswordResetEmail,
+  takeAccountDeleted,
+  takePasswordResetDone,
+} from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
 import { FieldGroup } from "@/components/ui"
@@ -38,6 +42,7 @@ export function LoginForm() {
     const timer = setTimeout(() => {
       if (takePasswordResetDone())
         setNotice("Пароль изменён. Войдите с новым паролем.")
+      else if (takeAccountDeleted()) setNotice("Аккаунт удалён.")
     }, 0)
     return () => clearTimeout(timer)
   }, [])

@@ -6,6 +6,8 @@ export {
   subscribeSession,
   getSessionSnapshot,
   getServerSessionSnapshot,
+  markAccountDeleted,
+  takeAccountDeleted,
 } from "./session"
 export {
   createOtpFlowStorage,

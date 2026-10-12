@@ -18,6 +18,8 @@ export const passwordChangeSchema = z.object({
   ),
 })
 export type PasswordChangeValues = z.infer<typeof passwordChangeSchema>
+export const accountDeletionSchema = z.object({ password: passwordSchema })
+export type AccountDeletionValues = z.infer<typeof accountDeletionSchema>
 export const emailConfirmationSchema = z.object({ code: otpCodeSchema })
 export type EmailChangeValues = z.infer<typeof emailChangeSchema>
 export type EmailConfirmationValues = z.infer<typeof emailConfirmationSchema>

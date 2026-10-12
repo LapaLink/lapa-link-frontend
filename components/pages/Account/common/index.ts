@@ -1,5 +1,6 @@
 export { AccountSkeleton } from "./AccountSkeleton"
 export { AvatarCard } from "./AvatarCard"
+export { DeleteAccountCard } from "./DeleteAccountCard"
 export { EmailChangeCard } from "./EmailChangeCard"
 export { ProfileCard } from "./ProfileCard"
 export { PasswordChangeCard } from "./PasswordChangeCard"

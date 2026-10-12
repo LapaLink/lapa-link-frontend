@@ -18,6 +18,7 @@ import {
   LanguageCard,
   NotificationsCard,
   SignOutCard,
+  DeleteAccountCard,
 } from "./common"
 
 export function Account() {
@@ -129,6 +130,7 @@ function AccountContent() {
           <SignOutCard />
         </div>
       </div>
+      <DeleteAccountCard />
     </section>
   )
 }

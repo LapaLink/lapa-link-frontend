@@ -42,6 +42,7 @@ export type {
   UserProfile,
   UpdateProfileDto,
   PasswordChangeDto,
+  AccountDeletionDto,
   UserLocale,
   NotificationSetting,
   EmailChangeDto,
