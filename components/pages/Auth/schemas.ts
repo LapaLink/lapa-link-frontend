@@ -20,6 +20,23 @@ export const verificationSchema = z.object({
   code: otpCodeSchema,
 })
 
+export const forgotPasswordSchema = z.object({ email: emailSchema })
+export const resetPasswordSchema = z
+  .object({
+    code: otpCodeSchema,
+    newPassword: passwordSchema.refine(
+      (value) => Array.from(value).length >= 8,
+      "Придумайте пароль хотя бы из 8 символов.",
+    ),
+    confirmPassword: z.string().min(1, "Повторите новый пароль."),
+  })
+  .refine((values) => values.confirmPassword === values.newPassword, {
+    path: ["confirmPassword"],
+    message: "Пароли не совпадают.",
+  })
+
 export type LoginValues = z.infer<typeof loginSchema>
 export type RegisterValues = z.infer<typeof registerSchema>
 export type VerificationValues = z.infer<typeof verificationSchema>
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
+export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>

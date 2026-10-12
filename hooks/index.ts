@@ -13,6 +13,8 @@ export {
   useRegister,
   useVerifyEmail,
   useResendCode,
+  useForgotPassword,
+  useResetPassword,
   useLogout,
 } from "./useAuthMutations"
 export { useCountdown, useCooldown } from "./useCountdown"

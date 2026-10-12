@@ -2,10 +2,12 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError } from "@/api"
 import { useLogin, useCooldown } from "@/hooks"
+import { setPasswordResetEmail, takePasswordResetDone } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
 import { FieldGroup } from "@/components/ui"
@@ -21,7 +23,15 @@ export function LoginForm() {
   const login = useLogin()
   const router = useRouter()
   const { secondsLeft: wait, start: startCooldown } = useCooldown()
+  const [notice, setNotice] = useState("")
   useAuthRedirect()
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (takePasswordResetDone())
+        setNotice("Пароль изменён. Войдите с новым паролем.")
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
   const busy = form.formState.isSubmitting || login.isPending
 
   async function submit(values: LoginValues) {
@@ -44,6 +54,11 @@ export function LoginForm() {
 
   return (
     <Form form={form} onSubmit={submit} busy={busy}>
+      {notice && (
+        <p role="status" className="text-sm text-primary">
+          {notice}
+        </p>
+      )}
       <FormAlert message={form.formState.errors.root?.message} />
       <FieldGroup>
         <FormField
@@ -65,6 +80,13 @@ export function LoginForm() {
           required
         />
       </FieldGroup>
+      <Link
+        href={ROUTES.FORGOT_PASSWORD}
+        onClick={() => setPasswordResetEmail(form.getValues("email").trim())}
+        className="-mt-3 self-end text-sm text-primary hover:underline"
+      >
+        Забыли пароль?
+      </Link>
       <LoadingButton
         type="submit"
         size="lg"

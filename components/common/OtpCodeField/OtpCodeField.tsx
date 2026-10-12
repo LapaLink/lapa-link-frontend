@@ -15,6 +15,7 @@ type OtpCodeFieldProps = {
   disabled?: boolean
   describedBy?: string
   autoFocus?: boolean
+  autoComplete?: string
 }
 
 export function OtpCodeField({
@@ -22,6 +23,7 @@ export function OtpCodeField({
   disabled,
   describedBy,
   autoFocus,
+  autoComplete = "off",
 }: OtpCodeFieldProps) {
   const { control } = useFormContext()
   return (
@@ -36,7 +38,7 @@ export function OtpCodeField({
             id={name}
             maxLength={6}
             inputMode="numeric"
-            autoComplete="off"
+            autoComplete={autoComplete}
             data-1p-ignore
             data-lpignore="true"
             pushPasswordManagerStrategy="none"

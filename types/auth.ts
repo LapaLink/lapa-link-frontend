@@ -31,3 +31,9 @@ export type OtpResponse = {
   expiresInSeconds: number
   resendAvailableInSeconds: number
 }
+export type PasswordForgotResponse = Omit<OtpResponse, "userId">
+export type PasswordResetDto = {
+  requestId: string
+  code: string
+  newPassword: string
+}

@@ -34,6 +34,8 @@ export type {
   RegistrationDto,
   VerificationDto,
   OtpResponse,
+  PasswordForgotResponse,
+  PasswordResetDto,
 } from "./auth"
 export type {
   UserProfile,

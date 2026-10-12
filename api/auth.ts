@@ -4,6 +4,8 @@ import type {
   VerificationDto,
   Tokens,
   OtpResponse,
+  PasswordForgotResponse,
+  PasswordResetDto,
 } from "@/types"
 import { post } from "./instance"
 
@@ -17,4 +19,9 @@ export const authApi = {
     post<OtpResponse>(
       `/auth/verification/${encodeURIComponent(userId)}/resend`,
     ),
+  // Public endpoints: sent without Authorization even if stale tokens remain.
+  forgotPassword: (email: string) =>
+    post<PasswordForgotResponse>("/auth/password/forgot", { email }),
+  resetPassword: (data: PasswordResetDto) =>
+    post<void>("/auth/password/reset", data),
 }

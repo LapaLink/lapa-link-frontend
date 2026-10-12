@@ -38,3 +38,13 @@ export async function logoutSession(client: QueryClient) {
     }
   }
 }
+
+/**
+ * Drops local tokens and private caches without calling /logout: used when the
+ * server has already revoked every session (e.g. after a password reset).
+ */
+export async function clearLocalSession(client: QueryClient) {
+  await client.cancelQueries(privateQueries)
+  client.removeQueries(privateQueries)
+  replaceSession(null)
+}
