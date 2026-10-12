@@ -2,7 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { authApi } from "@/api"
-import type { LoginDto, PasswordResetDto, VerificationDto } from "@/types"
+import type {
+  LoginDto,
+  PasswordResetDto,
+  RegistrationCompleteDto,
+} from "@/types"
 import {
   clearLocalSession,
   completeSignIn,
@@ -21,23 +25,24 @@ export function useRegister() {
   return useMutation({ mutationFn: authApi.register })
 }
 
-export function useVerifyEmail() {
+/** Finishes registration by confirmation token and signs in with the returned tokens. */
+export function useCompleteRegistration() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async (values: VerificationDto) =>
-      completeSignIn(client, await authApi.verify(values)),
+    mutationFn: async (values: RegistrationCompleteDto) =>
+      completeSignIn(client, await authApi.completeRegistration(values)),
   })
 }
 
-export function useResendCode() {
-  return useMutation({ mutationFn: authApi.resend })
+export function useConfirmOtp() {
+  return useMutation({ mutationFn: authApi.confirmOtp })
 }
 
 export function useForgotPassword() {
   return useMutation({ mutationFn: authApi.forgotPassword })
 }
 
-/** Resets the password by code; the server revokes all sessions, so local tokens are dropped too. */
+/** Sets a new password by confirmation token; the server revokes all sessions, so local tokens are dropped too. */
 export function useResetPassword() {
   const client = useQueryClient()
   return useMutation({

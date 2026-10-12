@@ -5,75 +5,94 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import { ApiError } from "@/api"
 import { useRegister, useCooldown } from "@/hooks"
-import { savePendingVerification } from "@/lib/auth"
+import { registrationStorage, setPasswordResetEmail } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
 import { FieldGroup } from "@/components/ui"
 import { registerSchema, type RegisterValues } from "../schemas"
 import { setFormError } from "@/lib/forms"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
+import { GENERIC_ERROR, requestOtpCode } from "../otpFlow"
+import { registrationFlow } from "../registrationFlow"
 
 export function RegisterForm() {
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { displayName: "", email: "", password: "" },
+    defaultValues: { email: "" },
   })
   const register = useRegister()
   const router = useRouter()
   const { secondsLeft: wait, start: startCooldown } = useCooldown()
-  const [notice, setNotice] = useState("")
+  const [locked, setLocked] = useState(false)
+  const [existingEmail, setExistingEmail] = useState("")
   const busy = form.formState.isSubmitting || register.isPending
   useAuthRedirect()
   useEffect(() => {
     const timer = setTimeout(() => {
-      const email = sessionStorage.getItem("lapalink.unverified-email")
-      if (email) {
-        form.setValue("email", email)
-        setNotice(
-          "Эта почта ещё не подтверждена. Заполните форму, и мы пришлём новый код.",
-        )
-        sessionStorage.removeItem("lapalink.unverified-email")
-      }
+      const email =
+        registrationStorage.takeEmail() ||
+        registrationStorage.readPending()?.email
+      if (email) form.setValue("email", email)
     }, 0)
     return () => clearTimeout(timer)
   }, [form])
 
-  async function submit(values: RegisterValues) {
-    if (wait > 0) return
+  async function submit({ email }: RegisterValues) {
+    if (wait > 0 || locked || register.isPending) return
     form.clearErrors()
-    try {
-      savePendingVerification(await register.mutateAsync(values), values.email)
-      router.push(ROUTES.VERIFY_EMAIL)
-    } catch (error) {
-      setFormError(form, error)
-      if (
-        error instanceof ApiError &&
-        (error.retryAfterSeconds || error.code === "OTP_RESEND_TOO_OFTEN")
-      )
-        startCooldown(error.retryAfterSeconds || 60)
+    setExistingEmail("")
+    const result = await requestOtpCode(
+      registrationFlow,
+      email,
+      register.mutateAsync,
+    )
+    if ("redirect" in result) {
+      router.push(result.redirect)
+      return
     }
+    const { action, error } = result
+    switch (action) {
+      case "already-exists":
+        setExistingEmail(email)
+        return
+      case "in-progress":
+        return
+      case "unknown":
+        toast.error(GENERIC_ERROR)
+        return
+    }
+    setFormError(form, error)
+    if (action === "locked") setLocked(true)
+    if (action === "throttled") startCooldown(retryDelay(error, email))
   }
 
   return (
     <Form form={form} onSubmit={submit} busy={busy}>
-      {notice && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {notice}
-        </p>
-      )}
       <FormAlert message={form.formState.errors.root?.message} />
+      {existingEmail && (
+        <div role="alert" className="flex flex-col gap-2 text-sm">
+          <p>Аккаунт с этим email уже есть.</p>
+          <p className="flex gap-4">
+            <Link
+              href={ROUTES.LOGIN}
+              className="font-semibold text-primary hover:underline"
+            >
+              Войти
+            </Link>
+            <Link
+              href={ROUTES.FORGOT_PASSWORD}
+              onClick={() => setPasswordResetEmail(existingEmail)}
+              className="font-semibold text-primary hover:underline"
+            >
+              Забыли пароль?
+            </Link>
+          </p>
+        </div>
+      )}
       <FieldGroup>
-        <FormField
-          name="displayName"
-          label="Ваше имя"
-          autoComplete="name"
-          placeholder="Как к вам обращаться?"
-          maxLength={100}
-          disabled={busy}
-          required
-        />
         <FormField
           name="email"
           label="Электронная почта"
@@ -81,17 +100,7 @@ export function RegisterForm() {
           autoComplete="email"
           placeholder="name@example.com"
           maxLength={320}
-          disabled={busy}
-          required
-        />
-        <FormField
-          name="password"
-          label="Пароль"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Придумайте пароль"
-          description="Не менее 8 символов."
-          disabled={busy}
+          disabled={busy || locked}
           required
         />
       </FieldGroup>
@@ -99,10 +108,10 @@ export function RegisterForm() {
         type="submit"
         size="lg"
         loading={busy}
-        loadingText="Создаём аккаунт…"
-        disabled={wait > 0}
+        loadingText="Отправляем код…"
+        disabled={wait > 0 || locked}
       >
-        {wait > 0 ? `Попробовать через ${wait} с` : "Создать аккаунт"}
+        {wait > 0 ? `Попробовать через ${wait} с` : "Получить код"}
       </LoadingButton>
       <p className="text-center text-sm text-muted-foreground">
         Уже есть аккаунт?{" "}
@@ -115,4 +124,17 @@ export function RegisterForm() {
       </p>
     </Form>
   )
+}
+
+// Retry-After comes only with RATE_LIMITED/IP_BLOCKED; OTP_RESEND_TOO_OFTEN
+// waits for the last known resend timer of this email, or a minute.
+function retryDelay(error: unknown, email: string) {
+  if (error instanceof ApiError && error.retryAfterSeconds)
+    return error.retryAfterSeconds
+  const pending = registrationStorage.readPending()
+  const left =
+    pending?.email === email
+      ? Math.ceil((pending.resendAt - Date.now()) / 1000)
+      : 0
+  return left > 0 ? left : 60
 }

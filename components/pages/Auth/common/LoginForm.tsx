@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
 import { ApiError } from "@/api"
-import { useLogin, useCooldown } from "@/hooks"
+import { useLogin, useCooldown, useRegister } from "@/hooks"
 import { setPasswordResetEmail, takePasswordResetDone } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
@@ -14,6 +15,8 @@ import { FieldGroup } from "@/components/ui"
 import { loginSchema, type LoginValues } from "../schemas"
 import { setFormError } from "@/lib/forms"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
+import { GENERIC_ERROR, requestOtpCode } from "../otpFlow"
+import { registrationFlow } from "../registrationFlow"
 
 export function LoginForm() {
   const form = useForm<LoginValues>({
@@ -24,6 +27,12 @@ export function LoginForm() {
   const router = useRouter()
   const { secondsLeft: wait, start: startCooldown } = useCooldown()
   const [notice, setNotice] = useState("")
+  // Registration started but not finished: the account has no password yet.
+  const [unverifiedEmail, setUnverifiedEmail] = useState("")
+  const [continueHint, setContinueHint] = useState("")
+  const register = useRegister()
+  const { secondsLeft: continueWait, start: startContinueCooldown } =
+    useCooldown()
   useAuthRedirect()
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,19 +46,50 @@ export function LoginForm() {
   async function submit(values: LoginValues) {
     if (wait > 0) return
     form.clearErrors()
+    setUnverifiedEmail("")
+    setContinueHint("")
     try {
       await login.mutateAsync(values)
       router.replace(ROUTES.HOME)
     } catch (error) {
-      setFormError(form, error)
-      if (error instanceof ApiError) {
-        if (error.retryAfterSeconds) startCooldown(error.retryAfterSeconds)
-        if (error.code === "EMAIL_NOT_VERIFIED") {
-          sessionStorage.setItem("lapalink.unverified-email", values.email)
-          router.push(ROUTES.REGISTER)
-        }
+      if (error instanceof ApiError && error.code === "EMAIL_NOT_VERIFIED") {
+        setUnverifiedEmail(values.email)
+        return
       }
+      setFormError(form, error)
+      if (error instanceof ApiError && error.retryAfterSeconds)
+        startCooldown(error.retryAfterSeconds)
     }
+  }
+
+  async function continueRegistration() {
+    if (!unverifiedEmail || register.isPending || continueWait > 0) return
+    setContinueHint("")
+    const result = await requestOtpCode(
+      registrationFlow,
+      unverifiedEmail,
+      register.mutateAsync,
+    )
+    if ("redirect" in result) {
+      router.push(result.redirect)
+      return
+    }
+    const { action, error } = result
+    if (action === "in-progress") return
+    if (action === "unknown") {
+      toast.error(GENERIC_ERROR)
+      return
+    }
+    const apiError = error instanceof ApiError ? error : null
+    if (apiError?.code === "OTP_RESEND_TOO_OFTEN") {
+      // The code was sent recently, but this device has no requestId for it.
+      setContinueHint("Код уже отправлен недавно, запросите новый через минуту.")
+      startContinueCooldown(60)
+      return
+    }
+    setContinueHint(apiError?.message || GENERIC_ERROR)
+    if (action === "throttled")
+      startContinueCooldown(apiError?.retryAfterSeconds || 60)
   }
 
   return (
@@ -60,6 +100,26 @@ export function LoginForm() {
         </p>
       )}
       <FormAlert message={form.formState.errors.root?.message} />
+      {unverifiedEmail && (
+        <div role="alert" className="flex flex-col gap-3 text-sm">
+          <p>Регистрация не завершена. Подтвердите email, чтобы продолжить.</p>
+          {continueHint && (
+            <p className="text-muted-foreground">{continueHint}</p>
+          )}
+          <LoadingButton
+            type="button"
+            variant="outline"
+            loading={register.isPending}
+            loadingText="Отправляем код…"
+            disabled={continueWait > 0}
+            onClick={() => void continueRegistration()}
+          >
+            {continueWait > 0
+              ? `Отправить код ещё раз через ${continueWait} с`
+              : "Продолжить регистрацию"}
+          </LoadingButton>
+        </div>
+      )}
       <FieldGroup>
         <FormField
           name="email"

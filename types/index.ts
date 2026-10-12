@@ -31,11 +31,12 @@ export type {
   Tokens,
   CurrentUser,
   LoginDto,
-  RegistrationDto,
-  VerificationDto,
   OtpResponse,
-  PasswordForgotResponse,
+  OtpRequestResponse,
+  RegistrationCompleteDto,
   PasswordResetDto,
+  OtpConfirmDto,
+  OtpConfirmResponse,
 } from "./auth"
 export type {
   UserProfile,

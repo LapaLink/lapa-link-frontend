@@ -11,8 +11,8 @@ export { useTransientNotice } from "./useTransientNotice"
 export {
   useLogin,
   useRegister,
-  useVerifyEmail,
-  useResendCode,
+  useCompleteRegistration,
+  useConfirmOtp,
   useForgotPassword,
   useResetPassword,
   useLogout,

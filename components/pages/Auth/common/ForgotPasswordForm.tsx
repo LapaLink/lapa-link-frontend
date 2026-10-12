@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { ApiError } from "@/api"
 import { useForgotPassword, useCooldown } from "@/hooks"
 import {
+  clearPasswordResetConfirmation,
   readPendingPasswordReset,
   savePendingPasswordReset,
   takePasswordResetEmail,
@@ -19,7 +20,7 @@ import { FieldGroup } from "@/components/ui"
 import { forgotPasswordSchema, type ForgotPasswordValues } from "../schemas"
 import { setFormError } from "@/lib/forms"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
-import { getPasswordResetErrorAction } from "../passwordResetErrors"
+import { getOtpFlowErrorAction } from "../otpFlowErrors"
 
 export function ForgotPasswordForm() {
   const form = useForm<ForgotPasswordValues>({
@@ -46,9 +47,10 @@ export function ForgotPasswordForm() {
     form.clearErrors()
     try {
       savePendingPasswordReset(await forgot.mutateAsync(email), email)
-      router.push(ROUTES.RESET_PASSWORD)
+      clearPasswordResetConfirmation()
+      router.push(ROUTES.PASSWORD_RESET_CODE)
     } catch (error) {
-      const action = getPasswordResetErrorAction(error)
+      const action = getOtpFlowErrorAction(error)
       if (action === "unknown") {
         toast.error("Что-то пошло не так, попробуйте позже.")
         return

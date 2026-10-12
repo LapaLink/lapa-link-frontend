@@ -19,21 +19,29 @@ export type LoginDto = {
   email: string
   password: string
 }
-export type RegistrationDto = LoginDto & { displayName: string }
-export type VerificationDto = {
-  userId: string
-  requestId: string
-  code: string
-}
 export type OtpResponse = {
   userId: string
   requestId: string
   expiresInSeconds: number
   resendAvailableInSeconds: number
 }
-export type PasswordForgotResponse = Omit<OtpResponse, "userId">
-export type PasswordResetDto = {
+/** Response of a public code request (registration or password reset). */
+export type OtpRequestResponse = Omit<OtpResponse, "userId">
+export type OtpConfirmDto = {
   requestId: string
   code: string
+}
+export type OtpConfirmResponse = {
+  confirmationToken: string
+  type: string
+  expiresInSeconds: number
+}
+export type RegistrationCompleteDto = {
+  confirmationToken: string
+  password: string
+  displayName: string
+}
+export type PasswordResetDto = {
+  confirmationToken: string
   newPassword: string
 }
