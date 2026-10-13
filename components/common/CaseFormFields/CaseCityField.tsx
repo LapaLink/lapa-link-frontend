@@ -2,10 +2,15 @@
 
 import { useState } from "react"
 import { useController, useFormContext } from "react-hook-form"
-import { Check, ChevronDown, MapPin } from "lucide-react"
+import { Check, ChevronDown, LocateFixed, MapPin } from "lucide-react"
 import { useCities } from "@/hooks"
 import { filterCities, getDictionaryName } from "@/lib/dictionaries"
-import { FormAlert, FormField, Loader } from "@/components/common"
+import {
+  FormAlert,
+  FormField,
+  Loader,
+  LoadingButton,
+} from "@/components/common"
 import {
   Button,
   Field,
@@ -53,6 +58,49 @@ export function CaseCityField({
     }
     setOpen(false)
     setSearch("")
+  }
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState("")
+  function locate() {
+    if (!navigator.geolocation) {
+      setLocationError("Браузер не поддерживает определение местоположения.")
+      return
+    }
+    setLocating(true)
+    setLocationError("")
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false)
+        // Approximate distance is enough to pick the nearest dictionary city.
+        const scale = Math.cos((coords.latitude * Math.PI) / 180)
+        const distance = (city: { latitude: number; longitude: number }) =>
+          (city.latitude - coords.latitude) ** 2 +
+          ((city.longitude - coords.longitude) * scale) ** 2
+        const nearest = allCities.reduce<(typeof allCities)[number] | null>(
+          (best, city) =>
+            !best || distance(city) < distance(best) ? city : best,
+          null,
+        )
+        if (nearest) choose(nearest.code)
+        setValue("latitude", coords.latitude.toFixed(6), {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+        setValue("longitude", coords.longitude.toFixed(6), {
+          shouldValidate: true,
+          shouldDirty: true,
+        })
+      },
+      (error) => {
+        setLocating(false)
+        setLocationError(
+          error.code === error.PERMISSION_DENIED
+            ? "Нет доступа к местоположению. Разрешите его в настройках браузера или выберите город вручную."
+            : "Не удалось определить местоположение. Выберите город вручную.",
+        )
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    )
   }
   return (
     <div className="flex flex-col gap-5">
@@ -187,6 +235,22 @@ export function CaseCityField({
         </Dialog>
         <FieldError id="cityCode-error">{fieldState.error?.message}</FieldError>
       </Field>
+      {withCoordinates && (
+        <div className="flex flex-col gap-2">
+          <LoadingButton
+            type="button"
+            variant="outline"
+            loading={locating}
+            loadingText="Определяем местоположение…"
+            disabled={!cities.data || isSubmitting}
+            onClick={locate}
+          >
+            <LocateFixed data-icon="inline-start" />
+            Взять текущее местоположение
+          </LoadingButton>
+          <FormAlert message={locationError} />
+        </div>
+      )}
       {withCoordinates && (
         <details
           className="rounded-xl border p-4"

@@ -4,6 +4,7 @@ import type { ComponentProps } from "react"
 import {
   FormProvider,
   type FieldValues,
+  type SubmitErrorHandler,
   type SubmitHandler,
   type UseFormReturn,
 } from "react-hook-form"
@@ -15,12 +16,14 @@ type FormProps<T extends FieldValues> = Omit<
 > & {
   form: UseFormReturn<T>
   onSubmit: SubmitHandler<T>
+  onInvalid?: SubmitErrorHandler<T>
   busy?: boolean
 }
 
 export function Form<T extends FieldValues>({
   form,
   onSubmit,
+  onInvalid,
   busy,
   className,
   children,
@@ -30,7 +33,7 @@ export function Form<T extends FieldValues>({
     <FormProvider {...form}>
       <form
         {...props}
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, onInvalid)}
         noValidate
         aria-busy={busy}
         className={cn("flex flex-col gap-6", className)}

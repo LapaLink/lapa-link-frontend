@@ -34,6 +34,13 @@ export function AnimalFields() {
         maxLength={150}
         required
       />
+    </FieldGroup>
+  )
+}
+
+export function AnimalDetailsFields() {
+  return (
+    <FieldGroup>
       <CaseTextField
         name="description"
         label="Что произошло?"

@@ -1,4 +1,4 @@
-export { AnimalFields } from "./AnimalFields"
+export { AnimalFields, AnimalDetailsFields } from "./AnimalFields"
 export { CityField } from "./CityField"
 export { PhotoField } from "./PhotoField"
 export { NeedTypesField } from "./NeedTypesField"

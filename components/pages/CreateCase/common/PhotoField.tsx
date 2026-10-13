@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useFormContext, useWatch } from "react-hook-form"
-import { Camera, X } from "lucide-react"
+import { Camera, ImagePlus, X } from "lucide-react"
 import Image from "next/image"
 import { IMAGE_ACCEPT, imageSchema } from "@/lib/validation"
 import { ImageCropDialog } from "@/components/common"
@@ -29,6 +29,19 @@ export function PhotoField() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const selectButton = useRef<HTMLButtonElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const cameraInput = useRef<HTMLInputElement>(null)
+  function selectPhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0]
+    event.target.value = ""
+    if (!selected) return
+    const result = imageSchema.safeParse(selected)
+    if (!result.success) {
+      setError("photo", { message: result.error.issues[0].message })
+      return
+    }
+    clearErrors("photo")
+    setSelectedFile(selected)
+  }
   useEffect(() => {
     if (!file || !imageSchema.safeParse(file).success) return
     const reader = new FileReader()
@@ -66,19 +79,29 @@ export function PhotoField() {
         accept={IMAGE_ACCEPT}
         aria-invalid={!!errors.photo}
         aria-describedby="photo-error"
-        onChange={(event) => {
-          const selected = event.target.files?.[0]
-          event.target.value = ""
-          if (!selected) return
-          const result = imageSchema.safeParse(selected)
-          if (!result.success) {
-            setError("photo", { message: result.error.issues[0].message })
-            return
-          }
-          clearErrors("photo")
-          setSelectedFile(selected)
-        }}
+        onChange={selectPhoto}
       />
+      <Input
+        ref={cameraInput}
+        className="hidden"
+        tabIndex={-1}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        aria-hidden
+        onChange={selectPhoto}
+      />
+      {/* Camera capture only makes sense on touch devices with a camera. */}
+      <div className="hidden flex-col pointer-coarse:flex">
+        <Button
+          type="button"
+          size="lg"
+          onClick={() => cameraInput.current?.click()}
+        >
+          <Camera data-icon="inline-start" />
+          Сфотографировать
+        </Button>
+      </div>
       <Button
         ref={selectButton}
         type="button"
@@ -86,7 +109,7 @@ export function PhotoField() {
         size="lg"
         onClick={() => fileInput.current?.click()}
       >
-        <Camera data-icon="inline-start" />
+        <ImagePlus data-icon="inline-start" />
         {file ? "Выбрать другое фото" : "Добавить фото"}
       </Button>
       {file && (
