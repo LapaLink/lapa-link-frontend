@@ -1325,3 +1325,21 @@ test("image proxy only fetches the configured bucket and never forwards redirect
     400,
   )
 })
+
+test("case creation steps cover every field once and locate the first invalid step", () => {
+  const { createCaseSchema } = load("components/pages/CreateCase/schemas.ts")
+  const { CREATE_CASE_STEPS, firstInvalidStep } = load(
+    "components/pages/CreateCase/steps.ts",
+  )
+  const fields = CREATE_CASE_STEPS.flatMap((step) => step.fields)
+  assert.deepEqual(
+    [...fields].sort(),
+    Object.keys(createCaseSchema.shape).sort(),
+  )
+  assert.equal(firstInvalidStep(() => false), -1)
+  assert.equal(firstInvalidStep((field) => field === "cityCode"), 3)
+  assert.equal(
+    firstInvalidStep((field) => field === "longitude" || field === "title"),
+    0,
+  )
+})

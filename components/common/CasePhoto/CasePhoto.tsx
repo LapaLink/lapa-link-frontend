@@ -3,6 +3,7 @@
 import Image from "next/image"
 import { useState } from "react"
 import { normalizeRemoteImageUrl } from "@/lib/images"
+import { Skeleton } from "@/components/ui"
 
 export function CasePhoto({
   src,
@@ -15,16 +16,23 @@ export function CasePhoto({
 }) {
   const source = normalizeRemoteImageUrl(src)
   const [failedSource, setFailedSource] = useState<string | null>(null)
+  const [loadedSource, setLoadedSource] = useState<string | null>(null)
   return source && source !== failedSource ? (
-    <Image
-      src={source}
-      alt={alt}
-      width={960}
-      height={540}
-      priority={priority}
-      onError={() => setFailedSource(source)}
-      className="aspect-video w-full object-cover"
-    />
+    <div className="relative">
+      {source !== loadedSource && (
+        <Skeleton className="absolute inset-0 rounded-none" />
+      )}
+      <Image
+        src={source}
+        alt={alt}
+        width={960}
+        height={540}
+        priority={priority}
+        onLoad={() => setLoadedSource(source)}
+        onError={() => setFailedSource(source)}
+        className="aspect-video w-full object-cover"
+      />
+    </div>
   ) : (
     <div
       role="img"
