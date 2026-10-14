@@ -43,6 +43,12 @@ export {
   useRequestChat,
   useAcceptConversation,
   useDeclineConversation,
+  useCloseConversation,
+  useReopenConversation,
+  useHideConversation,
+  useUnhideConversation,
+  useEditMessage,
+  useDeleteMessage,
 } from "./useChat"
 export { startChatSocket } from "./model/chatSocket"
 export type { ChatSocketStatus } from "./model/chatSocket"

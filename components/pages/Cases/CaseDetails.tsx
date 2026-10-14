@@ -805,12 +805,13 @@ function ResponseChatStatus({
   if (!conversation) return null
   return (
     <p className="text-xs text-muted-foreground">
-      {conversation.status === "ACTIVE" ? (
+      {conversation.status === "ACTIVE" ||
+      conversation.status === "CLOSED" ? (
         <Link
           href={ROUTES.CHAT(conversation.id)}
           className="font-medium text-primary hover:underline"
         >
-          Чат открыт
+          {conversation.status === "ACTIVE" ? "Чат открыт" : "Чат закрыт"}
           {conversation.unreadCount > 0 &&
             ` · непрочитанных: ${conversation.unreadCount}`}
         </Link>

@@ -1,4 +1,5 @@
 import type {
+  ChatMessage,
   ChatPermission,
   Conversation,
   ConversationParticipant,
@@ -36,7 +37,12 @@ export function caseChatAction({
 }): CaseChatAction {
   if (isAuthor) return "hidden"
   if (!permission) return "loading"
-  if (permission.conversationStatus === "ACTIVE") return "open"
+  // A closed conversation still leads to its read-only history.
+  if (
+    permission.conversationStatus === "ACTIVE" ||
+    permission.conversationStatus === "CLOSED"
+  )
+    return "open"
   if (permission.conversationStatus === "REQUESTED") return "requested"
   if (permission.conversationStatus === "DECLINED") return "declined"
   if (permission.canRequest) return "request"
@@ -47,6 +53,30 @@ export const conversationStatusLabels: Record<ConversationStatus, string> = {
   REQUESTED: "Ожидает ответа автора",
   ACTIVE: "Активный",
   DECLINED: "Запрос отклонён",
+  CLOSED: "Диалог закрыт",
+}
+
+/** Days the server keeps a closed conversation before deleting it with its messages. */
+export const CLOSED_CONVERSATION_TTL_DAYS = 14
+
+/** When the server deletes a closed conversation; null while it is not closed. */
+export function conversationDeletionDate(
+  conversation: Pick<Conversation, "status" | "closedAt">,
+) {
+  if (conversation.status !== "CLOSED" || !conversation.closedAt) return null
+  return new Date(
+    Date.parse(conversation.closedAt) +
+      CLOSED_CONVERSATION_TTL_DAYS * 24 * 60 * 60 * 1000,
+  )
+}
+
+/** True when the participant has read the message (read up to its createdAt or later). */
+export function isReadBy(
+  message: Pick<ChatMessage, "createdAt">,
+  participant: Pick<ConversationParticipant, "lastReadAt"> | undefined,
+) {
+  if (!participant?.lastReadAt) return false
+  return Date.parse(message.createdAt) <= Date.parse(participant.lastReadAt)
 }
 
 /** The other participant of a conversation for the current user. */

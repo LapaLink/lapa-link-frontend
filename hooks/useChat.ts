@@ -9,9 +9,15 @@ import {
 } from "@tanstack/react-query"
 import { chatApi } from "@/api"
 import { getSessionRevision, readTokens } from "@/lib/auth"
-import { CHAT_PAGE_SIZE, toHistoryPage } from "@/lib/chat"
+import {
+  CHAT_PAGE_SIZE,
+  mergeMessage,
+  toHistoryPage,
+  type HistoryData,
+} from "@/lib/chat"
 import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
 import type {
+  ChatMessage,
   ChatPermission,
   ChatTargetType,
   Conversation,
@@ -168,3 +174,50 @@ export const useAcceptConversation = () =>
   useConversationMutation(chatApi.accept)
 export const useDeclineConversation = () =>
   useConversationMutation(chatApi.decline)
+export const useCloseConversation = () => useConversationMutation(chatApi.close)
+export const useReopenConversation = () =>
+  useConversationMutation(chatApi.reopen)
+export const useHideConversation = () => useConversationMutation(chatApi.hide)
+export const useUnhideConversation = () =>
+  useConversationMutation(chatApi.unhide)
+
+/**
+ * Runs a request that changes a message and puts the result into cached
+ * history right away; the socket push that follows is then a no-op.
+ */
+function useMessageMutation<V>(
+  conversationId: string,
+  request: (variables: V) => Promise<ChatMessage>,
+) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (variables: V) => {
+      const revision = getSessionRevision()
+      const message = await request(variables)
+      if (revision === getSessionRevision() && readTokens())
+        client.setQueryData<HistoryData>(
+          queryKeys.chatMessages(conversationId),
+          (data) => mergeMessage(data, message),
+        )
+      return message
+    },
+  })
+}
+
+/** Edits an own delivered message. */
+export const useEditMessage = (conversationId: string) =>
+  useMessageMutation(
+    conversationId,
+    ({ messageId, text }: { messageId: string; text: string }) =>
+      chatApi.editMessage(conversationId, messageId, text),
+  )
+
+/** Deletes an own delivered message; it stays in history without its text. */
+export const useDeleteMessage = (conversationId: string) =>
+  useMessageMutation(
+    conversationId,
+    async (message: ChatMessage) => {
+      await chatApi.deleteMessage(conversationId, message.id)
+      return { ...message, text: null, deletedAt: new Date().toISOString() }
+    },
+  )

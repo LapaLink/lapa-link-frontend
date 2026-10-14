@@ -43,35 +43,50 @@ export function flattenHistory(data: HistoryData | undefined) {
   )
 }
 
+/** True when `next` is a later version of the same delivered message: deleted or edited since. */
+function supersedes(next: ChatMessage, current: ChatMessage) {
+  if (current.deletedAt) return false
+  if (next.deletedAt) return true
+  return (
+    !!next.editedAt &&
+    (!current.editedAt || Date.parse(next.editedAt) > Date.parse(current.editedAt))
+  )
+}
+
 /**
  * Adds a message to cached history: a delivered message replaces the
- * optimistic one with the same clientMessageId, repeats are ignored.
- * Returns the same object when nothing changed.
+ * optimistic one with the same clientMessageId, an edit or deletion replaces
+ * the delivered message with the same id, repeats and stale versions are
+ * ignored. Returns the same object when nothing changed.
  */
 export function mergeMessage(
   data: HistoryData | undefined,
   message: ChatFeedMessage,
 ): HistoryData | undefined {
   if (!data?.pages.length) return data
-  let replaced = false
+  let replaced: ((entry: ChatFeedMessage) => boolean) | null = null
   for (const page of data.pages)
     for (const entry of page.messages) {
-      if (entry.id === message.id && !entry.status) return data
-      if (entry.clientMessageId === message.clientMessageId) {
+      if (entry.id === message.id && !entry.status) {
+        if (!supersedes(message, entry)) return data
+        replaced = (item) => item.id === message.id && !item.status
+      } else if (entry.clientMessageId === message.clientMessageId) {
         if (!entry.status) return data
-        replaced = true
+        replaced ??= (item) => item.clientMessageId === message.clientMessageId
       }
     }
-  if (replaced)
+  if (replaced) {
+    const matches = replaced
     return {
       ...data,
       pages: data.pages.map((page) => ({
         ...page,
         messages: page.messages.map((entry) =>
-          entry.clientMessageId === message.clientMessageId ? message : entry,
+          matches(entry) ? message : entry,
         ),
       })),
     }
+  }
   const [first, ...rest] = data.pages
   return {
     ...data,
