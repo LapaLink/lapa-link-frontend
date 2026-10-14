@@ -13,7 +13,7 @@ import {
 } from "@/lib/auth"
 import { notificationHref, prependNotification } from "@/lib/inbox"
 import type { InboxNotification, PageResponse } from "@/types"
-import { queryKeys } from "@/lib/queryKeys"
+import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
 
 export function NotificationsProvider({
   children,
@@ -88,6 +88,7 @@ function Connection({ session }: { session: string }) {
         }
         void client.invalidateQueries({ queryKey: ["account", "applications"] })
         void client.invalidateQueries({ queryKey: ["account", "assignments"] })
+        if (item.eventType.startsWith("CHAT_")) void invalidateChatData(client)
         const href = notificationHref(item.actionUrl)
         toast(item.title, {
           id: item.id,

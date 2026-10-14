@@ -1,5 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query"
-import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
+import type {
+  AssignmentStatus,
+  ConversationListParams,
+  HelpApplicationStatus,
+} from "@/types"
 
 export const queryKeys = {
   inbox: ["account", "inbox"] as const,
@@ -16,6 +20,15 @@ export const queryKeys = {
   myAssignments: (status?: AssignmentStatus) =>
     ["account", "assignments", status ?? "ALL"] as const,
   notifications: ["account", "notifications"] as const,
+  chat: ["chat"] as const,
+  chatPermission: (targetType: string, targetId: string) =>
+    ["chat", "permission", targetType, targetId] as const,
+  conversationLists: ["chat", "conversations"] as const,
+  conversations: (params: ConversationListParams = {}) =>
+    ["chat", "conversations", params] as const,
+  conversation: (id: string) => ["chat", "conversation", id] as const,
+  chatMessages: (id: string) => ["chat", "messages", id] as const,
+  chatUnreadCount: ["chat", "unread-count"] as const,
 }
 
 export async function invalidateCaseData(client: QueryClient, caseId: string) {
@@ -34,4 +47,15 @@ export async function invalidateTaskData(client: QueryClient, caseId?: string) {
       ? [client.invalidateQueries({ queryKey: queryKeys.caseDetail(caseId) })]
       : []),
   ])
+}
+
+/**
+ * Refreshes chat permissions and conversations. Message history is kept:
+ * the socket keeps it current and a refetch would drop unsent messages.
+ */
+export function invalidateChatData(client: QueryClient) {
+  return client.invalidateQueries({
+    queryKey: queryKeys.chat,
+    predicate: (query) => query.queryKey[1] !== "messages",
+  })
 }
