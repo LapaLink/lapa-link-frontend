@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth"
 import {
   CHAT_PAGE_SIZE,
+  createTypingStore,
   lastConfirmedId,
   loadMessagesAfter,
   mergeConversation,
@@ -28,9 +29,15 @@ import {
   rejectedMessageIds,
   setMessageStatus,
   type HistoryData,
+  type TypingStore,
 } from "@/lib/chat"
 import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
-import type { ChatMessage, Conversation, PageResponse } from "@/types"
+import type {
+  ChatMessage,
+  Conversation,
+  ConversationListParams,
+  PageResponse,
+} from "@/types"
 
 const SEND_TIMEOUT = 10_000
 const READ_THROTTLE = 1500
@@ -38,18 +45,23 @@ const READ_THROTTLE = 1500
 type ChatEngine = {
   sendMessage: (conversationId: string, text: string, retryId?: string) => void
   markRead: (conversationId: string) => void
+  /** Returns false when the socket is not connected; the event is then dropped. */
+  sendTyping: (conversationId: string, typing: boolean) => boolean
 }
 
-type ChatContextValue = Pick<ChatEngine, "sendMessage"> & {
+type ChatContextValue = Pick<ChatEngine, "sendMessage" | "sendTyping"> & {
   status: ChatSocketStatus
   /** Marks a conversation as on screen: it is read now and on new messages. Returns cleanup. */
   watch: (conversationId: string) => () => void
+  typing: TypingStore
 }
 
 const ChatContext = createContext<ChatContextValue>({
   status: "disconnected",
   sendMessage: () => {},
+  sendTyping: () => false,
   watch: () => () => {},
+  typing: createTypingStore(),
 })
 
 /** Chat socket state and actions for the signed-in user. */
@@ -57,10 +69,21 @@ export function useChatSocket() {
   return useContext(ChatContext)
 }
 
+/** Ids of the other users typing in the conversation right now. */
+export function useTypingUsers(conversationId: string) {
+  const { typing } = useContext(ChatContext)
+  const subscribe = typing.subscribe
+  const get = useCallback(
+    () => typing.get(conversationId),
+    [typing, conversationId],
+  )
+  return useSyncExternalStore(subscribe, get, get)
+}
+
 /**
  * Keeps one chat socket per session (keyed like NotificationsProvider) and
- * merges delivered messages, conversation updates and the unread total into
- * the query cache. Sending is optimistic:
+ * merges delivered messages (new, edited and deleted), conversation updates
+ * and the unread total into the query cache and tracks who is typing. Sending is optimistic:
  * a message is confirmed by its echo and marked failed after 10 seconds or
  * a rejection; while offline it waits in the outbox until reconnect.
  */
@@ -74,6 +97,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     getServerSessionSnapshot,
   )
   const [status, setStatus] = useState<ChatSocketStatus>("connecting")
+  const [typing] = useState(createTypingStore)
   const engine = useRef<ChatEngine | null>(null)
   // Lives outside the connection: a page's effect may register before the socket starts.
   const openRef = useRef<string | null>(null)
@@ -87,19 +111,29 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     >()
     const readTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
+    const listHidden = (key: readonly unknown[]) =>
+      (key[2] as ConversationListParams | undefined)?.hidden
     const applyConversation = (conversation: Conversation) => {
       client.setQueryData(queryKeys.conversation(conversation.id), conversation)
       let found = false
-      client.setQueriesData<PageResponse<Conversation>>(
-        { queryKey: queryKeys.conversationLists },
-        (page) => {
-          const merged = mergeConversation(page, conversation)
-          if (merged !== page) found = true
-          return merged
-        },
-      )
+      let moved = false
+      for (const [key, page] of client.getQueriesData<
+        PageResponse<Conversation>
+      >({ queryKey: queryKeys.conversationLists })) {
+        const merged = mergeConversation(page, conversation, listHidden(key))
+        if (!page || !merged || merged === page) continue
+        client.setQueryData(key, merged)
+        if (merged.content.length < page.content.length) moved = true
+        else found = true
+      }
       if (!found)
         void client.invalidateQueries({ queryKey: queryKeys.conversationLists })
+      // Hidden or shown again: the list on the other side has to pick it up.
+      else if (moved)
+        void client.invalidateQueries({
+          queryKey: queryKeys.conversationLists,
+          predicate: (query) => listHidden(query.queryKey) === conversation.hidden,
+        })
       // Request state, enabled flag and eligibility may have changed with it.
       void client.invalidateQueries({
         queryKey: queryKeys.chatPermission(
@@ -147,6 +181,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         .catch(() => {})
     // Pushes may have been missed while offline: refresh conversations, load
     // the open conversation's newer messages and drop the other histories.
+    // `after` holds only new messages, so the latest page is fetched again
+    // for edits and deletions made in the meantime.
     const catchUp = async () => {
       const id = openRef.current
       void invalidateChatData(client)
@@ -159,14 +195,17 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         : undefined
       if (!id || !data) return
       const after = lastConfirmedId(data)
-      const messages = after
-        ? await loadMessagesAfter(
-            (cursor) =>
-              chatApi.messages(id, { after: cursor, size: CHAT_PAGE_SIZE }),
-            after,
-          )
-        : await chatApi.messages(id, { size: CHAT_PAGE_SIZE })
-      if (current()) messages.forEach(merge)
+      const [latest, newer] = await Promise.all([
+        chatApi.messages(id, { size: CHAT_PAGE_SIZE }),
+        after
+          ? loadMessagesAfter(
+              (cursor) =>
+                chatApi.messages(id, { after: cursor, size: CHAT_PAGE_SIZE }),
+              after,
+            )
+          : [],
+      ])
+      if (current()) [...latest, ...newer].forEach(merge)
     }
     let connectedBefore = false
 
@@ -188,6 +227,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           outbox.delete(message.clientMessageId)
         }
         merge(message)
+        if (!message.editedAt && !message.deletedAt)
+          typing.set(message.conversationId, message.senderId, false)
         if (
           message.senderId !== userId &&
           openRef.current === message.conversationId &&
@@ -196,6 +237,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           scheduleRead(message.conversationId)
       },
       onConversation: applyConversation,
+      onTyping: ({ conversationId, userId: typingUserId, typing: active }) => {
+        if (typingUserId !== userId)
+          typing.set(conversationId, typingUserId, active)
+      },
       onUnreadCount: (count) =>
         client.setQueryData(queryKeys.chatUnreadCount, { count }),
       onError: (error) => {
@@ -243,6 +288,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               clientMessageId,
               text,
               createdAt: new Date().toISOString(),
+              editedAt: null,
+              deletedAt: null,
               status: "sending",
             }),
           )
@@ -257,6 +304,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         socket.send(conversationId, { clientMessageId, text })
       },
       markRead,
+      sendTyping: socket.sendTyping,
     }
     const opened = openRef.current
     if (opened && document.visibilityState === "visible") markRead(opened)
@@ -267,14 +315,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", onVisibility)
       outbox.forEach(({ timer }) => clearTimeout(timer))
       readTimers.forEach(clearTimeout)
+      typing.clear()
       setStatus("connecting")
       void client.cancelQueries({ queryKey: queryKeys.chat })
       client.removeQueries({ queryKey: queryKeys.chat })
     }
-  }, [client, session, userId])
+  }, [client, session, typing, userId])
 
   const sendMessage = useCallback<ChatContextValue["sendMessage"]>(
     (...args) => engine.current?.sendMessage(...args),
+    [],
+  )
+  const sendTyping = useCallback<ChatContextValue["sendTyping"]>(
+    (...args) => engine.current?.sendTyping(...args) ?? false,
     [],
   )
   const watch = useCallback((id: string) => {
@@ -288,9 +341,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     () => ({
       status: userId ? status : "disconnected",
       sendMessage,
+      sendTyping,
       watch,
+      typing,
     }),
-    [sendMessage, status, userId, watch],
+    [sendMessage, sendTyping, status, typing, userId, watch],
   )
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
 }

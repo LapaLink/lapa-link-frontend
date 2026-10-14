@@ -1,5 +1,5 @@
 export type ChatTargetType = "CASE"
-export type ConversationStatus = "REQUESTED" | "ACTIVE" | "DECLINED"
+export type ConversationStatus = "REQUESTED" | "ACTIVE" | "DECLINED" | "CLOSED"
 export type ConversationRole = "OWNER" | "INITIATOR"
 
 export type ChatPermission = {
@@ -17,6 +17,8 @@ export type ConversationParticipant = {
   userId: string
   displayName: string
   role: ConversationRole
+  /** createdAt of the last message the participant has read; null when nothing is read yet. */
+  lastReadAt: string | null
 }
 
 export type Conversation = {
@@ -31,6 +33,15 @@ export type Conversation = {
   unreadCount: number
   lastMessageAt: string | null
   createdAt: string
+  /** When the conversation was closed; null while it is not closed. */
+  closedAt: string | null
+  /**
+   * Who closed it by hand. Null on a CLOSED conversation means it was closed
+   * automatically (chat off, case closed, response cancelled) and reopens by itself.
+   */
+  closedBy: string | null
+  /** Hidden by the current user. */
+  hidden: boolean
 }
 
 export type ConversationListParams = {
@@ -39,6 +50,8 @@ export type ConversationListParams = {
   status?: ConversationStatus
   /** Only conversations with these users (at most 100). */
   participantId?: string[]
+  /** true: only hidden, false: only visible, unset: all. */
+  hidden?: boolean
   page?: number
   size?: number
 }
@@ -48,8 +61,17 @@ export type ChatMessage = {
   conversationId: string
   senderId: string
   clientMessageId: string
-  text: string
+  /** Null on a deleted message. */
+  text: string | null
   createdAt: string
+  editedAt: string | null
+  deletedAt: string | null
+}
+
+export type ChatTyping = {
+  conversationId: string
+  userId: string
+  typing: boolean
 }
 
 export type ChatError = {

@@ -10,12 +10,19 @@ import { getConfiguredChatSocketUrl } from "@/lib/config/chat"
 import {
   chatErrorSchema,
   chatMessageSchema,
+  chatTypingSchema,
   conversationSchema,
   parseFrame,
   resolveStompError,
   unreadCountSchema,
 } from "@/lib/chat"
-import type { ChatError, ChatMessage, Conversation, Tokens } from "@/types"
+import type {
+  ChatError,
+  ChatMessage,
+  ChatTyping,
+  Conversation,
+  Tokens,
+} from "@/types"
 
 export type ChatSocketStatus = "connecting" | "connected" | "disconnected"
 export type ChatSendPayload = { clientMessageId: string; text: string }
@@ -33,8 +40,8 @@ function socketUrl() {
 
 /**
  * One STOMP connection per session: delivers chat messages (including the
- * echo of own messages), send rejections, conversation updates and the total
- * unread count. Reconnects with exponential backoff (1s → 30s), refreshes an
+ * echo of own messages, edits and deletions, which keep the message id), send
+ * rejections, conversation updates, typing events and the total unread count. Reconnects with exponential backoff (1s → 30s), refreshes an
  * expired access token, reconnects with a token replaced elsewhere and stops
  * for good once the session ends or `stop` is called.
  */
@@ -43,6 +50,7 @@ export function startChatSocket({
   onMessage,
   onError,
   onConversation,
+  onTyping,
   onUnreadCount,
   onStatus,
   onClosed,
@@ -51,6 +59,7 @@ export function startChatSocket({
   onMessage: (message: ChatMessage) => void
   onError: (error: ChatError) => void
   onConversation: (conversation: Conversation) => void
+  onTyping: (typing: ChatTyping) => void
   onUnreadCount: (count: number) => void
   onStatus: (status: ChatSocketStatus) => void
   /** The server refused the connection for good (blocked user, no access). */
@@ -104,8 +113,11 @@ export function startChatSocket({
     if (!active()) return stop()
     client.subscribe("/user/queue/messages", (frame) => {
       const message = parseFrame(chatMessageSchema, frame.body)
-      if (!message || !active() || seen.has(message.id)) return
-      seen.add(message.id)
+      if (!message || !active()) return
+      // Edits and deletions reuse the id, so a frame is a repeat only with the same version.
+      const key = `${message.id}:${message.editedAt ?? ""}:${message.deletedAt ?? ""}`
+      if (seen.has(key)) return
+      seen.add(key)
       if (seen.size > 500) seen.delete(seen.values().next().value!)
       onMessage(message)
     })
@@ -116,6 +128,10 @@ export function startChatSocket({
     client.subscribe("/user/queue/conversations", (frame) => {
       const conversation = parseFrame(conversationSchema, frame.body)
       if (conversation && active()) onConversation(conversation)
+    })
+    client.subscribe("/user/queue/typing", (frame) => {
+      const typing = parseFrame(chatTypingSchema, frame.body)
+      if (typing && active()) onTyping(typing)
     })
     client.subscribe("/user/queue/unread-count", (frame) => {
       const unread = parseFrame(unreadCountSchema, frame.body)
@@ -166,6 +182,16 @@ export function startChatSocket({
       client.publish({
         destination: `/app/conversations/${encodeURIComponent(conversationId)}/messages`,
         body: JSON.stringify(payload),
+        headers: { "content-type": "application/json" },
+      })
+      return true
+    },
+    /** Tells the other participants whether the user is typing; false when not connected. */
+    sendTyping(conversationId: string, typing: boolean) {
+      if (!active() || !client.connected) return false
+      client.publish({
+        destination: `/app/conversations/${encodeURIComponent(conversationId)}/typing`,
+        body: JSON.stringify({ typing }),
         headers: { "content-type": "application/json" },
       })
       return true

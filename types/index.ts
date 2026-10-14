@@ -61,4 +61,5 @@ export type {
   ConversationListParams,
   ChatMessage,
   ChatError,
+  ChatTyping,
 } from "./chat"

@@ -1,4 +1,4 @@
-import { test } from "node:test"
+import { mock, test } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import vm from "node:vm"
@@ -32,6 +32,11 @@ const conversations = load("lib/chat/conversations.ts")
 const state = load("lib/chat/state.ts", {
   "@/lib/constants": load("lib/constants/routes.ts"),
 })
+// Timers resolved per call, so node:test mock timers apply inside the vm context.
+const typingStore = load("lib/chat/typing.ts", {}, {
+  setTimeout: (...args) => globalThis.setTimeout(...args),
+  clearTimeout: (timer) => globalThis.clearTimeout(timer),
+})
 
 const conversationId = "6f1c1d3e-2b7a-4c1e-9a55-0d2b7c1e4a10"
 const userId = "0b8f6a52-1d2c-4e7f-8a9b-3c4d5e6f7a8b"
@@ -43,6 +48,8 @@ const message = (n, extra = {}) => ({
   clientMessageId: uuid(1000 + n),
   text: `Сообщение ${n}`,
   createdAt: new Date(Date.UTC(2026, 9, 14, 10, n)).toISOString(),
+  editedAt: null,
+  deletedAt: null,
   ...extra,
 })
 // Objects created inside the vm context have foreign prototypes.
@@ -106,13 +113,21 @@ const conversation = (n, extra = {}) => ({
   targetTitle: "Найден рыжий кот",
   status: "ACTIVE",
   participants: [
-    { userId, displayName: "Автор", role: "OWNER" },
-    { userId: uuid(600), displayName: "Помощник", role: "INITIATOR" },
+    { userId, displayName: "Автор", role: "OWNER", lastReadAt: null },
+    {
+      userId: uuid(600),
+      displayName: "Помощник",
+      role: "INITIATOR",
+      lastReadAt: null,
+    },
   ],
   writable: true,
   unreadCount: 0,
   lastMessageAt: null,
   createdAt: new Date(Date.UTC(2026, 9, 1, n)).toISOString(),
+  closedAt: null,
+  closedBy: null,
+  hidden: false,
   ...extra,
 })
 
@@ -128,7 +143,9 @@ test("conversation and unread-count pushes are validated", () => {
   )
   for (const bad of [
     { ...conversation(1), id: "1" },
-    { ...conversation(1), status: "CLOSED" },
+    { ...conversation(1), status: "ARCHIVED" },
+    { ...conversation(1), hidden: undefined },
+    { ...conversation(1), closedBy: "1" },
     { ...conversation(1), unreadCount: -1 },
     { ...conversation(1), writable: undefined },
   ])
@@ -141,6 +158,50 @@ test("conversation and unread-count pushes are validated", () => {
     3,
   )
   assert.equal(events.parseFrame(events.unreadCountSchema, '{"count":-1}'), null)
+})
+
+test("deleted messages, CLOSED conversations and typing events pass validation", () => {
+  const deleted = message(1, { text: null, deletedAt: "2026-10-14T11:00:00.123456Z" })
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatMessageSchema, JSON.stringify(deleted))),
+    deleted,
+  )
+  const edited = message(1, { text: "Исправлено", editedAt: "2026-10-14T11:00:00Z" })
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatMessageSchema, JSON.stringify(edited))),
+    edited,
+  )
+  assert.equal(
+    events.parseFrame(
+      events.chatMessageSchema,
+      JSON.stringify({ ...message(1), editedAt: undefined }),
+    ),
+    null,
+  )
+  const closed = conversation(1, {
+    status: "CLOSED",
+    writable: false,
+    closedAt: "2026-10-14T12:00:00.000001Z",
+    closedBy: userId,
+    hidden: true,
+    participants: [
+      { userId, displayName: "Автор", role: "OWNER", lastReadAt: "2026-10-14T11:00:00Z" },
+      { userId: uuid(600), displayName: "Помощник", role: "INITIATOR", lastReadAt: null },
+    ],
+  })
+  assert.deepEqual(
+    plain(events.parseFrame(events.conversationSchema, JSON.stringify(closed))),
+    closed,
+  )
+  const typing = { conversationId, userId, typing: true }
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatTypingSchema, JSON.stringify(typing))),
+    typing,
+  )
+  assert.equal(
+    events.parseFrame(events.chatTypingSchema, JSON.stringify({ ...typing, typing: "yes" })),
+    null,
+  )
 })
 
 test("pushed conversation replaces its row and keeps the page sorted by activity", () => {
@@ -171,6 +232,28 @@ test("pushed conversation replaces its row and keeps the page sorted by activity
   assert.equal(merged.totalElements, 3)
   assert.equal(conversations.mergeConversation(page, conversation(9)), page)
   assert.equal(conversations.mergeConversation(undefined, pushed), undefined)
+})
+
+test("a conversation that no longer matches the list's hidden filter is removed", () => {
+  const page = {
+    content: [conversation(2), conversation(1)],
+    page: 0,
+    size: 20,
+    totalElements: 2,
+    totalPages: 1,
+    first: true,
+    last: true,
+  }
+  const hidden = conversation(1, { hidden: true })
+  const visible = conversations.mergeConversation(page, hidden, false)
+  assert.deepEqual(visible.content.map((item) => item.id), [uuid(2)])
+  assert.equal(visible.totalElements, 1)
+  // Matching or unfiltered lists still replace it in place.
+  assert.equal(conversations.mergeConversation(page, hidden, undefined).content[1], hidden)
+  const shown = conversation(1, { unreadCount: 1 })
+  assert.equal(conversations.mergeConversation(page, shown, false).content[1], shown)
+  // Not on the page: nothing changes, the caller decides whether to refetch.
+  assert.equal(conversations.mergeConversation(page, conversation(9, { hidden: true }), false), page)
 })
 
 test("ERROR frames reconnect after a token change and end only a stale session", () => {
@@ -283,6 +366,38 @@ test("history merge dedupes by id, confirms optimistic messages and orders by ti
   assert.deepEqual(plain(history.flattenHistory(failed)), [echo])
 })
 
+test("edits and deletions replace a delivered message by id, stale versions are ignored", () => {
+  const original = message(5)
+  let data = historyData([message(6), original], [message(4)])
+
+  const edited = message(5, { text: "Исправлено", editedAt: "2026-10-14T11:00:00.000Z" })
+  data = history.mergeMessage(data, edited)
+  assert.equal(data.pages[0].messages[1], edited)
+  assert.equal(data.pages[0].messages.length, 2)
+  assert.equal(history.mergeMessage(data, edited), data)
+  assert.equal(history.mergeMessage(data, original), data)
+  const older = message(5, { text: "Раньше", editedAt: "2026-10-14T10:59:00.000Z" })
+  assert.equal(history.mergeMessage(data, older), data)
+
+  const newer = message(5, { text: "Ещё раз", editedAt: "2026-10-14T11:01:00.000Z" })
+  data = history.mergeMessage(data, newer)
+  assert.equal(data.pages[0].messages[1], newer)
+
+  const deleted = message(5, {
+    text: null,
+    editedAt: newer.editedAt,
+    deletedAt: "2026-10-14T11:02:00.000Z",
+  })
+  data = history.mergeMessage(data, deleted)
+  const feed = history.flattenHistory(data)
+  assert.deepEqual(plain(feed.map((item) => item.id)), [uuid(4), uuid(5), uuid(6)])
+  assert.equal(feed[1], deleted)
+  // A late edit cannot bring a deleted message back.
+  const late = message(5, { text: "Поздно", editedAt: "2026-10-14T11:03:00.000Z" })
+  assert.equal(history.mergeMessage(data, late), data)
+  assert.equal(history.mergeMessage(data, { ...deleted, deletedAt: "2026-10-14T11:04:00.000Z" }), data)
+})
+
 test("setMessageStatus only touches unconfirmed messages", () => {
   const sent = message(1)
   const pending = { ...message(2), id: uuid(1002), status: "sending" }
@@ -359,6 +474,9 @@ test("case page picks the chat control from the permission response", () => {
     "open",
   )
   assert.equal(pick({ conversationStatus: "DECLINED" }), "declined")
+  // A closed conversation opens its read-only history; the server no longer offers a request.
+  assert.equal(pick({ conversationStatus: "CLOSED" }), "open")
+  assert.equal(pick({ enabled: false, conversationStatus: "CLOSED" }), "open")
   assert.equal(pick({ enabled: false }), "disabled")
   // Without an own response the "chat is off" hint is not shown.
   assert.equal(pick({ enabled: false }, { hasActiveResponse: false }), "hidden")
@@ -381,6 +499,64 @@ test("conversation helpers find participants and the target link", () => {
   assert.equal(state.isConversationOwner(conversation, "owner"), true)
   assert.equal(state.isConversationOwner(conversation, "helper"), false)
   assert.equal(state.conversationTargetHref(conversation), "/cases/case-1")
+})
+
+test("a message is read once the participant's lastReadAt reaches its createdAt", () => {
+  const sent = { createdAt: "2026-10-14T10:00:00.123456Z" }
+  assert.equal(state.isReadBy(sent, { lastReadAt: "2026-10-14T10:00:00.123456Z" }), true)
+  assert.equal(state.isReadBy(sent, { lastReadAt: "2026-10-14T10:00:01Z" }), true)
+  assert.equal(state.isReadBy(sent, { lastReadAt: "2026-10-14T09:59:59Z" }), false)
+  assert.equal(state.isReadBy(sent, { lastReadAt: null }), false)
+  assert.equal(state.isReadBy(sent, undefined), false)
+  // Compared as times, not strings: "+03:00" is earlier here than it reads.
+  assert.equal(state.isReadBy(sent, { lastReadAt: "2026-10-14T12:00:00+03:00" }), false)
+})
+
+test("a closed conversation is deleted 14 days after closedAt", () => {
+  assert.equal(
+    state
+      .conversationDeletionDate({ status: "CLOSED", closedAt: "2026-10-01T08:30:00Z" })
+      .toISOString(),
+    "2026-10-15T08:30:00.000Z",
+  )
+  assert.equal(
+    state.conversationDeletionDate({ status: "ACTIVE", closedAt: null }),
+    null,
+  )
+  assert.equal(state.conversationStatusLabels.CLOSED, "Диалог закрыт")
+})
+
+test("typing indicator expires by itself and clears on typing: false", () => {
+  mock.timers.enable({ apis: ["setTimeout"] })
+  try {
+    const store = typingStore.createTypingStore()
+    let notified = 0
+    store.subscribe(() => notified++)
+    const empty = store.get(conversationId)
+    assert.equal(store.get(conversationId), empty)
+
+    store.set(conversationId, userId, true)
+    const typing = store.get(conversationId)
+    assert.deepEqual(plain(typing), [userId])
+    assert.equal(store.get(conversationId), typing)
+    mock.timers.tick(5000)
+    // A repeated event extends the entry without a new snapshot.
+    store.set(conversationId, userId, true)
+    assert.equal(store.get(conversationId), typing)
+    mock.timers.tick(5999)
+    assert.deepEqual(plain(store.get(conversationId)), [userId])
+    mock.timers.tick(1)
+    assert.deepEqual(plain(store.get(conversationId)), [])
+    assert.equal(notified, 2)
+
+    store.set(conversationId, userId, true)
+    store.set(conversationId, userId, false)
+    assert.deepEqual(plain(store.get(conversationId)), [])
+    store.set(conversationId, uuid(600), false)
+    assert.equal(notified, 4)
+  } finally {
+    mock.timers.reset()
+  }
 })
 
 function socketHarness({ refresh, socketUrl } = {}) {
@@ -448,6 +624,7 @@ function socketHarness({ refresh, socketUrl } = {}) {
     errors: [],
     statuses: [],
     conversations: [],
+    typing: [],
     counts: [],
   }
   const socket = startChatSocket({
@@ -455,6 +632,7 @@ function socketHarness({ refresh, socketUrl } = {}) {
     onMessage: (value) => received.messages.push(value),
     onError: (value) => received.errors.push(value),
     onConversation: (value) => received.conversations.push(value),
+    onTyping: (value) => received.typing.push(value),
     onUnreadCount: (value) => received.counts.push(value),
     onStatus: (value) => received.statuses.push(value),
     onClosed: (value) => calls.closed.push(value),
@@ -462,7 +640,7 @@ function socketHarness({ refresh, socketUrl } = {}) {
   return { client: clients[0], socket, received, calls, stored, ApiError }
 }
 
-test("chat socket authenticates, routes all four queues and sends only while connected", async () => {
+test("chat socket authenticates, routes all five queues and sends only while connected", async () => {
   const { client, socket, received } = socketHarness()
   assert.equal(client.brokerURL, "wss://lapa.test/ws")
   assert.equal(client.heartbeatIncoming, 10_000)
@@ -482,6 +660,7 @@ test("chat socket authenticates, routes all four queues and sends only while con
     "/user/queue/conversations",
     "/user/queue/errors",
     "/user/queue/messages",
+    "/user/queue/typing",
     "/user/queue/unread-count",
   ])
   const deliver = client.subscriptions["/user/queue/messages"]
@@ -500,6 +679,10 @@ test("chat socket authenticates, routes all four queues and sends only while con
   })
   client.subscriptions["/user/queue/conversations"]({ body: "{}" })
   client.subscriptions["/user/queue/unread-count"]({ body: '{"count":4}' })
+  const typing = { conversationId, userId: uuid(600), typing: true }
+  client.subscriptions["/user/queue/typing"]({ body: JSON.stringify(typing) })
+  client.subscriptions["/user/queue/typing"]({ body: "{}" })
+  assert.deepEqual(plain(received.typing), [typing])
   assert.equal(received.messages.length, 1)
   assert.deepEqual(plain(received.errors), [chatError])
   assert.equal(received.conversations.length, 1)
@@ -515,8 +698,39 @@ test("chat socket authenticates, routes all four queues and sends only while con
     clientMessageId: uuid(1),
     text: "Привет",
   })
+  assert.equal(socket.sendTyping(conversationId, true), true)
+  assert.equal(
+    client.published[1].destination,
+    `/app/conversations/${conversationId}/typing`,
+  )
+  assert.deepEqual(JSON.parse(client.published[1].body), { typing: true })
+  assert.equal(client.published[1].headers["content-type"], "application/json")
+  client.connected = false
+  assert.equal(socket.sendTyping(conversationId, false), false)
+  assert.equal(client.published.length, 2)
   socket.stop()
   assert.equal(client.deactivated, true)
+})
+
+test("chat socket passes edits and deletions with a known id and drops exact repeats", async () => {
+  const { client, received } = socketHarness()
+  await client.beforeConnect()
+  client.connected = true
+  client.onConnect()
+  const deliver = (value) =>
+    client.subscriptions["/user/queue/messages"]({ body: JSON.stringify(value) })
+  const edited = message(1, { text: "Исправлено", editedAt: "2026-10-14T11:00:00Z" })
+  const deleted = message(1, {
+    text: null,
+    editedAt: edited.editedAt,
+    deletedAt: "2026-10-14T11:01:00Z",
+  })
+  deliver(message(1))
+  deliver(edited)
+  deliver(edited)
+  deliver(deleted)
+  deliver(deleted)
+  assert.deepEqual(plain(received.messages), [message(1), edited, deleted])
 })
 
 test("chat socket refreshes a token that expires mid-connection and reconnects", async () => {
