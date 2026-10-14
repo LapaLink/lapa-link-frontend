@@ -2,16 +2,19 @@ import { z } from "zod"
 
 export const CHAT_MESSAGE_MAX_LENGTH = 2000
 
+// The backend omits null fields from JSON, so a missing field means null.
+const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().default(null)
+
 export const chatMessageSchema = z.object({
   id: z.uuid(),
   conversationId: z.uuid(),
   senderId: z.uuid(),
   clientMessageId: z.uuid(),
   // Null once the message is deleted.
-  text: z.string().min(1).max(CHAT_MESSAGE_MAX_LENGTH).nullable(),
+  text: nullable(z.string().min(1).max(CHAT_MESSAGE_MAX_LENGTH)),
   createdAt: z.string(),
-  editedAt: z.string().nullable(),
-  deletedAt: z.string().nullable(),
+  editedAt: nullable(z.string()),
+  deletedAt: nullable(z.string()),
 })
 
 export const chatTypingSchema = z.object({
@@ -22,7 +25,7 @@ export const chatTypingSchema = z.object({
 
 export const chatErrorSchema = z.object({
   conversationId: z.uuid(),
-  clientMessageId: z.uuid().nullable(),
+  clientMessageId: nullable(z.uuid()),
   error: z.string(),
   message: z.string(),
 })
@@ -38,15 +41,15 @@ export const conversationSchema = z.object({
       userId: z.uuid(),
       displayName: z.string(),
       role: z.enum(["OWNER", "INITIATOR"]),
-      lastReadAt: z.string().nullable(),
+      lastReadAt: nullable(z.string()),
     }),
   ),
   writable: z.boolean(),
   unreadCount: z.number().int().nonnegative(),
-  lastMessageAt: z.string().nullable(),
+  lastMessageAt: nullable(z.string()),
   createdAt: z.string(),
-  closedAt: z.string().nullable(),
-  closedBy: z.uuid().nullable(),
+  closedAt: nullable(z.string()),
+  closedBy: nullable(z.uuid()),
   hidden: z.boolean(),
 })
 
