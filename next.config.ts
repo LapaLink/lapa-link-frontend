@@ -1,7 +1,10 @@
 import type { NextConfig } from "next"
 import { getBackendUrl } from "./lib/config/server"
+import { getConfiguredChatSocketUrl } from "./lib/config/chat"
 
 const backend = new URL(getBackendUrl())
+// Fail the build on an invalid public chat socket URL.
+getConfiguredChatSocketUrl()
 
 const nextConfig: NextConfig = {
   images: { remotePatterns: [] },
@@ -13,8 +16,11 @@ const nextConfig: NextConfig = {
         destination: `${backend.origin}/api/v1/:path*`,
       },
       // Chat STOMP socket. `next start`/`next dev` proxy the WebSocket upgrade
-      // for external rewrites. A reverse proxy in front of Next (nginx) must
-      // forward the upgrade for /ws too:
+      // for external rewrites. Hosts without WebSocket proxying (Netlify,
+      // Vercel) need NEXT_PUBLIC_CHAT_WS_URL=wss://<backend>/ws at build time
+      // instead, and the backend's APP_FRONT_ADDRESS must list the site origin.
+      // A reverse proxy in front of Next or the backend (nginx) must forward
+      // the upgrade for /ws:
       //   proxy_http_version 1.1;
       //   proxy_set_header Upgrade $http_upgrade;
       //   proxy_set_header Connection "upgrade";
