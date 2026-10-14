@@ -160,6 +160,36 @@ test("conversation and unread-count pushes are validated", () => {
   assert.equal(events.parseFrame(events.unreadCountSchema, '{"count":-1}'), null)
 })
 
+test("pushes without null fields (backend omits nulls) parse with nulls filled in", () => {
+  const omitNulls = (value) =>
+    JSON.stringify(value, (_, field) => (field === null ? undefined : field))
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatMessageSchema, omitNulls(message(1)))),
+    message(1),
+  )
+  const deleted = message(2, { text: null, deletedAt: message(2).createdAt })
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatMessageSchema, omitNulls(deleted))),
+    deleted,
+  )
+  assert.deepEqual(
+    plain(
+      events.parseFrame(events.conversationSchema, omitNulls(conversation(1))),
+    ),
+    conversation(1),
+  )
+  const chatError = {
+    conversationId,
+    clientMessageId: null,
+    error: "CHAT_NOT_WRITABLE",
+    message: "В этот диалог сейчас нельзя писать.",
+  }
+  assert.deepEqual(
+    plain(events.parseFrame(events.chatErrorSchema, omitNulls(chatError))),
+    chatError,
+  )
+})
+
 test("deleted messages, CLOSED conversations and typing events pass validation", () => {
   const deleted = message(1, { text: null, deletedAt: "2026-10-14T11:00:00.123456Z" })
   assert.deepEqual(
@@ -170,13 +200,6 @@ test("deleted messages, CLOSED conversations and typing events pass validation",
   assert.deepEqual(
     plain(events.parseFrame(events.chatMessageSchema, JSON.stringify(edited))),
     edited,
-  )
-  assert.equal(
-    events.parseFrame(
-      events.chatMessageSchema,
-      JSON.stringify({ ...message(1), editedAt: undefined }),
-    ),
-    null,
   )
   const closed = conversation(1, {
     status: "CLOSED",
