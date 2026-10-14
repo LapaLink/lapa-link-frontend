@@ -6,6 +6,7 @@ import {
   waitForRefresh,
 } from "@/api"
 import { readTokens, saveTokens } from "@/lib/auth"
+import { getConfiguredChatSocketUrl } from "@/lib/config/chat"
 import {
   chatErrorSchema,
   chatMessageSchema,
@@ -19,8 +20,13 @@ import type { ChatError, ChatMessage, Conversation, Tokens } from "@/types"
 export type ChatSocketStatus = "connecting" | "connected" | "disconnected"
 export type ChatSendPayload = { clientMessageId: string; text: string }
 
-/** Same-origin `/ws`, proxied to the backend by the `/ws` rewrite in next.config.ts. */
+/**
+ * NEXT_PUBLIC_CHAT_WS_URL when set (direct connection to the backend), else
+ * same-origin `/ws`, proxied by the `/ws` rewrite in next.config.ts.
+ */
 function socketUrl() {
+  const configured = getConfiguredChatSocketUrl()
+  if (configured) return configured
   const { protocol, host } = window.location
   return `${protocol === "https:" ? "wss:" : "ws:"}//${host}/ws`
 }

@@ -383,7 +383,7 @@ test("conversation helpers find participants and the target link", () => {
   assert.equal(state.conversationTargetHref(conversation), "/cases/case-1")
 })
 
-function socketHarness({ refresh } = {}) {
+function socketHarness({ refresh, socketUrl } = {}) {
   const clients = []
   const calls = { refresh: [], saved: [], closed: [] }
   const stored = { tokens: { accessToken: "access-1", refreshToken: "refresh-1" } }
@@ -439,6 +439,7 @@ function socketHarness({ refresh } = {}) {
         },
       },
       "@/lib/chat": { ...events, ...session },
+      "@/lib/config/chat": { getConfiguredChatSocketUrl: () => socketUrl },
     },
     { window: { location: { protocol: "https:", host: "lapa.test" } } },
   )
@@ -578,4 +579,30 @@ test("chat socket ends a stale session, stops for blocked users and on rejected 
   harness.client.onStompError({ headers: { message: "TOKEN_EXPIRED" }, body: "" })
   await harness.client.beforeConnect()
   assert.equal(harness.client.deactivated, true)
+})
+
+test("chat socket URL comes from NEXT_PUBLIC_CHAT_WS_URL or falls back to same-origin /ws", () => {
+  const config = (value) =>
+    load("lib/config/chat.ts", {}, {
+      process: { env: { NEXT_PUBLIC_CHAT_WS_URL: value } },
+      URL,
+    }).getConfiguredChatSocketUrl
+  assert.equal(config(undefined)(), undefined)
+  assert.equal(config("")(), undefined)
+  assert.equal(config("wss://api.lapa.test/ws")(), "wss://api.lapa.test/ws")
+  assert.equal(config("ws://localhost:8080/ws")(), "ws://localhost:8080/ws")
+  for (const bad of [
+    "https://api.lapa.test/ws",
+    "wss://user:pass@api.lapa.test/ws",
+    "wss://api.lapa.test/ws?token=1",
+    "wss://api.lapa.test/ws#x",
+    "not a url",
+  ])
+    assert.throws(() => config(bad)(), /NEXT_PUBLIC_CHAT_WS_URL/, bad)
+
+  assert.equal(
+    socketHarness({ socketUrl: "wss://api.lapa.test/ws" }).client.brokerURL,
+    "wss://api.lapa.test/ws",
+  )
+  assert.equal(socketHarness().client.brokerURL, "wss://lapa.test/ws")
 })
