@@ -32,3 +32,17 @@ export {
 export { useDebouncedValue } from "./useDebouncedValue"
 export { useUnreadCount, useInbox, useReadNotifications, useNotificationChannels, useUpdateNotificationChannel } from "./useInbox"
 export { startInboxStream } from "./model/inboxStream"
+export {
+  useChatPermission,
+  useSetChatPermission,
+  useConversations,
+  useParticipantConversations,
+  useChatUnreadCount,
+  useConversation,
+  useChatMessages,
+  useRequestChat,
+  useAcceptConversation,
+  useDeclineConversation,
+} from "./useChat"
+export { startChatSocket } from "./model/chatSocket"
+export type { ChatSocketStatus } from "./model/chatSocket"

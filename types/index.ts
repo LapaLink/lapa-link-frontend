@@ -51,3 +51,14 @@ export type {
   MyAssignment,
 } from "./account"
 export type { InboxNotification, NotificationChannelSetting } from "./inbox"
+export type {
+  ChatTargetType,
+  ConversationStatus,
+  ConversationRole,
+  ChatPermission,
+  ConversationParticipant,
+  Conversation,
+  ConversationListParams,
+  ChatMessage,
+  ChatError,
+} from "./chat"

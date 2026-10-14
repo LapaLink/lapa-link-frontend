@@ -13,7 +13,8 @@ export function setRequestLocale(
   accountLocale = locale ? { revision, locale } : null
 }
 
-function getPreferredLocale() {
+/** Language for Accept-Language: the account locale, else the browser language. */
+export function getPreferredLocale() {
   if (accountLocale?.revision === getSessionRevision()) {
     return accountLocale.locale
   }
@@ -40,6 +41,15 @@ export function getErrorMessage(error: unknown, fallback: string): string {
       RESPONSE_NOT_PENDING:
         "Этот отклик уже обработан или отменён. Список обновлён.",
       RESPONSE_NOT_FOUND: "Отклик не найден. Список обновлён.",
+      CHAT_DISABLED: "Автор выключил чат для этого объявления.",
+      CHAT_NOT_ALLOWED:
+        "Чат доступен только пользователям с активным откликом.",
+      CHAT_REQUEST_DECLINED: "Автор отклонил запрос на чат.",
+      CONVERSATION_NOT_REQUESTED: "Запрос уже рассмотрен. Список обновлён.",
+      CONVERSATION_NOT_FOUND: "Диалог не найден.",
+      NOT_CHAT_OWNER: "Управлять чатом может только автор объявления.",
+      CHAT_NOT_WRITABLE: "В этот диалог сейчас нельзя писать.",
+      CASE_CLOSED: "Объявление закрыто.",
     }
 
     if (error.code && codeMap[error.code]) return codeMap[error.code]
@@ -157,6 +167,16 @@ export const post = <T>(path: string, body?: unknown) =>
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   })
 let refreshPromise: Promise<Tokens> | null = null
+/**
+ * Resolves once a token rotation in progress has finished, in this tab or,
+ * through the shared lock, in another one. Lets the chat socket tell a
+ * refreshed token from an ended session.
+ */
+export async function waitForRefresh() {
+  await refreshPromise?.catch(() => {})
+  if (typeof navigator !== "undefined" && navigator.locks)
+    await navigator.locks.request("lapalink:refresh", () => {})
+}
 function isSessionError(error: ApiError) {
   return (
     error.status === 401 &&
@@ -166,7 +186,11 @@ function isSessionError(error: ApiError) {
       error.code === "SESSION_NOT_FOUND")
   )
 }
-async function refresh(stale: Tokens): Promise<Tokens> {
+/**
+ * Rotates an expired access token. Concurrent callers (REST and the chat
+ * socket, across tabs) share one rotation; resolves with the current tokens.
+ */
+export async function refresh(stale: Tokens): Promise<Tokens> {
   const rotate = async () => {
     const current = readTokens()
     if (!current) throw new ApiError("Сессия завершена. Войдите заново.", 401)

@@ -73,6 +73,16 @@ function renderPage(
     useNotificationChannels: () => ({ data: [{ channel: "EMAIL", enabled: emailEnabled }, { channel: "IN_APP", enabled: true }], isPending: false, isError: false }),
     useUpdateNotificationChannel: () => ({ isPending: false, mutate() {} }),
     useUpdateLocale: () => ({ isPending: false }),
+    useChatPermission: () => ({
+      data: { enabled: false, canRequest: false, conversationId: null, conversationStatus: null },
+      isPending: false,
+      isError: false,
+    }),
+    useSetChatPermission: () => ({ isPending: false, isError: false, mutate() {} }),
+    useParticipantConversations: () => ({ conversations: [], isPending: false, error: null }),
+    useRequestChat: () => ({ isPending: false, mutate() {} }),
+    useAcceptConversation: () => ({ isPending: false, mutate() {} }),
+    useDeclineConversation: () => ({ isPending: false, mutate() {} }),
   }
   const result = {
     data,
@@ -438,4 +448,22 @@ test("language card marks the account locale as selected", () => {
   )
   assert.match(html, /aria-checked="true"[^>]*>Беларуская</)
   assert.match(html, /aria-checked="false"[^>]*>Русский</)
+})
+
+test("case chat block shows the switch to the author and nothing to users without a response", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const author = renderPage(file, "CaseDetails", {
+    data: item,
+    props: { caseId: item.id },
+  })
+  assert.ok(author.includes("Разрешить чат с откликнувшимися"))
+  assert.ok(author.includes('role="switch"'))
+  const stranger = renderPage(file, "CaseDetails", {
+    user: { id: "other", displayName: "Гость" },
+    data: item,
+    props: { caseId: item.id },
+  })
+  assert.ok(!stranger.includes("Чат с откликнувшимися"))
+  assert.ok(!stranger.includes("Написать автору"))
+  assert.ok(!stranger.includes("Автор пока не включил чат"))
 })

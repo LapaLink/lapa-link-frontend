@@ -17,6 +17,7 @@ import { ROUTES } from "@/lib/constants"
 import type {
   CaseDetails as CaseDetailsData,
   CaseNeed,
+  Conversation,
   HelpApplication,
   NeedStatus,
 } from "@/types"
@@ -60,6 +61,7 @@ import {
 } from "./statusLabels"
 import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
 import { filterValidTaskRecords } from "@/lib/tasks"
+import { CaseChat, useCaseConversations } from "./CaseChat"
 
 type CaseDetailsProps = {
   caseId: string
@@ -97,6 +99,11 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     queryFn: () => casesApi.getResponses(caseId),
     enabled: isAuthor,
   })
+  const caseChats = useCaseConversations(
+    caseId,
+    responses.data?.content.map((response) => response.user.id) ?? [],
+    isAuthor,
+  )
 
   const myCaseApplications = useQuery({
     queryKey: queryKeys.myApplications(),
@@ -285,6 +292,13 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
       response,
     ])
   })
+  const hasActiveResponse = filterValidTaskRecords(
+    myCaseApplications.data?.content ?? [],
+  ).some(
+    (item) =>
+      item.animalCase.id === caseId &&
+      (item.status === "PENDING" || item.status === "ACCEPTED"),
+  )
   const myCaseApplicationsForNeed = (needId: string) =>
     filterValidTaskRecords(myCaseApplications.data?.content ?? []).filter(
       (item) => item.need.id === needId,
@@ -332,6 +346,15 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
             isAuthor={isAuthor}
           />
         )}
+      {user && (
+        <CaseChat
+          caseId={caseId}
+          caseOpen={animalCase.status === "OPEN"}
+          isAuthor={isAuthor}
+          hasActiveResponse={hasActiveResponse}
+          chats={caseChats}
+        />
+      )}
       <Card>
         <CardHeader>
           <CardTitle>О животном</CardTitle>
@@ -596,6 +619,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                     need={need}
                     busy={assignResponse.isPending}
                     canAssign={canAct && need.status === "OPEN"}
+                    chats={caseChats.byUser}
                     onAssign={requestAssignment}
                   />
                 )}
@@ -721,12 +745,14 @@ function AuthorResponses({
   need,
   busy,
   canAssign,
+  chats,
   onAssign,
 }: {
   responses: HelpApplication[]
   need: CaseNeed
   busy: boolean
   canAssign: boolean
+  chats: Map<string, Conversation>
   onAssign: (response: HelpApplication) => void
 }) {
   if (!responses.length)
@@ -752,6 +778,7 @@ function AuthorResponses({
             <p className="text-xs text-muted-foreground">
               {responseStatusLabels[response.status]}
             </p>
+            <ResponseChatStatus conversation={chats.get(response.user.id)} />
           </div>
           {canAssign &&
             response.status === "PENDING" &&
@@ -767,6 +794,30 @@ function AuthorResponses({
         </div>
       ))}
     </div>
+  )
+}
+
+function ResponseChatStatus({
+  conversation,
+}: {
+  conversation: Conversation | undefined
+}) {
+  if (!conversation) return null
+  return (
+    <p className="text-xs text-muted-foreground">
+      {conversation.status === "ACTIVE" ? (
+        <Link
+          href={ROUTES.CHAT(conversation.id)}
+          className="font-medium text-primary hover:underline"
+        >
+          Чат открыт
+          {conversation.unreadCount > 0 &&
+            ` · непрочитанных: ${conversation.unreadCount}`}
+        </Link>
+      ) : (
+        "Просит открыть чат"
+      )}
+    </p>
   )
 }
 

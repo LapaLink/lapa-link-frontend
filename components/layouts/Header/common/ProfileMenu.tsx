@@ -2,8 +2,8 @@
 
 import { NavigationLink as Link } from "@/components/providers"
 import { useRouter } from "next/navigation"
-import { LogOut, UserRound, ChevronDown } from "lucide-react"
-import { useLogout } from "@/hooks"
+import { LogOut, MessageCircle, UserRound, ChevronDown } from "lucide-react"
+import { useChatUnreadCount, useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Loader, UserAvatar } from "@/components/common"
 import {
@@ -21,6 +21,7 @@ import type { CurrentUser } from "@/types"
 export function ProfileMenu({ user }: { user: CurrentUser }) {
   const logout = useLogout()
   const router = useRouter()
+  const unread = useChatUnreadCount().data?.count ?? 0
   async function signOut() {
     try {
       await logout.mutateAsync()
@@ -63,6 +64,18 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
             <Link href={ROUTES.ACCOUNT}>
               <UserRound />
               Мой профиль
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={ROUTES.CHATS}>
+              <MessageCircle />
+              Сообщения
+              {unread > 0 && (
+                <span className="ml-auto min-w-5 rounded-full bg-primary px-1.5 text-center text-[10px] font-bold leading-5 text-primary-foreground">
+                  <span className="sr-only">, непрочитанных: </span>
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
