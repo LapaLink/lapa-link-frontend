@@ -10,17 +10,18 @@ import { ApiError } from "@/api"
 import { useDeleteAccount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { setFormError } from "@/lib/forms"
-import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
+import {
+  Form,
+  FormField,
+  FormAlert,
+  LoadingButton,
+  SectionCard,
+} from "@/components/common"
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -100,21 +101,21 @@ export function DeleteAccountCard() {
   }
 
   return (
-    <Card className="border border-destructive/40">
-      <CardHeader>
-        <CardTitle>
-          <h2 className="text-destructive">Опасная зона</h2>
-        </CardTitle>
-        <CardDescription>
-          Удаление аккаунта необратимо. Восстановить данные будет нельзя.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button variant="destructive" onClick={() => handleOpenChange(true)}>
-          <Trash2 data-icon="inline-start" />
-          Удалить аккаунт
-        </Button>
-      </CardContent>
+    <SectionCard
+      className="border-destructive/30 bg-destructive/[0.02]"
+      tone="danger"
+      icon={Trash2}
+      title="Опасная зона"
+      description="Удаление аккаунта необратимо. Восстановить данные будет нельзя."
+    >
+      <Button
+        variant="destructive"
+        className="h-11 self-start sm:h-10"
+        onClick={() => handleOpenChange(true)}
+      >
+        <Trash2 data-icon="inline-start" />
+        Удалить аккаунт
+      </Button>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -186,6 +187,6 @@ export function DeleteAccountCard() {
           </Form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </SectionCard>
   )
 }

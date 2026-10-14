@@ -9,17 +9,9 @@ import {
   useUpdateNotificationChannel,
 } from "@/hooks"
 import { queryKeys } from "@/lib/queryKeys"
-import { FormAlert } from "@/components/common"
-import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  Skeleton,
-  Switch,
-} from "@/components/ui"
+import { Bell, Mail, MessageSquareText } from "lucide-react"
+import { FormAlert, IconCircle, SectionCard } from "@/components/common"
+import { Button, Skeleton, Switch } from "@/components/ui"
 import type { CurrentUser } from "@/types"
 
 // Labels for known event types; unknown types fall back to their code.
@@ -43,52 +35,133 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
   const [error, setError] = useState("")
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Уведомления</h2>
-        </CardTitle>
-        <CardDescription>
-          Выберите, где хотите получать новости и отклики.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {channels.isPending ? (
-          <Skeleton className="h-20 w-full" />
-        ) : channels.isError ? (
-          <div className="space-y-3">
-            <FormAlert
-              message={getErrorMessage(
-                channels.error,
-                "Не удалось загрузить настройки уведомлений.",
-              )}
-            />
-            <Button variant="outline" onClick={() => void channels.refetch()}>
-              Попробовать ещё раз
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-4 rounded-xl bg-secondary/50 p-4">
-            {channels.data?.map((setting) => (
-              <div
-                key={setting.channel}
-                className="flex items-center justify-between gap-4"
+    <SectionCard
+      icon={Bell}
+      title="Уведомления"
+      description="Выберите, где хотите получать новости и отклики."
+      fullWidthBody
+    >
+      {channels.isPending ? (
+        <Skeleton className="h-20 w-full rounded-2xl" />
+      ) : channels.isError ? (
+        <div className="space-y-3">
+          <FormAlert
+            message={getErrorMessage(
+              channels.error,
+              "Не удалось загрузить настройки уведомлений.",
+            )}
+          />
+          <Button variant="outline" onClick={() => void channels.refetch()}>
+            Попробовать ещё раз
+          </Button>
+        </div>
+      ) : (
+        <div className="divide-y rounded-2xl border bg-background/60 px-3 sm:px-4">
+          {channels.data?.map((setting) => (
+            <div
+              key={setting.channel}
+              className="flex min-h-16 items-center gap-3 py-3"
+            >
+              <IconCircle
+                icon={setting.channel === "EMAIL" ? Mail : MessageSquareText}
+                size="sm"
+              />
+              <label
+                htmlFor={`channel-${setting.channel}`}
+                className="min-w-0 flex-1 cursor-pointer text-sm font-semibold"
               >
+                {setting.channel === "EMAIL"
+                  ? "На электронную почту"
+                  : "В приложении"}
+              </label>
+              <Switch
+                id={`channel-${setting.channel}`}
+                checked={setting.enabled}
+                disabled={updateChannel.isPending}
+                onCheckedChange={(enabled) => {
+                  setError("")
+                  updateChannel.mutate(
+                    { ...setting, enabled },
+                    {
+                      onError: (mutationError) =>
+                        setError(
+                          getErrorMessage(
+                            mutationError,
+                            "Не удалось сохранить настройку.",
+                          ),
+                        ),
+                    },
+                  )
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {user.emailVerifiedAt === null && (
+        <p
+          role="status"
+          className="rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary"
+        >
+          Ваш email не подтверждён — письма не будут приходить, пока вы его не
+          подтвердите.
+        </p>
+      )}
+      {settings.isPending ? (
+        <div
+          role="status"
+          aria-label="Загружаем уведомления"
+          className="flex flex-col gap-3"
+        >
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-2/3" />
+        </div>
+      ) : settings.isError ? (
+        <div className="flex flex-col items-start gap-3">
+          <FormAlert
+            message={getErrorMessage(
+              settings.error,
+              "Не удалось загрузить настройки уведомлений.",
+            )}
+          />
+          <Button variant="outline" onClick={() => void settings.refetch()}>
+            Попробовать ещё раз
+          </Button>
+        </div>
+      ) : settings.data.length ? (
+        <ul className="divide-y rounded-2xl border bg-background/60 px-3 sm:px-4">
+          {settings.data.map((setting) => {
+            const id = `notification-${setting.eventType}-${setting.channel}`
+            return (
+              <li
+                key={id}
+                className="flex min-h-16 items-center gap-3 py-3"
+              >
+                <IconCircle
+                  icon={setting.channel === "EMAIL" ? Mail : Bell}
+                  size="sm"
+                />
                 <label
-                  htmlFor={`channel-${setting.channel}`}
-                  className="text-sm font-medium"
+                  htmlFor={id}
+                  className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5"
                 >
-                  {setting.channel === "EMAIL"
-                    ? "На электронную почту"
-                    : "В приложении"}
+                  <span className="text-sm font-semibold [overflow-wrap:anywhere]">
+                    {eventLabels[setting.eventType] ?? setting.eventType}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {channelLabels[setting.channel] ?? setting.channel}
+                  </span>
                 </label>
                 <Switch
-                  id={`channel-${setting.channel}`}
+                  id={id}
                   checked={setting.enabled}
-                  disabled={updateChannel.isPending}
+                  disabled={
+                    update.isPending ||
+                    (setting.channel === "EMAIL" && !emailEnabled)
+                  }
                   onCheckedChange={(enabled) => {
                     setError("")
-                    updateChannel.mutate(
+                    update.mutate(
                       { ...setting, enabled },
                       {
                         onError: (mutationError) =>
@@ -102,95 +175,20 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
                     )
                   }}
                 />
-              </div>
-            ))}
-          </div>
-        )}
-        {user.emailVerifiedAt === null && (
-          <p
-            role="status"
-            className="rounded-lg bg-secondary px-3 py-2 text-sm text-primary"
-          >
-            Ваш email не подтверждён — письма не будут приходить, пока вы его не
-            подтвердите.
-          </p>
-        )}
-        {settings.isPending ? (
-          <div
-            role="status"
-            aria-label="Загружаем уведомления"
-            className="flex flex-col gap-3"
-          >
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-2/3" />
-          </div>
-        ) : settings.isError ? (
-          <div className="flex flex-col items-start gap-3">
-            <FormAlert
-              message={getErrorMessage(
-                settings.error,
-                "Не удалось загрузить настройки уведомлений.",
-              )}
-            />
-            <Button variant="outline" onClick={() => void settings.refetch()}>
-              Попробовать ещё раз
-            </Button>
-          </div>
-        ) : settings.data.length ? (
-          <ul className="flex flex-col gap-4">
-            {settings.data.map((setting) => {
-              const id = `notification-${setting.eventType}-${setting.channel}`
-              return (
-                <li
-                  key={id}
-                  className="flex items-center justify-between gap-4"
-                >
-                  <label htmlFor={id} className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm font-medium [overflow-wrap:anywhere]">
-                      {eventLabels[setting.eventType] ?? setting.eventType}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {channelLabels[setting.channel] ?? setting.channel}
-                    </span>
-                  </label>
-                  <Switch
-                    id={id}
-                    checked={setting.enabled}
-                    disabled={
-                      update.isPending ||
-                      (setting.channel === "EMAIL" && !emailEnabled)
-                    }
-                    onCheckedChange={(enabled) => {
-                      setError("")
-                      update.mutate(
-                        { ...setting, enabled },
-                        {
-                          onError: (mutationError) =>
-                            setError(
-                              getErrorMessage(
-                                mutationError,
-                                "Не удалось сохранить настройку.",
-                              ),
-                            ),
-                        },
-                      )
-                    }}
-                  />
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Сейчас нет уведомлений, которые можно настроить.
-          </p>
-        )}
-        <FormAlert message={error} />
-        <p className="text-xs text-muted-foreground">
-          Уведомления по объявлениям настраиваются на странице объявления. Коды
-          подтверждения и восстановления пароля приходят всегда.
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Сейчас нет уведомлений, которые можно настроить.
         </p>
-      </CardContent>
-    </Card>
+      )}
+      <FormAlert message={error} />
+      <p className="text-xs text-muted-foreground">
+        Уведомления по объявлениям настраиваются на странице объявления. Коды
+        подтверждения и восстановления пароля приходят всегда.
+      </p>
+    </SectionCard>
   )
 }

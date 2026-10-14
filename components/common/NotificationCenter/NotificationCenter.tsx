@@ -105,7 +105,7 @@ export function NotificationCenter() {
                   <button
                     type="button"
                     disabled={read.isPending}
-                    className={`flex w-full gap-3 rounded-xl border p-4 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${item.read ? "border-border" : "border-primary/20 bg-primary/5"}`}
+                    className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${item.read ? "border-border bg-card" : "border-primary/20 bg-primary-soft/60"}`}
                     onClick={() => {
                       const href = notificationHref(item.actionUrl)
                       const navigate = () => {

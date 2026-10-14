@@ -77,7 +77,7 @@ export function Home() {
             <PawPrint className="size-4" aria-hidden />
             Добрые дела начинаются рядом
           </p>
-          <h1 className="max-w-xl text-4xl font-bold leading-[1.12] tracking-tight sm:text-5xl">
+          <h1 className="max-w-xl text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl">
             Маленькая помощь.
             <br />
             <span className="text-primary">Большая перемена.</span>

@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation"
 import { LogOut } from "lucide-react"
 import { useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
-import { LoadingButton } from "@/components/common"
-import { Card, CardContent } from "@/components/ui"
+import { LoadingButton, SectionCard } from "@/components/common"
 
 export function SignOutCard() {
   const logout = useLogout()
@@ -20,14 +19,18 @@ export function SignOutCard() {
     }
   }
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Выйти из аккаунта на этом устройстве.
-        </p>
+    <SectionCard
+      icon={LogOut}
+      title={
+        <span className="text-sm font-semibold sm:text-base">
+          Выйти из аккаунта на этом устройстве
+        </span>
+      }
+      action={
         <LoadingButton
           type="button"
           variant="outline"
+          className="h-11 sm:h-10"
           loading={logout.isPending}
           loadingText="Выходим…"
           onClick={() => void signOut()}
@@ -35,7 +38,7 @@ export function SignOutCard() {
           <LogOut data-icon="inline-start" />
           Выйти
         </LoadingButton>
-      </CardContent>
-    </Card>
+      }
+    />
   )
 }

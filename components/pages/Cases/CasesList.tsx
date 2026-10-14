@@ -96,7 +96,7 @@ export function CasesList() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex min-w-0 flex-col gap-2">
           <p className="text-sm font-semibold text-primary">Объявления</p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
             Кому сейчас нужна помощь
           </h1>
         </div>
@@ -111,7 +111,7 @@ export function CasesList() {
           </Button>
         </div>
       </div>
-      <div className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-3">
+      <div className="grid gap-4 rounded-2xl border bg-card p-4 sm:p-5 md:grid-cols-3">
         <Field>
           <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
           <Select
@@ -205,7 +205,7 @@ export function CasesList() {
               href={ROUTES.CASE_DETAILS(item.id)}
               className="group min-w-0 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
             >
-              <Card className="h-full min-w-0 pt-0 transition-shadow group-hover:shadow-md">
+              <Card className="h-full min-w-0 pt-0 transition-colors group-hover:border-primary/30">
                 <CasePhoto src={item.photoUrl} alt={item.title} />
                 <CardHeader>
                   <CardTitle className="line-clamp-2 [overflow-wrap:anywhere]">

@@ -387,7 +387,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             aria-live="polite"
             aria-label="Сообщения"
             tabIndex={0}
-            className="flex h-[55dvh] flex-col overflow-y-auto overscroll-contain rounded-xl border p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
+            className="flex h-[55dvh] flex-col overflow-y-auto overscroll-contain rounded-2xl border bg-card p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
           >
             {history.hasNextPage && (
               <Button
@@ -518,7 +518,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
               </p>
             </form>
           ) : (
-            <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+            <p className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
               Сейчас в этот диалог нельзя писать. История переписки остаётся
               доступной.
             </p>
@@ -667,7 +667,7 @@ function ClosedNotice({
   const automatic = conversation.closedBy === null
   const byMe = !automatic && conversation.closedBy === userId
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
         <p>
           {automatic

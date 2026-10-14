@@ -6,7 +6,7 @@ import { normalizeRemoteImageUrl } from "@/lib/images"
 
 type UserAvatarProps = {
   user: Pick<CurrentUser, "displayName" | "avatarUrl">
-  size?: "default" | "profile"
+  size?: "default" | "lg" | "profile"
 }
 
 export function UserAvatar({ user, size = "default" }: UserAvatarProps) {

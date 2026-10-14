@@ -57,7 +57,7 @@ function ChatsContent() {
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
           Сообщения
         </h1>
         <p className="text-muted-foreground">
@@ -151,7 +151,7 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     <li className="relative">
       <Link
         href={ROUTES.CHAT(conversation.id)}
-        className="flex items-center gap-3 rounded-xl border p-4 pr-12 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center gap-3 rounded-2xl border bg-card p-4 pr-12 transition-colors hover:border-primary/30 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <UserAvatar user={{ displayName: other?.displayName || "?" }} />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">

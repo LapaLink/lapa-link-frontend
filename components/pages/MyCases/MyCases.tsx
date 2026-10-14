@@ -50,7 +50,7 @@ function MyCasesContent() {
     <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 sm:gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
             Мои объявления
           </h1>
           <p className="text-muted-foreground">

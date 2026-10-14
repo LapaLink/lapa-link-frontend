@@ -25,7 +25,7 @@ export function MyCaseCard({
   const isOpen = item.status === "OPEN"
   const hasApplications = item.applicationsCount > 0
   return (
-    <Card className="relative min-w-0 overflow-hidden pt-0 transition-shadow hover:shadow-md">
+    <Card className="relative min-w-0 overflow-hidden pt-0 transition-colors hover:border-primary/30">
       <div className="relative">
         <CasePhoto src={item.photoUrl} alt={item.title} />
         <span

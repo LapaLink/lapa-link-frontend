@@ -89,7 +89,7 @@ function CreateCaseContent() {
             <p className="text-sm font-semibold text-primary">
               Поможем найти заботу и дом
             </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
               Вы нашли животное?
             </h1>
             {step === 0 && (

@@ -315,7 +315,7 @@ export function MyTasks() {
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Мои задачи</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">Мои задачи</h1>
               <p className="text-muted-foreground">
                 Здесь видно, кому вы предложили помощь и где вас уже ждут.
               </p>
@@ -509,7 +509,7 @@ function MyTasksSkeleton({ compact = false }: { compact?: boolean }) {
         <Skeleton className="h-6 w-10 rounded-full" />
       </div>
       {Array.from({ length: compact ? 2 : 3 }).map((_, index) => (
-        <div key={index} className="rounded-xl border p-4">
+        <div key={index} className="rounded-2xl border bg-card p-5">
           <div className="flex items-center gap-3">
             <Skeleton className="h-16 w-16 rounded-md" />
             <div className="flex-1 space-y-2">

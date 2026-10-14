@@ -44,7 +44,7 @@ function EditCaseContent({ caseId }: { caseId: string }) {
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6 sm:gap-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
           Редактировать объявление
         </h1>
         <p className="text-muted-foreground">

@@ -20,18 +20,9 @@ import {
   ConversationRequestActions,
   FormAlert,
   LoadingButton,
+  SectionCard,
 } from "@/components/common"
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  FieldLabel,
-  Skeleton,
-  Switch,
-} from "@/components/ui"
+import { Button, FieldLabel, Skeleton, Switch } from "@/components/ui"
 import type { Conversation } from "@/types"
 
 export type CaseConversations = ReturnType<typeof useCaseConversations>
@@ -88,106 +79,101 @@ function AuthorCaseChat({
     (conversation) => conversation.status === "ACTIVE",
   )
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Чат с откликнувшимися</CardTitle>
-        <CardDescription>
-          Те, кто предложил помощь, смогут попросить чат с вами. Вы решаете,
-          кому ответить.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        {caseOpen && (
-          <div className="flex items-start justify-between gap-4">
-            <FieldLabel htmlFor="case-chat" className="font-semibold">
-              Разрешить чат с откликнувшимися
-            </FieldLabel>
-            {permission.isPending ? (
-              <Skeleton className="h-5 w-9 rounded-full" />
-            ) : (
-              <Switch
-                id="case-chat"
-                checked={!!permission.data?.enabled}
-                disabled={toggle.isPending || permission.isError}
-                onCheckedChange={(next) => toggle.mutate(next)}
-              />
-            )}
-          </div>
-        )}
-        <FormAlert
-          message={
-            permission.isError
+    <SectionCard
+      icon={MessageCircle}
+      title="Чат с откликнувшимися"
+      description="Те, кто предложил помощь, смогут попросить чат с вами. Вы решаете, кому ответить."
+    >
+      {caseOpen && (
+        <div className="flex min-h-11 items-center justify-between gap-4">
+          <FieldLabel htmlFor="case-chat" className="cursor-pointer font-semibold">
+            Разрешить чат с откликнувшимися
+          </FieldLabel>
+          {permission.isPending ? (
+            <Skeleton className="h-5 w-9 rounded-full" />
+          ) : (
+            <Switch
+              id="case-chat"
+              checked={!!permission.data?.enabled}
+              disabled={toggle.isPending || permission.isError}
+              onCheckedChange={(next) => toggle.mutate(next)}
+            />
+          )}
+        </div>
+      )}
+      <FormAlert
+        message={
+          permission.isError
+            ? chatErrorMessage(
+                permission.error,
+                "Не удалось загрузить настройку чата.",
+              )
+            : toggle.isError
               ? chatErrorMessage(
-                  permission.error,
-                  "Не удалось загрузить настройку чата.",
+                  toggle.error,
+                  "Не удалось сохранить настройку чата.",
                 )
-              : toggle.isError
-                ? chatErrorMessage(
-                    toggle.error,
-                    "Не удалось сохранить настройку чата.",
-                  )
-                : ""
-          }
-        />
-        {requestList.length > 0 && (
-          <section className="flex flex-col gap-3" aria-labelledby="chat-requests">
-            <h3 id="chat-requests" className="font-semibold">
-              Запросы на чат
-            </h3>
-            <ul className="flex flex-col gap-2">
-              {requestList.map((conversation) => {
-                const name =
-                  initiator(conversation)?.displayName || "Пользователь"
-                return (
-                  <li
-                    key={conversation.id}
-                    className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <span className="font-medium [overflow-wrap:anywhere]">
-                      {name}
-                    </span>
-                    <ConversationRequestActions
-                      conversationId={conversation.id}
-                      requesterName={name}
-                    />
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        )}
-        {activeList.length > 0 && (
-          <section className="flex flex-col gap-3" aria-labelledby="chat-active">
-            <h3 id="chat-active" className="font-semibold">
-              Открытые чаты
-            </h3>
-            <ul className="flex flex-col gap-2">
-              {activeList.map((conversation) => (
+              : ""
+        }
+      />
+      {requestList.length > 0 && (
+        <section className="flex flex-col gap-3" aria-labelledby="chat-requests">
+          <h3 id="chat-requests" className="font-semibold">
+            Запросы на чат
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {requestList.map((conversation) => {
+              const name =
+                initiator(conversation)?.displayName || "Пользователь"
+              return (
                 <li
                   key={conversation.id}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  className="flex flex-col gap-2 rounded-xl border bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <span className="font-medium [overflow-wrap:anywhere]">
-                    {initiator(conversation)?.displayName || "Пользователь"}
+                    {name}
                   </span>
-                  <OpenChatLink
+                  <ConversationRequestActions
                     conversationId={conversation.id}
-                    unread={conversation.unreadCount}
+                    requesterName={name}
                   />
                 </li>
-              ))}
-            </ul>
-          </section>
-        )}
-        <FormAlert
-          message={
-            chats.error
-              ? chatErrorMessage(chats.error, "Не удалось загрузить чаты.")
-              : ""
-          }
-        />
-      </CardContent>
-    </Card>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+      {activeList.length > 0 && (
+        <section className="flex flex-col gap-3" aria-labelledby="chat-active">
+          <h3 id="chat-active" className="font-semibold">
+            Открытые чаты
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {activeList.map((conversation) => (
+              <li
+                key={conversation.id}
+                className="flex items-center justify-between gap-3 rounded-xl border bg-background/60 p-3"
+              >
+                <span className="font-medium [overflow-wrap:anywhere]">
+                  {initiator(conversation)?.displayName || "Пользователь"}
+                </span>
+                <OpenChatLink
+                  conversationId={conversation.id}
+                  unread={conversation.unreadCount}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <FormAlert
+        message={
+          chats.error
+            ? chatErrorMessage(chats.error, "Не удалось загрузить чаты.")
+            : ""
+        }
+      />
+    </SectionCard>
   )
 }
 
@@ -222,48 +208,46 @@ function HelperCaseChat({
         : "Автор открыл чат — можно договориться о деталях.",
   }
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <MessageCircle className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-          {action === "loading" && !loadError ? (
-            <Skeleton className="h-5 w-56" />
-          ) : (
-            <p className="text-sm">{texts[action]}</p>
-          )}
-        </div>
-        {action === "request" && (
-          <LoadingButton
-            className="shrink-0"
-            loading={request.isPending}
-            loadingText="Отправляем…"
-            onClick={() => {
-              setError("")
-              request.mutate(caseId, {
-                onError: (requestError) =>
-                  setError(
-                    chatErrorMessage(requestError, "Не удалось запросить чат."),
-                  ),
-              })
-            }}
-          >
-            Написать автору
-          </LoadingButton>
-        )}
-        {action === "open" && conversationId && (
-          <OpenChatLink conversationId={conversationId} />
-        )}
-      </CardContent>
-      {(error || loadError) && (
-        <CardContent>
-          <FormAlert
-            message={
-              error || chatErrorMessage(loadError, "Не удалось загрузить чат.")
-            }
-          />
-        </CardContent>
+    <SectionCard
+      icon={MessageCircle}
+      title="Чат с автором"
+      description={
+        action === "loading" && !loadError ? (
+          <Skeleton className="h-5 w-full max-w-56" />
+        ) : (
+          texts[action]
+        )
+      }
+    >
+      {action === "request" && (
+        <LoadingButton
+          className="h-11 w-full rounded-full px-5 sm:h-10 sm:w-fit"
+          loading={request.isPending}
+          loadingText="Отправляем…"
+          onClick={() => {
+            setError("")
+            request.mutate(caseId, {
+              onError: (requestError) =>
+                setError(
+                  chatErrorMessage(requestError, "Не удалось запросить чат."),
+                ),
+            })
+          }}
+        >
+          Написать автору
+        </LoadingButton>
       )}
-    </Card>
+      {action === "open" && conversationId && (
+        <OpenChatLink conversationId={conversationId} />
+      )}
+      {(error || loadError) && (
+        <FormAlert
+          message={
+            error || chatErrorMessage(loadError, "Не удалось загрузить чат.")
+          }
+        />
+      )}
+    </SectionCard>
   )
 }
 
@@ -275,7 +259,7 @@ function OpenChatLink({
   unread?: number
 }) {
   return (
-    <Button asChild size="sm" variant="outline" className="shrink-0">
+    <Button asChild variant="outline" className="h-10 shrink-0 self-start">
       <Link href={ROUTES.CHAT(conversationId)}>
         Открыть чат
         {unread > 0 && (
