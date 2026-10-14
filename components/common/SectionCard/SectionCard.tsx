@@ -8,6 +8,7 @@ const circleTones = {
   primary: "bg-primary-soft text-primary",
   muted: "bg-muted text-foreground/70",
   danger: "bg-destructive/10 text-destructive",
+  success: "bg-success text-success-foreground",
 }
 
 /** Decorative icon in a soft round badge, used next to card and field titles. */

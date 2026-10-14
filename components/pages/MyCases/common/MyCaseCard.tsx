@@ -1,6 +1,12 @@
-import { CasePhoto } from "@/components/common"
+import { CasePhoto, IconCircle, StatusBadge } from "@/components/common"
 import Link from "next/link"
-import { MapPin, MessageCircle, HeartHandshake } from "lucide-react"
+import {
+  CircleCheck,
+  HeartHandshake,
+  Lock,
+  MapPin,
+  MessageCircle,
+} from "lucide-react"
 import {
   Button,
   Card,
@@ -28,19 +34,16 @@ export function MyCaseCard({
     <Card className="relative min-w-0 overflow-hidden pt-0 transition-colors hover:border-primary/30">
       <div className="relative">
         <CasePhoto src={item.photoUrl} alt={item.title} />
-        <span
-          className={cn(
-            "absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold shadow-sm",
-            isOpen
-              ? "bg-primary text-primary-foreground"
-              : "bg-background text-muted-foreground",
-          )}
+        <StatusBadge
+          tone={isOpen ? "success" : "muted"}
+          icon={isOpen ? CircleCheck : Lock}
+          className="absolute left-3 top-3 shadow-sm ring-1 ring-card"
         >
           {isOpen ? "Активно" : "Закрыто"}
-        </span>
+        </StatusBadge>
       </div>
       <CardHeader>
-        <CardTitle className="line-clamp-2 [overflow-wrap:anywhere]">
+        <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
           <Link
             href={ROUTES.CASE_DETAILS(item.id)}
             className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-3 focus-visible:after:ring-ring/30"
@@ -54,24 +57,30 @@ export function MyCaseCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="mt-auto flex flex-col gap-3">
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-muted/40 p-3 text-sm">
-          <p className="flex flex-col gap-1">
-            <HeartHandshake className="size-5 text-primary" aria-hidden />
-            <span className="text-muted-foreground">Ждут помощи</span>
-            <strong>{item.openNeedsCount}</strong>
+        <div className="grid grid-cols-2 gap-3 rounded-xl border bg-background/60 p-3 text-sm">
+          <p className="flex min-w-0 flex-col gap-1.5">
+            <span className="flex items-center gap-2 text-lg">
+              <IconCircle icon={HeartHandshake} size="sm" />
+              <strong>{item.openNeedsCount}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground">Ждут помощи</span>
           </p>
-          <p className="flex flex-col gap-1">
-            <MessageCircle className="size-5 text-primary" aria-hidden />
-            <span className="text-muted-foreground">Предложили помощь</span>
-            <strong>{item.applicationsCount}</strong>
+          <p className="flex min-w-0 flex-col gap-1.5">
+            <span className="flex items-center gap-2 text-lg">
+              <IconCircle icon={MessageCircle} size="sm" />
+              <strong>{item.applicationsCount}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Предложили помощь
+            </span>
           </p>
         </div>
         {isOpen && (
           <p
             className={cn(
-              "rounded-lg px-3 py-2 text-sm",
+              "rounded-xl px-3 py-2 text-sm",
               hasApplications
-                ? "bg-secondary font-medium text-primary"
+                ? "bg-primary-soft font-medium text-primary"
                 : "text-muted-foreground",
             )}
           >
@@ -88,12 +97,16 @@ export function MyCaseCard({
       <CardFooter className="flex flex-col gap-2">
         {isOpen ? (
           <>
-            <Button asChild className="relative z-10 w-full">
+            <Button asChild className="relative z-10 h-11 w-full sm:h-10">
               <Link href={ROUTES.CASE_DETAILS(item.id)}>
                 {hasApplications ? "Посмотреть предложения" : "Открыть"}
               </Link>
             </Button>
-            <Button asChild variant="outline" className="relative z-10 w-full">
+            <Button
+              asChild
+              variant="outline"
+              className="relative z-10 h-11 w-full sm:h-10"
+            >
               <Link href={ROUTES.EDIT_CASE(item.id)}>Редактировать</Link>
             </Button>
           </>

@@ -16,6 +16,10 @@ import {
   CheckCheck,
   Ellipsis,
   EllipsisVertical,
+  CloudOff,
+  Lock,
+  MessageCircle,
+  MessageSquareOff,
   Pencil,
   SendHorizontal,
   X,
@@ -49,10 +53,13 @@ import {
 import { ROUTES } from "@/lib/constants"
 import {
   ConversationRequestActions,
+  EmptyState,
   FormAlert,
+  IconCircle,
   Loader,
   LoadingButton,
   RequireAuth,
+  SectionCard,
   UserAvatar,
 } from "@/components/common"
 import {
@@ -65,11 +72,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Card,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -113,8 +115,8 @@ function ChatContent({ conversationId }: { conversationId: string }) {
         aria-label="Загружаем диалог"
         className="mx-auto flex w-full max-w-3xl flex-col gap-4"
       >
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-[50dvh] w-full" />
+        <Skeleton className="h-16 w-full rounded-2xl" />
+        <Skeleton className="h-[50dvh] w-full rounded-2xl" />
       </div>
     )
   if (conversation.isError) {
@@ -123,34 +125,39 @@ function ChatContent({ conversationId }: { conversationId: string }) {
       conversation.error.status === 404
     )
       return (
-        <Card className="mx-auto w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Диалог удалён</CardTitle>
-            <CardDescription>
-              Закрытые диалоги удаляются через {CLOSED_CONVERSATION_TTL_DAYS}{" "}
-              дней. Также возможно, что ссылка устарела или у вас нет доступа к
-              этому диалогу.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button asChild variant="outline">
-              <Link href={ROUTES.CHATS}>К списку диалогов</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+        <EmptyState
+          className="mx-auto w-full max-w-md"
+          icon={MessageSquareOff}
+          titleAs="h1"
+          title="Диалог удалён"
+          description={`Закрытые диалоги удаляются через ${CLOSED_CONVERSATION_TTL_DAYS} дней. Также возможно, что ссылка устарела или у вас нет доступа к этому диалогу.`}
+        >
+          <Button asChild variant="outline" className="h-11 sm:h-10">
+            <Link href={ROUTES.CHATS}>К списку диалогов</Link>
+          </Button>
+        </EmptyState>
       )
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-start gap-3">
+      <EmptyState
+        className="mx-auto w-full max-w-3xl"
+        icon={CloudOff}
+        titleAs="h1"
+        title="Не получилось загрузить диалог"
+      >
         <FormAlert
           message={chatErrorMessage(
             conversation.error,
             "Не удалось загрузить диалог.",
           )}
         />
-        <Button variant="outline" onClick={() => void conversation.refetch()}>
+        <Button
+          variant="outline"
+          className="h-11 sm:h-10"
+          onClick={() => void conversation.refetch()}
+        >
           Попробовать ещё раз
         </Button>
-      </div>
+      </EmptyState>
     )
   }
   return <ChatView conversation={conversation.data} />
@@ -318,14 +325,22 @@ function ChatView({ conversation }: { conversation: Conversation }) {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <header className="flex items-center gap-3">
-        <Button asChild variant="ghost" size="icon" aria-label="К списку диалогов">
+    <section className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-4">
+      <header className="flex items-center gap-2 rounded-2xl border bg-card p-2 sm:gap-3 sm:p-3">
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          className="size-11 rounded-full text-primary sm:size-10"
+          aria-label="К списку диалогов"
+        >
           <Link href={ROUTES.CHATS}>
             <ArrowLeft />
           </Link>
         </Button>
-        {other && <UserAvatar user={{ displayName: other.displayName }} />}
+        {other && (
+          <UserAvatar user={{ displayName: other.displayName }} size="lg" />
+        )}
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate text-lg font-bold">
             {other?.displayName || "Собеседник"}
@@ -347,26 +362,22 @@ function ChatView({ conversation }: { conversation: Conversation }) {
       </header>
 
       {conversation.status === "REQUESTED" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {isOwner ? "Запрос на чат" : "Ожидает ответа автора"}
-            </CardTitle>
-            <CardDescription>
-              {isOwner
-                ? `${other?.displayName || "Пользователь"} хочет обсудить с вами помощь.`
-                : "Чат откроется, когда автор объявления примет запрос."}
-            </CardDescription>
-          </CardHeader>
+        <SectionCard
+          icon={MessageCircle}
+          title={isOwner ? "Запрос на чат" : "Ожидает ответа автора"}
+          description={
+            isOwner
+              ? `${other?.displayName || "Пользователь"} хочет обсудить с вами помощь.`
+              : "Чат откроется, когда автор объявления примет запрос."
+          }
+        >
           {isOwner && (
-            <CardFooter>
-              <ConversationRequestActions
-                conversationId={conversation.id}
-                requesterName={other?.displayName || "Пользователь"}
-              />
-            </CardFooter>
+            <ConversationRequestActions
+              conversationId={conversation.id}
+              requesterName={other?.displayName || "Пользователь"}
+            />
           )}
-        </Card>
+        </SectionCard>
       )}
       {conversation.status === "DECLINED" && (
         <FormAlert message="Автор отклонил запрос на чат." />
@@ -462,14 +473,14 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             />
           ) : conversation.writable ? (
             <form
-              className="flex flex-col gap-2"
+              className="flex flex-col gap-2 rounded-2xl border bg-card p-3"
               onSubmit={(event) => {
                 event.preventDefault()
                 submit()
               }}
             >
               {editing && (
-                <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-1 text-xs">
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-primary-soft px-3 py-1 text-xs text-primary">
                   <span className="flex items-center gap-1.5">
                     <Pencil aria-hidden className="size-3.5" />
                     Редактирование сообщения · Esc — отмена
@@ -494,7 +505,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                   aria-label={editing ? "Изменённое сообщение" : "Сообщение"}
                   aria-describedby="chat-counter"
                   placeholder="Напишите сообщение…"
-                  className="max-h-40 min-h-11 resize-none"
+                  className="max-h-40 min-h-12 resize-none"
                   onChange={(event) => {
                     setText(event.target.value)
                     typing.input(event.target.value)
@@ -503,7 +514,8 @@ function ChatView({ conversation }: { conversation: Conversation }) {
                 />
                 <Button
                   type="submit"
-                  size="icon-lg"
+                  size="icon"
+                  className="size-12 rounded-full"
                   aria-label={editing ? "Сохранить" : "Отправить"}
                   disabled={!canWrite || !text.trim() || edit.isPending}
                 >
@@ -518,7 +530,8 @@ function ChatView({ conversation }: { conversation: Conversation }) {
               </p>
             </form>
           ) : (
-            <p className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
+            <p className="flex items-center gap-3 rounded-2xl border bg-card p-3 text-sm text-muted-foreground sm:p-4">
+              <IconCircle icon={Lock} tone="muted" size="sm" />
               Сейчас в этот диалог нельзя писать. История переписки остаётся
               доступной.
             </p>
@@ -667,28 +680,30 @@ function ClosedNotice({
   const automatic = conversation.closedBy === null
   const byMe = !automatic && conversation.closedBy === userId
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-1">
-        <p>
-          {automatic
-            ? "Диалог закрыт: чат выключен, объявление закрыто или отклик отменён. Он откроется снова, когда условия вернутся."
-            : byMe
-              ? "Вы закрыли диалог."
-              : "Собеседник закрыл диалог."}{" "}
-          История переписки остаётся доступной.
-        </p>
-        {deletion && <p>Будет удалён {dateFormat.format(deletion)}.</p>}
-        {automatic && isOwner && targetHref && (
-          <Link href={targetHref} className="text-primary hover:underline">
-            Настроить чат на странице объявления
-          </Link>
-        )}
+    <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:p-4">
+      <div className="flex items-start gap-3">
+        <IconCircle icon={Lock} tone="muted" size="sm" />
+        <div className="flex flex-col gap-1">
+          <p>
+            {automatic
+              ? "Диалог закрыт: чат выключен, объявление закрыто или отклик отменён. Он откроется снова, когда условия вернутся."
+              : byMe
+                ? "Вы закрыли диалог."
+                : "Собеседник закрыл диалог."}{" "}
+            История переписки остаётся доступной.
+          </p>
+          {deletion && <p>Будет удалён {dateFormat.format(deletion)}.</p>}
+          {automatic && isOwner && targetHref && (
+            <Link href={targetHref} className="text-primary hover:underline">
+              Настроить чат на странице объявления
+            </Link>
+          )}
+        </div>
       </div>
       {byMe && (
         <LoadingButton
-          size="sm"
           variant="outline"
-          className="shrink-0"
+          className="h-11 shrink-0 sm:h-10"
           loading={reopen.isPending}
           loadingText="Открываем…"
           onClick={() =>
@@ -744,8 +759,10 @@ function MessageItem({
         ) : (
           <p
             className={cn(
-              "rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]",
-              mine ? "bg-primary text-primary-foreground" : "bg-muted",
+              "rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap [overflow-wrap:anywhere]",
+              mine
+                ? "rounded-br-md bg-primary text-primary-foreground"
+                : "rounded-bl-md bg-muted",
               message.status && "opacity-70",
               editing && "ring-2 ring-ring ring-offset-2",
             )}

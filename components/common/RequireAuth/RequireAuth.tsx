@@ -1,9 +1,10 @@
 "use client"
-import { LockKeyhole } from "lucide-react"
+import { CloudOff, LockKeyhole } from "lucide-react"
 import { NavigationLink as Link } from "@/components/providers"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Button } from "@/components/ui"
+import { EmptyState } from "../EmptyState/EmptyState"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { PageLoader } from "../PageLoader/PageLoader"
 
@@ -28,21 +29,27 @@ export function RequireAuth({
     return fallback ?? <PageLoader label="Загружаем ваш профиль…" />
   if (error)
     return (
-      <div className="mx-auto flex max-w-md flex-col gap-4 p-8">
+      <EmptyState
+        className="mx-auto w-full max-w-md"
+        icon={CloudOff}
+        titleAs="h1"
+        title="Не получилось проверить вход"
+      >
         <FormAlert message={error.message} />
-        <Button onClick={() => void checkSession()}>Попробовать ещё раз</Button>
-      </div>
+        <Button className="h-11 sm:h-10" onClick={() => void checkSession()}>
+          Попробовать ещё раз
+        </Button>
+      </EmptyState>
     )
   if (user) return children
   return (
-    <section className="mx-auto flex w-full max-w-md flex-col items-center gap-5 rounded-3xl border bg-card px-6 py-10 text-center shadow-sm sm:px-10">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-secondary text-primary">
-        <LockKeyhole className="size-6" aria-hidden />
-      </div>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Нужно войти</h1>
-        <p className="text-muted-foreground">{guestMessage}</p>
-      </div>
+    <EmptyState
+      className="mx-auto w-full max-w-md"
+      icon={LockKeyhole}
+      titleAs="h1"
+      title="Нужно войти"
+      description={guestMessage}
+    >
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
         <Button asChild size="lg">
           <Link href={ROUTES.LOGIN}>Войти</Link>
@@ -51,6 +58,6 @@ export function RequireAuth({
           <Link href={ROUTES.REGISTER}>Зарегистрироваться</Link>
         </Button>
       </div>
-    </section>
+    </EmptyState>
   )
 }

@@ -1,20 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, MapPin, PawPrint } from "lucide-react"
 import type { AnimalCase, DictionaryLocale, NeedType, CityGroup } from "@/types"
 import { getCityName, getDictionaryName } from "@/lib/dictionaries"
 import { ROUTES } from "@/lib/constants"
-import { FormAlert, LoadingButton } from "@/components/common"
 import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui"
+  FormAlert,
+  IconCircle,
+  LoadingButton,
+  StatusBadge,
+} from "@/components/common"
+import { Button, Card, CardContent } from "@/components/ui"
 
 export function PublicationResult({
   animalCase,
@@ -43,23 +40,31 @@ export function PublicationResult({
 }) {
   return (
     <Card>
-      <CardHeader>
-        <CheckCircle2 className="size-8 text-primary" aria-hidden />
-        <CardTitle>
-          <h1>{finished ? "Объявление опубликовано" : "Объявление создано"}</h1>
-        </CardTitle>
-        <CardDescription>
-          {finished
-            ? "Спасибо, что помогаете животным. Данные сохранены."
-            : "Само объявление уже сохранено. Осталось добавить выбранные виды помощи."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <p className="break-words text-xl font-semibold">{animalCase.title}</p>
-        <p className="text-muted-foreground">
-          {animalCase.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
-          {getCityName(cities, animalCase.cityCode, locale)}
-        </p>
+      <CardContent className="flex flex-col gap-5">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <IconCircle icon={CheckCircle2} tone={finished ? "success" : "primary"} />
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {finished ? "Объявление опубликовано" : "Объявление создано"}
+          </h1>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {finished
+              ? "Спасибо, что помогаете животным. Данные сохранены."
+              : "Само объявление уже сохранено. Осталось добавить выбранные виды помощи."}
+          </p>
+        </div>
+        <div className="flex flex-col items-start gap-2 rounded-2xl border bg-background/60 p-4">
+          <p className="break-words text-lg font-bold [overflow-wrap:anywhere]">
+            {animalCase.title}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge tone="primary" icon={PawPrint}>
+              {animalCase.animalType === "CAT" ? "Кошка" : "Собака"}
+            </StatusBadge>
+            <StatusBadge icon={MapPin}>
+              {getCityName(cities, animalCase.cityCode, locale)}
+            </StatusBadge>
+          </div>
+        </div>
         {!finished && (
           <>
             <p className="text-sm">
@@ -100,17 +105,17 @@ export function PublicationResult({
             </LoadingButton>
           </>
         )}
-      </CardContent>
-      <CardFooter className="flex flex-col gap-3 sm:flex-row">
-        {finished && (
-          <Button size="lg" onClick={onCreateAnother}>
-            Создать ещё объявление
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {finished && (
+            <Button size="lg" className="sm:flex-1" onClick={onCreateAnother}>
+              Создать ещё объявление
+            </Button>
+          )}
+          <Button variant="outline" size="lg" className="sm:flex-1" asChild>
+            <Link href={ROUTES.HOME}>На главную</Link>
           </Button>
-        )}
-        <Button variant="outline" size="lg" asChild>
-          <Link href={ROUTES.HOME}>На главную</Link>
-        </Button>
-      </CardFooter>
+        </div>
+      </CardContent>
     </Card>
   )
 }

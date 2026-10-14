@@ -139,7 +139,7 @@ export function CaseCityField({
               ref={(node) => field.ref(node)}
               onBlur={() => field.onBlur()}
               disabled={!cities.data || isSubmitting}
-              className="w-full justify-between"
+              className="h-12 w-full justify-between rounded-xl border-primary/25 bg-primary/[0.03] px-4 text-base font-normal shadow-xs hover:border-primary/45 hover:bg-primary/[0.03] aria-invalid:border-destructive"
             >
               <MapPin data-icon="inline-start" />
               <span className="min-w-0 flex-1 truncate text-left">

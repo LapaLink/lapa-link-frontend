@@ -5,8 +5,14 @@ import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { accountApi, casesApi, getErrorMessage } from "@/api"
-import { HeartHandshake } from "lucide-react"
-import { RequireAuth } from "@/components/common"
+import { CloudOff, HeartHandshake } from "lucide-react"
+import {
+  EmptyState,
+  FormAlert,
+  PageHeader,
+  RequireAuth,
+  StatusBadge,
+} from "@/components/common"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +54,14 @@ type TaskCardItem = {
   type: "response" | "assignment"
   needId: string
 }
+
+const statusTones = {
+  PENDING: "primary",
+  ACCEPTED: "success",
+  ACTIVE: "primary",
+  COMPLETED: "success",
+  CANCELLED: "muted",
+} as const satisfies Record<HelpApplicationStatus | AssignmentStatus, string>
 
 const TASK_GROUPS: Array<{
   key: TaskGroupKey
@@ -312,18 +326,17 @@ export function MyTasks() {
       guestMessage="Войдите, чтобы видеть, кому вы предложили помощь и где вас уже ждут."
     >
       {user && (
-        <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex flex-col gap-2">
-              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">Мои задачи</h1>
-              <p className="text-muted-foreground">
-                Здесь видно, кому вы предложили помощь и где вас уже ждут.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="shrink-0">
-              <Link href={ROUTES.CASES}>Найти, кому помочь</Link>
-            </Button>
-          </div>
+        <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
+          <PageHeader
+            eyebrow="Личный кабинет"
+            title="Мои задачи"
+            description="Здесь видно, кому вы предложили помощь и где вас уже ждут."
+            actions={
+              <Button asChild variant="outline" className="h-11 sm:h-10">
+                <Link href={ROUTES.CASES}>Найти, кому помочь</Link>
+              </Button>
+            }
+          />
 
           <AlertDialog
             open={!!pendingTaskAction}
@@ -358,35 +371,26 @@ export function MyTasks() {
               ))}
             </div>
           ) : hasError ? (
-            <div className="flex flex-col items-start gap-3">
-              <Card className="w-full border-destructive/40 bg-destructive/5">
-                <CardContent className="p-5 text-sm text-destructive">
-                  {errorMessage}
-                </CardContent>
-              </Card>
+            <EmptyState icon={CloudOff} title="Не получилось загрузить задачи">
+              <FormAlert message={errorMessage} />
               <Button
                 variant="outline"
+                className="h-11 sm:h-10"
                 onClick={() => queries.forEach((query) => void query.refetch())}
               >
                 Попробовать ещё раз
               </Button>
-            </div>
+            </EmptyState>
           ) : !totalItems ? (
-            <Card>
-              <CardHeader className="items-start gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-primary">
-                  <HeartHandshake className="size-6" aria-hidden />
-                </div>
-                <CardTitle>Вы ещё никому не предлагали помощь</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Откройте объявление, выберите, с чем можете помочь, и напишите
-                  автору. Все ваши предложения и задачи появятся здесь.
-                </p>
-                <Button asChild className="mt-2">
-                  <Link href={ROUTES.CASES}>Посмотреть объявления</Link>
-                </Button>
-              </CardHeader>
-            </Card>
+            <EmptyState
+              icon={HeartHandshake}
+              title="Вы ещё никому не предлагали помощь"
+              description="Откройте объявление, выберите, с чем можете помочь, и напишите автору. Все ваши предложения и задачи появятся здесь."
+            >
+              <Button asChild className="h-11 sm:h-10">
+                <Link href={ROUTES.CASES}>Посмотреть объявления</Link>
+              </Button>
+            </EmptyState>
           ) : (
             <div className="flex flex-col gap-4">
               <div
@@ -403,7 +407,7 @@ export function MyTasks() {
                       role="tab"
                       aria-selected={active}
                       variant={active ? "default" : "outline"}
-                      className="shrink-0"
+                      className="h-10 shrink-0 rounded-full px-4"
                       onClick={() => setSelectedGroup(group.key)}
                     >
                       {group.title}
@@ -431,8 +435,8 @@ export function MyTasks() {
                       const photo = normalizeRemoteImageUrl(item.photoUrl)
                       return (
                         <Card key={`${item.type}-${item.id}`} className="overflow-hidden">
-                          <CardHeader className="flex-row items-center gap-3 pb-3">
-                            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-muted">
+                          <CardHeader className="flex items-start gap-3 sm:gap-4">
+                            <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border bg-muted">
                               {photo ? (
                                 <Image
                                   src={photo}
@@ -447,30 +451,35 @@ export function MyTasks() {
                                 </div>
                               )}
                             </div>
-                            <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
                               <p className="text-xs font-semibold text-primary">
                                 {getDictionaryName(needTypes.data, item.needType, locale)}
                               </p>
-                              <CardTitle className="line-clamp-2 text-base [overflow-wrap:anywhere]">
-                                <Link href={ROUTES.CASE_DETAILS(item.caseId)} className="hover:underline">
+                              <CardTitle className="line-clamp-2 text-base font-bold [overflow-wrap:anywhere]">
+                                <Link href={ROUTES.CASE_DETAILS(item.caseId)} className="hover:text-primary hover:underline">
                                   {item.title}
                                 </Link>
                               </CardTitle>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {item.statusLabel} · {item.dateLabel}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <StatusBadge tone={statusTones[item.status]}>
+                                  {item.statusLabel}
+                                </StatusBadge>
+                                <span className="text-xs text-muted-foreground">
+                                  {item.dateLabel}
+                                </span>
+                              </div>
                             </div>
                           </CardHeader>
                           <CardContent className="flex flex-col gap-3 text-sm">
-                            <p className="line-clamp-3 rounded-lg bg-muted/40 px-3 py-2 text-foreground/90 [overflow-wrap:anywhere]">
+                            <p className="line-clamp-3 rounded-xl border bg-background/60 px-3 py-2 text-foreground/90 [overflow-wrap:anywhere]">
                               {item.type === "response" && item.status === "PENDING"
                                 ? `Ваше сообщение: ${item.summary}`
                                 : item.summary}
                             </p>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                               {taskAction && (
                                 <Button
-                                  size="sm"
+                                  className="h-11 rounded-full px-5 sm:h-10"
                                   variant={taskAction.action === "complete-task" ? "default" : "outline"}
                                   disabled={actionInFlight}
                                   onClick={() => setPendingTaskAction({ item, action: taskAction.action, prompt: taskAction.prompt })}
@@ -478,7 +487,7 @@ export function MyTasks() {
                                   {taskAction.label}
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm" asChild>
+                              <Button variant="ghost" className="h-11 rounded-full px-5 sm:h-10" asChild>
                                 <Link href={ROUTES.CASE_DETAILS(item.caseId)}>Открыть объявление</Link>
                               </Button>
                             </div>
@@ -488,7 +497,7 @@ export function MyTasks() {
                     })}
                   </div>
                 ) : (
-                  <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                  <p className="rounded-2xl border border-dashed bg-card p-5 text-sm text-muted-foreground">
                     {currentGroup.empty}
                   </p>
                 )}
@@ -511,7 +520,7 @@ function MyTasksSkeleton({ compact = false }: { compact?: boolean }) {
       {Array.from({ length: compact ? 2 : 3 }).map((_, index) => (
         <div key={index} className="rounded-2xl border bg-card p-5">
           <div className="flex items-center gap-3">
-            <Skeleton className="h-16 w-16 rounded-md" />
+            <Skeleton className="size-16 rounded-xl" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-5 w-2/3" />
               <Skeleton className="h-4 w-1/3" />
@@ -520,7 +529,7 @@ function MyTasksSkeleton({ compact = false }: { compact?: boolean }) {
           <div className="mt-4 space-y-2">
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-10 w-32 rounded-full" />
           </div>
         </div>
       ))}

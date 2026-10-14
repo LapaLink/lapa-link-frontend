@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { HeartHandshake, Megaphone, PawPrint } from "lucide-react"
+import { ArrowLeft, HeartHandshake, Megaphone, PawPrint } from "lucide-react"
+import { IconCircle } from "@/components/common"
 import { Header } from "../Header/Header"
 import { Footer } from "../Footer/Footer"
 import { ROUTES } from "@/lib/constants"
@@ -22,17 +23,18 @@ export function AuthLayout({ title, description, children }: AuthLayoutProps) {
       <Header>
         <Link
           href={ROUTES.HOME}
-          className="text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-primary outline-none transition-colors hover:text-primary-hover focus-visible:ring-3 focus-visible:ring-ring/40"
         >
+          <ArrowLeft aria-hidden className="size-4" />
           На главную
         </Link>
       </Header>
       <main
         id="main-content"
-        className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 px-6 py-8 md:grid-cols-2 md:py-12"
+        className="mx-auto grid w-full min-w-0 max-w-6xl flex-1 items-center gap-14 px-[max(1rem,env(safe-area-inset-left))] py-6 sm:px-6 sm:py-8 md:grid-cols-2 md:py-12"
       >
         <section className="hidden flex-col items-start gap-6 md:flex">
-          <h2 className="max-w-md text-4xl font-bold leading-tight tracking-tight">
+          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight lg:text-5xl">
             Ближе друг к другу.
             <br />
             Ближе к дому.
@@ -43,18 +45,22 @@ export function AuthLayout({ title, description, children }: AuthLayoutProps) {
           </p>
           <ul className="flex max-w-sm flex-col gap-4">
             {benefits.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-start gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
-                  <Icon className="size-5" aria-hidden />
-                </span>
-                <span className="pt-2 text-sm leading-relaxed">{text}</span>
+              <li
+                key={text}
+                className="flex items-center gap-3 rounded-2xl border bg-card p-3"
+              >
+                <IconCircle icon={Icon} size="sm" />
+                <span className="text-sm leading-relaxed">{text}</span>
               </li>
             ))}
           </ul>
         </section>
-        <section className="mx-auto flex w-full max-w-md flex-col gap-7 rounded-3xl border bg-card p-6 shadow-sm sm:p-9">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        <section className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-6 rounded-2xl border bg-card p-5 sm:gap-7 sm:p-8">
+          <div className="flex flex-col items-start gap-3">
+            <IconCircle icon={PawPrint} />
+            <h1 className="text-3xl font-extrabold tracking-tight [overflow-wrap:anywhere]">
+              {title}
+            </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {description}
             </p>
