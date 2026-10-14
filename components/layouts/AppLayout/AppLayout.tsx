@@ -8,7 +8,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <Header />
       <main
         id="main-content"
-        className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8"
+        className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col px-[max(1rem,env(safe-area-inset-left))] py-6 sm:px-6 sm:py-8 lg:py-10"
       >
         {children}
       </main>

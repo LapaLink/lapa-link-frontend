@@ -2,7 +2,7 @@
 
 import { useForm, useWatch } from "react-hook-form"
 import { useState } from "react"
-import { Pencil, MapPin } from "lucide-react"
+import { Pencil, MapPin, UserRound } from "lucide-react"
 import { getCityName } from "@/lib/dictionaries"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError, getErrorMessage } from "@/api"
@@ -19,13 +19,9 @@ import {
   FormField,
   FormAlert,
   LoadingButton,
+  SectionCard,
 } from "@/components/common"
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   Button,
   Field,
   FieldGroup,
@@ -50,62 +46,58 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
   const cities = useCities()
   const locale = useDictionaryLocale()
   return (
-    <Card className="min-w-0">
-      <CardHeader>
-        <CardTitle>Личные данные</CardTitle>
-        <CardDescription>
-          {editing
-            ? "Обновите информацию о себе."
-            : "Познакомимся поближе. Здесь то, что вы рассказали о себе."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        {editing ? (
-          <ProfileEditForm
-            user={user}
-            onCancel={() => setEditing(false)}
-            onSaved={() => {
-              setEditing(false)
-              setNotice("Изменения сохранены")
-            }}
-          />
-        ) : (
-          <>
-            <dl className="flex min-w-0 flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <dt className="text-sm text-muted-foreground">Имя</dt>
-                <dd className="text-lg font-semibold [overflow-wrap:anywhere]">
-                  {user.displayName}
-                </dd>
-              </div>
-              <div className="flex flex-col gap-2">
-                <dt className="text-sm text-muted-foreground">Город</dt>
-                <dd className="flex items-center gap-2 [overflow-wrap:anywhere]">
-                  <MapPin
-                    className="size-4 shrink-0 text-primary"
-                    aria-hidden
-                  />
-                  {user.cityCode
-                    ? getCityName(cities.data, user.cityCode, locale)
-                    : "Город не указан"}
-                </dd>
-              </div>
-              <div className="flex min-w-0 flex-col gap-2">
-                <dt className="text-sm text-muted-foreground">О себе</dt>
-                <dd className="max-h-64 overflow-y-auto overscroll-contain whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">
-                  {user.bio?.trim()
-                    ? user.bio
-                    : "Расскажите немного о себе и чем можете помочь животным."}
-                </dd>
-              </div>
-            </dl>
-          </>
-        )}
-      </CardContent>
-      {!editing && (
-        <div className="flex flex-col gap-3 px-4">
+    <SectionCard
+      className="min-w-0"
+      icon={UserRound}
+      title="Личные данные"
+      description={
+        editing
+          ? "Обновите информацию о себе."
+          : "Познакомимся поближе. Здесь то, что вы рассказали о себе."
+      }
+      fullWidthBody
+    >
+      {editing ? (
+        <ProfileEditForm
+          user={user}
+          onCancel={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false)
+            setNotice("Изменения сохранены")
+          }}
+        />
+      ) : (
+        <>
+          <dl className="flex min-w-0 flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <dt className="text-sm text-muted-foreground">Имя</dt>
+              <dd className="text-lg font-bold [overflow-wrap:anywhere]">
+                {user.displayName}
+              </dd>
+            </div>
+            <div className="flex flex-col gap-1">
+              <dt className="text-sm text-muted-foreground">Город</dt>
+              <dd className="flex items-center gap-2 font-medium [overflow-wrap:anywhere]">
+                <MapPin
+                  className="size-4 shrink-0 text-primary"
+                  aria-hidden
+                />
+                {user.cityCode
+                  ? getCityName(cities.data, user.cityCode, locale)
+                  : "Город не указан"}
+              </dd>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <dt className="text-sm text-muted-foreground">О себе</dt>
+              <dd className="max-h-64 overflow-y-auto overscroll-contain whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">
+                {user.bio?.trim()
+                  ? user.bio
+                  : "Расскажите немного о себе и чем можете помочь животным."}
+              </dd>
+            </div>
+          </dl>
           {notice && (
-            <p role="status" className="text-sm text-primary">
+            <p role="status" className="text-sm text-success-foreground">
               {notice}
             </p>
           )}
@@ -116,14 +108,14 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
               setNotice("")
               setEditing(true)
             }}
-            className="w-full"
+            className="h-11 w-full border-primary/25 bg-primary-soft/40 font-semibold text-primary hover:text-primary-hover"
           >
             <Pencil data-icon="inline-start" />
             Редактировать
           </Button>
-        </div>
+        </>
       )}
-    </Card>
+    </SectionCard>
   )
 }
 

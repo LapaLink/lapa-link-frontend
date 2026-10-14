@@ -4,15 +4,9 @@ import { useState } from "react"
 import { getErrorMessage } from "@/api"
 import { useUpdateLocale } from "@/hooks"
 import { resolveDictionaryLocale } from "@/lib/dictionaries"
-import { FormAlert, Loader } from "@/components/common"
-import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui"
+import { Globe } from "lucide-react"
+import { FormAlert, Loader, SectionCard } from "@/components/common"
+import { Button } from "@/components/ui"
 import type { CurrentUser, UserLocale } from "@/types"
 
 const languages: Array<{ value: UserLocale; label: string }> = [
@@ -36,41 +30,35 @@ export function LanguageCard({ user }: { user: CurrentUser }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Язык</h2>
-        </CardTitle>
-        <CardDescription>
-          На этом языке приходят письма, сообщения об ошибках и названия
-          городов.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div role="radiogroup" aria-label="Язык" className="flex flex-wrap gap-2">
-          {languages.map(({ value, label }) => {
-            const active = value === current
-            return (
-              <Button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                variant={active ? "default" : "outline"}
-                disabled={update.isPending}
-                onClick={() => void select(value)}
-              >
-                {update.isPending && update.variables === value ? (
-                  <Loader label="Сохраняем…" />
-                ) : (
-                  label
-                )}
-              </Button>
-            )
-          })}
-        </div>
-        <FormAlert message={error} />
-      </CardContent>
-    </Card>
+    <SectionCard
+      icon={Globe}
+      title="Язык"
+      description="На этом языке приходят письма, сообщения об ошибках и названия городов."
+    >
+      <div role="radiogroup" aria-label="Язык" className="flex flex-wrap gap-2">
+        {languages.map(({ value, label }) => {
+          const active = value === current
+          return (
+            <Button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              variant={active ? "default" : "outline"}
+              className="h-11 min-w-28 rounded-full px-5 sm:h-10"
+              disabled={update.isPending}
+              onClick={() => void select(value)}
+            >
+              {update.isPending && update.variables === value ? (
+                <Loader label="Сохраняем…" />
+              ) : (
+                label
+              )}
+            </Button>
+          )
+        })}
+      </div>
+      <FormAlert message={error} />
+    </SectionCard>
   )
 }

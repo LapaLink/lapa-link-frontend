@@ -1,13 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import { Mail, Pencil } from "lucide-react"
+import { SectionCard, StatusBadge } from "@/components/common"
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -27,45 +24,38 @@ export function EmailChangeCard({
   const [open, setOpen] = useState(false)
   const change = useEmailChange(() => setOpen(false))
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Электронная почта</h2>
-        </CardTitle>
-        <CardDescription>
-          <span className="break-all">{email}</span>
+    <SectionCard
+      icon={Mail}
+      title="Электронная почта"
+      description={
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="break-all font-medium text-foreground">{email}</span>
           {verified !== undefined && (
-            <span
-              className={
-                verified
-                  ? "ml-2 inline-flex rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-primary"
-                  : "ml-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-              }
-            >
+            <StatusBadge tone={verified ? "success" : "muted"}>
               {verified ? "подтверждён" : "не подтверждён"}
-            </span>
+            </StatusBadge>
           )}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {!open && change.notice && (
-          <p role="status" className="text-sm text-primary">
-            {change.notice}
-          </p>
-        )}
-        {change.pending && (
-          <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-            Ждём подтверждения {change.pending.email}
-          </p>
-        )}
-        <Button
-          variant="outline"
-          className="self-start"
-          onClick={() => setOpen(true)}
-        >
-          {change.pending ? "Ввести код" : "Изменить email"}
-        </Button>
-      </CardContent>
+        </span>
+      }
+    >
+      {!open && change.notice && (
+        <p role="status" className="text-sm text-success-foreground">
+          {change.notice}
+        </p>
+      )}
+      {change.pending && (
+        <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+          Ждём подтверждения {change.pending.email}
+        </p>
+      )}
+      <Button
+        variant="outline"
+        className="h-11 self-start sm:h-10"
+        onClick={() => setOpen(true)}
+      >
+        {!change.pending && <Pencil data-icon="inline-start" />}
+        {change.pending ? "Ввести код" : "Изменить email"}
+      </Button>
       <Dialog
         open={open}
         onOpenChange={(next) => {
@@ -105,6 +95,6 @@ export function EmailChangeCard({
           )}
         </DialogContent>
       </Dialog>
-    </Card>
+    </SectionCard>
   )
 }

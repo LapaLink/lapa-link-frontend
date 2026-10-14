@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { CircleCheck, MapPin, PawPrint } from "lucide-react"
 import { useDictionaryLocale } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import {
@@ -12,16 +13,12 @@ import {
   CaseTextField,
   CaseCityField,
   CaseAgeField,
+  SectionCard,
 } from "@/components/common"
 import {
   Alert,
   AlertDescription,
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   FieldGroup,
   SelectGroup,
   SelectItem,
@@ -42,8 +39,12 @@ export function EditCaseForm({ item }: { item: CaseDetails }) {
       }}
     >
       {save.isSuccess && (
-        <Alert role="status">
-          <AlertDescription>
+        <Alert
+          role="status"
+          className="border-success-foreground/20 bg-success text-success-foreground"
+        >
+          <CircleCheck aria-hidden />
+          <AlertDescription className="text-success-foreground">
             Изменения сохранены. Информация в объявлении обновлена.
           </AlertDescription>
         </Alert>
@@ -52,62 +53,58 @@ export function EditCaseForm({ item }: { item: CaseDetails }) {
         disabled={save.isPending}
         className="flex min-w-0 flex-col gap-6"
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>О животном</CardTitle>
-            <CardDescription>
-              Уточните информацию, чтобы людям было проще помочь.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <FormField
-                name="title"
-                label="Название"
-                maxLength={150}
-                required
-                placeholder="Например, найден рыжий кот у парка"
-              />
-              <CaseTextField
-                name="description"
-                label="Описание"
-                maxLength={2000}
-                placeholder="Что известно о животном и месте находки"
-              />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <CaseSelectField
-                  name="sex"
-                  label="Пол"
-                  placeholder="Выберите пол"
-                >
-                  <SelectGroup>
-                    <SelectItem value="UNKNOWN">Неизвестно</SelectItem>
-                    <SelectItem value="MALE">Самец</SelectItem>
-                    <SelectItem value="FEMALE">Самка</SelectItem>
-                  </SelectGroup>
-                </CaseSelectField>
-                <CaseAgeField />
-              </div>
-              <CaseTextField
-                name="condition"
-                label="Состояние"
-                maxLength={500}
-                placeholder="Как сейчас чувствует себя животное"
-              />
-            </FieldGroup>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Город</CardTitle>
-            <CardDescription>Выберите город из справочника.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FieldGroup>
-              <CaseCityField locale={locale} />
-            </FieldGroup>
-          </CardContent>
-        </Card>
+        <SectionCard
+          icon={PawPrint}
+          title="О животном"
+          description="Уточните информацию, чтобы людям было проще помочь."
+          fullWidthBody
+        >
+          <FieldGroup>
+            <FormField
+              name="title"
+              label="Название"
+              maxLength={150}
+              required
+              placeholder="Например, найден рыжий кот у парка"
+            />
+            <CaseTextField
+              name="description"
+              label="Описание"
+              maxLength={2000}
+              placeholder="Что известно о животном и месте находки"
+            />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <CaseSelectField
+                name="sex"
+                label="Пол"
+                placeholder="Выберите пол"
+              >
+                <SelectGroup>
+                  <SelectItem value="UNKNOWN">Неизвестно</SelectItem>
+                  <SelectItem value="MALE">Самец</SelectItem>
+                  <SelectItem value="FEMALE">Самка</SelectItem>
+                </SelectGroup>
+              </CaseSelectField>
+              <CaseAgeField />
+            </div>
+            <CaseTextField
+              name="condition"
+              label="Состояние"
+              maxLength={500}
+              placeholder="Как сейчас чувствует себя животное"
+            />
+          </FieldGroup>
+        </SectionCard>
+        <SectionCard
+          icon={MapPin}
+          title="Город"
+          description="Выберите город из справочника."
+          fullWidthBody
+        >
+          <FieldGroup>
+            <CaseCityField locale={locale} />
+          </FieldGroup>
+        </SectionCard>
         <FormAlert message={form.formState.errors.root?.message} />
         <div className="flex flex-col gap-3 sm:flex-row">
           <LoadingButton

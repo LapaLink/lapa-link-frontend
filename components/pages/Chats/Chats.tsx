@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { EllipsisVertical, MessageCircle } from "lucide-react"
+import { CloudOff, EllipsisVertical, EyeOff, MessageCircle } from "lucide-react"
 import { toast } from "sonner"
 import {
   useAuth,
@@ -18,8 +18,10 @@ import {
 } from "@/lib/chat"
 import { ROUTES } from "@/lib/constants"
 import {
+  EmptyState,
   FormAlert,
   ListPagination,
+  PageHeader,
   RequireAuth,
   UserAvatar,
 } from "@/components/common"
@@ -55,15 +57,12 @@ function ChatsContent() {
   const [hidden, setHidden] = useState(false)
   const conversations = useConversations({ hidden, page, size: PAGE_SIZE })
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Сообщения
-        </h1>
-        <p className="text-muted-foreground">
-          Переписка с авторами объявлений и с теми, кто предложил помощь.
-        </p>
-      </div>
+    <section className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:gap-6">
+      <PageHeader
+        eyebrow="Личный кабинет"
+        title="Сообщения"
+        description="Переписка с авторами объявлений и с теми, кто предложил помощь."
+      />
       <div className="flex gap-2" role="group" aria-label="Какие диалоги показать">
         {[
           { value: false, label: "Все" },
@@ -71,8 +70,8 @@ function ChatsContent() {
         ].map((tab) => (
           <Button
             key={tab.label}
-            size="sm"
-            variant={hidden === tab.value ? "secondary" : "ghost"}
+            className="h-10 rounded-full px-5"
+            variant={hidden === tab.value ? "default" : "outline"}
             aria-pressed={hidden === tab.value}
             onClick={() => {
               setHidden(tab.value)
@@ -86,11 +85,11 @@ function ChatsContent() {
       {conversations.isPending ? (
         <div role="status" aria-label="Загружаем диалоги" className="flex flex-col gap-3">
           {[0, 1, 2].map((key) => (
-            <Skeleton key={key} className="h-20 rounded-xl" />
+            <Skeleton key={key} className="h-20 rounded-2xl" />
           ))}
         </div>
       ) : conversations.isError ? (
-        <div className="flex flex-col items-start gap-3">
+        <EmptyState icon={CloudOff} title="Не получилось загрузить диалоги">
           <FormAlert
             message={chatErrorMessage(
               conversations.error,
@@ -99,11 +98,12 @@ function ChatsContent() {
           />
           <Button
             variant="outline"
+            className="h-11 sm:h-10"
             onClick={() => void conversations.refetch()}
           >
             Попробовать ещё раз
           </Button>
-        </div>
+        </EmptyState>
       ) : conversations.data.content.length ? (
         <ul className="flex flex-col gap-2">
           {conversations.data.content.map((conversation) => (
@@ -111,22 +111,17 @@ function ChatsContent() {
           ))}
         </ul>
       ) : hidden ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
-          <p className="font-semibold">Скрытых диалогов нет</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Скрытый диалог вернётся в общий список, когда придёт новое
-            сообщение.
-          </p>
-        </div>
+        <EmptyState
+          icon={EyeOff}
+          title="Скрытых диалогов нет"
+          description="Скрытый диалог вернётся в общий список, когда придёт новое сообщение."
+        />
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
-          <MessageCircle className="size-10 text-primary/50" aria-hidden />
-          <p className="font-semibold">Диалогов пока нет</p>
-          <p className="max-w-sm text-sm text-muted-foreground">
-            Предложите помощь в объявлении и напишите автору, когда он включит
-            чат.
-          </p>
-        </div>
+        <EmptyState
+          icon={MessageCircle}
+          title="Диалогов пока нет"
+          description="Предложите помощь в объявлении и напишите автору, когда он включит чат."
+        />
       )}
       {conversations.data && (
         <ListPagination
@@ -151,9 +146,9 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
     <li className="relative">
       <Link
         href={ROUTES.CHAT(conversation.id)}
-        className="flex items-center gap-3 rounded-xl border p-4 pr-12 transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center gap-3 rounded-2xl border bg-card p-4 pr-12 transition-colors hover:border-primary/30 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <UserAvatar user={{ displayName: other?.displayName || "?" }} />
+        <UserAvatar user={{ displayName: other?.displayName || "?" }} size="lg" />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate font-semibold">
             {other?.displayName || "Собеседник"}
@@ -203,8 +198,8 @@ function HideMenu({ conversation }: { conversation: Conversation }) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon-sm"
-          className="absolute top-2 right-2"
+          size="icon"
+          className="absolute top-2 right-2 rounded-full"
           aria-label="Действия с диалогом"
           disabled={mutation.isPending}
         >

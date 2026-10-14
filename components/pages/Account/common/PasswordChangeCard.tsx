@@ -6,14 +6,16 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError } from "@/api"
 import { useChangePassword, useTransientNotice } from "@/hooks"
 import { setFormError } from "@/lib/forms"
-import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
+import { Lock } from "lucide-react"
+import {
+  Form,
+  FormField,
+  FormAlert,
+  LoadingButton,
+  SectionCard,
+} from "@/components/common"
 import {
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -60,29 +62,24 @@ export function PasswordChangeCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          <h2>Пароль</h2>
-        </CardTitle>
-        <CardDescription>
-          Используется для входа в аккаунт.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {notice && (
-          <p role="status" className="text-sm text-primary">
-            {notice}
-          </p>
-        )}
-        <Button
-          variant="outline"
-          className="self-start"
-          onClick={() => handleOpenChange(true)}
-        >
-          Сменить пароль
-        </Button>
-      </CardContent>
+    <SectionCard
+      icon={Lock}
+      title="Пароль"
+      description="Используется для входа в аккаунт."
+    >
+      {notice && (
+        <p role="status" className="text-sm text-success-foreground">
+          {notice}
+        </p>
+      )}
+      <Button
+        variant="outline"
+        className="h-11 self-start sm:h-10"
+        onClick={() => handleOpenChange(true)}
+      >
+        <Lock data-icon="inline-start" />
+        Сменить пароль
+      </Button>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -130,6 +127,6 @@ export function PasswordChangeCard() {
           </Form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </SectionCard>
   )
 }

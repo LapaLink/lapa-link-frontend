@@ -12,8 +12,11 @@ export function CaseCardsSkeleton() {
           <Skeleton className="aspect-video w-full" />
           <CardContent className="flex flex-col gap-4">
             <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-16 w-full" />
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-20 rounded-lg" />
+              <Skeleton className="h-6 w-24 rounded-lg" />
+            </div>
+            <Skeleton className="h-16 w-full rounded-xl" />
           </CardContent>
         </Card>
       ))}

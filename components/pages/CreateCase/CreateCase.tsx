@@ -1,22 +1,18 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { Camera, ClipboardList, HandHeart, MapPin, PawPrint } from "lucide-react"
 import { useAuth, useCities, useNeedTypes } from "@/hooks"
 import { resolveDictionaryLocale } from "@/lib/dictionaries"
 import {
   Form,
   FormAlert,
+  IconCircle,
   LoadingButton,
+  PageHeader,
   RequireAuth,
 } from "@/components/common"
-import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui"
+import { Button, Card, CardContent } from "@/components/ui"
 import { useCreateCase } from "./hooks/useCreateCase"
 import { CREATE_CASE_STEPS, firstInvalidStep } from "./steps"
 import {
@@ -27,6 +23,9 @@ import {
   NeedTypesField,
   PublicationResult,
 } from "./common"
+
+// One icon per entry of CREATE_CASE_STEPS, in the same order.
+const stepIcons = [PawPrint, ClipboardList, Camera, MapPin, HandHeart]
 
 export function CreateCase() {
   return (
@@ -65,7 +64,7 @@ function CreateCaseContent() {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-6 sm:gap-8">
+    <section className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:gap-6">
       {publication.created ? (
         <PublicationResult
           animalCase={publication.created}
@@ -85,20 +84,14 @@ function CreateCaseContent() {
         />
       ) : (
         <>
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-semibold text-primary">
-              Поможем найти заботу и дом
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Вы нашли животное?
-            </h1>
-            {step === 0 && (
-              <p className="text-muted-foreground">
-                Расскажите о нём и укажите, какая помощь нужна. Для публикации
-                достаточно типа животного, заголовка и города.
-              </p>
-            )}
-          </div>
+          <PageHeader
+            eyebrow="Поможем найти заботу и дом"
+            title="Вы нашли животное?"
+            description={
+              step === 0 &&
+              "Расскажите о нём и укажите, какая помощь нужна. Для публикации достаточно типа животного, заголовка и города."
+            }
+          />
           <Form
             form={form}
             busy={busy}
@@ -122,37 +115,44 @@ function CreateCaseContent() {
           >
             <fieldset disabled={busy} className="flex min-w-0 flex-col gap-6">
               <Card>
-                <CardHeader>
-                  <p className="text-sm text-muted-foreground">
-                    Шаг {step + 1} из {CREATE_CASE_STEPS.length}
-                  </p>
-                  <div className="flex gap-1.5" aria-hidden>
-                    {CREATE_CASE_STEPS.map((item, index) => (
-                      <span
-                        key={item.title}
-                        className={`h-1.5 flex-1 rounded-full transition-colors ${
-                          index <= step ? "bg-primary" : "bg-muted"
-                        }`}
-                      />
-                    ))}
+                <CardContent className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Шаг {step + 1} из {CREATE_CASE_STEPS.length}
+                    </p>
+                    <div className="flex gap-1.5" aria-hidden>
+                      {CREATE_CASE_STEPS.map((item, index) => (
+                        <span
+                          key={item.title}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            index <= step ? "bg-primary" : "bg-muted"
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <CardTitle>
-                    <h2
-                      ref={stepHeading}
-                      tabIndex={-1}
-                      className="outline-none"
-                    >
-                      {current.title}
-                    </h2>
-                  </CardTitle>
-                  <CardDescription>{current.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {step === 0 && <AnimalFields />}
-                  {step === 1 && <AnimalDetailsFields />}
-                  {step === 2 && <PhotoField />}
-                  {step === 3 && <CityField locale={locale} />}
-                  {step === 4 && <NeedTypesField locale={locale} />}
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <IconCircle icon={stepIcons[step]} />
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <h2
+                        ref={stepHeading}
+                        tabIndex={-1}
+                        className="text-base font-bold leading-snug outline-none sm:text-lg"
+                      >
+                        {current.title}
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        {current.description}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    {step === 0 && <AnimalFields />}
+                    {step === 1 && <AnimalDetailsFields />}
+                    {step === 2 && <PhotoField />}
+                    {step === 3 && <CityField locale={locale} />}
+                    {step === 4 && <NeedTypesField locale={locale} />}
+                  </div>
                 </CardContent>
               </Card>
               <FormAlert message={form.formState.errors.root?.message} />

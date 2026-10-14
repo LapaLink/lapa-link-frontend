@@ -35,6 +35,10 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -49,24 +53,28 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.25 0.015 20);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.52 0.12 12);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0.015 12);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #faf9f8;
+  --foreground: #17243b;
+  --card: #ffffff;
+  --card-foreground: #17243b;
+  --popover: #ffffff;
+  --popover-foreground: #17243b;
+  --primary: #ac405c;
+  --primary-hover: #93334d;
+  --primary-foreground: #ffffff;
+  --primary-soft: #fbeef1;
+  --secondary: #f8eef1;
+  --secondary-foreground: #17243b;
+  --muted: #f3f4f6;
+  --muted-foreground: #5f6e86;
+  --accent: #f5f1f2;
+  --accent-foreground: #17243b;
+  --success: #e8f5ec;
+  --success-foreground: #2f7a45;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #e9eaee;
+  --input: #e2e4e9;
+  --ring: #ac405c;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -133,5 +141,16 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

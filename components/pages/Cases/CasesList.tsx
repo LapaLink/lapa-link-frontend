@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { CloudOff, MapPin, PawPrint, Search, SlidersHorizontal } from "lucide-react"
 import { casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
@@ -18,7 +19,6 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   Input,
   Select,
   SelectContent,
@@ -30,10 +30,14 @@ import {
   FieldLabel,
 } from "@/components/ui"
 import {
+  EmptyState,
   FormAlert,
   CasePhoto,
   CaseCardsSkeleton,
+  IconCircle,
   ListPagination,
+  PageHeader,
+  StatusBadge,
 } from "@/components/common"
 
 export function CasesList() {
@@ -92,26 +96,31 @@ export function CasesList() {
       ),
   })
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
-          <p className="text-sm font-semibold text-primary">Объявления</p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Кому сейчас нужна помощь
-          </h1>
-        </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          {user && (
-            <Button variant="outline" asChild>
-              <Link href={ROUTES.MY_CASES}>Мои объявления</Link>
+    <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
+      <PageHeader
+        eyebrow="Объявления"
+        title="Кому сейчас нужна помощь"
+        actions={
+          <>
+            {user && (
+              <Button variant="outline" asChild className="h-11 sm:h-10">
+                <Link href={ROUTES.MY_CASES}>Мои объявления</Link>
+              </Button>
+            )}
+            <Button asChild className="h-11 sm:h-10">
+              <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
             </Button>
-          )}
-          <Button asChild>
-            <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
-          </Button>
-        </div>
-      </div>
-      <div className="grid gap-4 rounded-xl border bg-muted/20 p-4 md:grid-cols-3">
+          </>
+        }
+      />
+      <div
+        role="search"
+        aria-label="Фильтры объявлений"
+        className="grid gap-4 rounded-2xl border bg-card p-5 sm:p-6 md:grid-cols-[auto_repeat(3,minmax(0,1fr))] md:items-end"
+      >
+        <span className="hidden md:mb-1 md:block">
+          <IconCircle icon={SlidersHorizontal} />
+        </span>
         <Field>
           <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
           <Select
@@ -175,55 +184,58 @@ export function CasesList() {
       {cases.isPending ? (
         <CaseCardsSkeleton />
       ) : cases.isError ? (
-        <Card className="items-start">
-          <CardHeader className="w-full">
-            <CardTitle>Не получилось загрузить объявления</CardTitle>
-            <CardDescription>
-              Возможно, пропал интернет или сервис ненадолго недоступен.
-              Фильтры сохранятся — просто попробуйте ещё раз.
-            </CardDescription>
-            <FormAlert
-              message={getErrorMessage(
-                cases.error,
-                "Не удалось загрузить объявления.",
-              )}
-            />
-            <Button
-              variant="outline"
-              className="mt-2 w-fit"
-              onClick={() => void cases.refetch()}
-            >
-              Попробовать ещё раз
-            </Button>
-          </CardHeader>
-        </Card>
+        <EmptyState
+          icon={CloudOff}
+          title="Не получилось загрузить объявления"
+          description="Возможно, пропал интернет или сервис ненадолго недоступен. Фильтры сохранятся — просто попробуйте ещё раз."
+        >
+          <FormAlert
+            message={getErrorMessage(
+              cases.error,
+              "Не удалось загрузить объявления.",
+            )}
+          />
+          <Button
+            variant="outline"
+            className="h-11 sm:h-10"
+            onClick={() => void cases.refetch()}
+          >
+            Попробовать ещё раз
+          </Button>
+        </EmptyState>
       ) : cases.data.content.length ? (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {cases.data.content.map((item) => (
             <Link
               key={item.id}
               href={ROUTES.CASE_DETAILS(item.id)}
-              className="group min-w-0 rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+              className="group min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
             >
-              <Card className="h-full min-w-0 pt-0 transition-shadow group-hover:shadow-md">
+              <Card className="h-full min-w-0 pt-0 transition-colors group-hover:border-primary/30">
                 <CasePhoto src={item.photoUrl} alt={item.title} />
-                <CardHeader>
-                  <CardTitle className="line-clamp-2 [overflow-wrap:anywhere]">
+                <CardHeader className="gap-3">
+                  <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
                     {item.title}
                   </CardTitle>
-                  <CardDescription className="[overflow-wrap:anywhere]">
-                    {item.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
-                    {getCityName(cities.data, item.cityCode, locale)}
-                  </CardDescription>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge tone="primary" icon={PawPrint}>
+                      {item.animalType === "CAT" ? "Кошка" : "Собака"}
+                    </StatusBadge>
+                    <StatusBadge icon={MapPin}>
+                      {getCityName(cities.data, item.cityCode, locale)}
+                    </StatusBadge>
+                  </div>
                 </CardHeader>
               </Card>
             </Link>
           ))}
         </div>
       ) : (
-        <p className="py-8 text-center text-muted-foreground">
-          Пока нет объявлений по выбранным фильтрам.
-        </p>
+        <EmptyState
+          icon={Search}
+          title="Ничего не нашлось"
+          description="Пока нет объявлений по выбранным фильтрам."
+        />
       )}
       {cases.data && (
         <ListPagination

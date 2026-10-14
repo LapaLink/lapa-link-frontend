@@ -3,14 +3,12 @@
 import { useRef, useState } from "react"
 import { Camera, Trash2 } from "lucide-react"
 import { useUploadAvatar, useDeleteAvatar, useTransientNotice } from "@/hooks"
-import { FormAlert, LoadingButton, UserAvatar } from "@/components/common"
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui"
+  FormAlert,
+  LoadingButton,
+  SectionCard,
+  UserAvatar,
+} from "@/components/common"
 import type { CurrentUser } from "@/types"
 import { AVATAR_ACCEPT, avatarSchema } from "../schemas"
 import { AvatarCropDialog } from "./AvatarCropDialog"
@@ -58,15 +56,14 @@ export function AvatarCard({ user }: { user: CurrentUser }) {
   }
 
   return (
-    <Card aria-busy={busy}>
-      <CardHeader>
-        <CardTitle>
-          <h2>Фото профиля</h2>
-        </CardTitle>
-        <CardDescription>С фото вас будет проще узнать.</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+    <SectionCard
+      icon={Camera}
+      title="Фото профиля"
+      description="С фото вас будет проще узнать."
+      fullWidthBody
+    >
+      <div aria-busy={busy} className="flex flex-col gap-4">
+        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
           <UserAvatar user={user} size="profile" />
           <div className="flex w-full min-w-0 flex-col gap-3">
             <p className="text-center text-sm text-muted-foreground sm:text-left">
@@ -89,7 +86,7 @@ export function AvatarCard({ user }: { user: CurrentUser }) {
               <LoadingButton
                 type="button"
                 size="lg"
-                variant="outline"
+                className="rounded-full"
                 disabled={busy}
                 loading={upload.isPending}
                 loadingText="Загружаем…"
@@ -103,7 +100,8 @@ export function AvatarCard({ user }: { user: CurrentUser }) {
                 <LoadingButton
                   type="button"
                   size="lg"
-                  variant="ghost"
+                  variant="outline"
+                  className="rounded-full"
                   disabled={busy}
                   loading={remove.isPending}
                   loadingText="Удаляем…"
@@ -118,7 +116,7 @@ export function AvatarCard({ user }: { user: CurrentUser }) {
         </div>
         <FormAlert message={error} />
         {notice && (
-          <p role="status" className="text-sm text-muted-foreground">
+          <p role="status" className="text-sm text-success-foreground">
             {notice}
           </p>
         )}
@@ -129,7 +127,7 @@ export function AvatarCard({ user }: { user: CurrentUser }) {
             onSave={uploadPhoto}
           />
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </SectionCard>
   )
 }

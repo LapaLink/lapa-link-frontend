@@ -2,7 +2,25 @@
 
 import Link from "next/link"
 import { useState } from "react"
+import { cn } from "cn"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  ArrowLeft,
+  Cake,
+  CalendarDays,
+  CircleCheck,
+  CircleHelp,
+  HandHeart,
+  HeartHandshake,
+  HeartPulse,
+  Lock,
+  Mail,
+  MapPin,
+  Mars,
+  PawPrint,
+  Pencil,
+  Venus,
+} from "lucide-react"
 import { accountApi, casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
@@ -19,9 +37,18 @@ import type {
   CaseNeed,
   Conversation,
   HelpApplication,
+  HelpApplicationStatus,
   NeedStatus,
 } from "@/types"
-import { FormAlert, LoadingButton, CasePhoto } from "@/components/common"
+import {
+  FormAlert,
+  IconCircle,
+  LoadingButton,
+  CasePhoto,
+  SectionCard,
+  StatusBadge,
+  UserAvatar,
+} from "@/components/common"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,11 +59,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -62,6 +84,21 @@ import {
 import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
 import { filterValidTaskRecords } from "@/lib/tasks"
 import { CaseChat, useCaseConversations } from "./CaseChat"
+
+const needStatusTones = {
+  OPEN: "primary",
+  ASSIGNED: "success",
+  CLOSED: "muted",
+} as const satisfies Record<NeedStatus, string>
+
+const responseStatusTones = {
+  PENDING: "primary",
+  ACCEPTED: "success",
+  CANCELLED: "muted",
+} as const satisfies Record<HelpApplicationStatus, string>
+
+// Tall enough for a comfortable tap on phones, regular height from sm up.
+const touchButton = "h-11 w-full rounded-full px-5 sm:h-10 sm:w-auto"
 
 type CaseDetailsProps = {
   caseId: string
@@ -254,17 +291,25 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     }
   }
 
+
   if (details.isLoading || (details.data && !details.data.author && !details.error))
     return (
       <div
         role="status"
         aria-label="Загружаем объявление"
-        className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-6"
+        className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-5 sm:gap-6"
       >
-        <Skeleton className="aspect-video w-full rounded-xl" />
-        <Skeleton className="h-10 w-2/3" />
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-5 w-40" />
+        <div className="flex items-start gap-4 sm:gap-6">
+          <Skeleton className="size-20 shrink-0 rounded-full sm:size-28 lg:size-32" />
+          <div className="flex min-w-0 flex-1 flex-col gap-3 pt-1">
+            <Skeleton className="h-9 w-2/3" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-6 w-28 rounded-lg" />
+          </div>
+        </div>
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
     )
   if (details.error)
@@ -303,41 +348,124 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     filterValidTaskRecords(myCaseApplications.data?.content ?? []).filter(
       (item) => item.need.id === needId,
     )
+  const hasPhoto = !!animalCase.photoUrl
+  const canEdit = isAuthor && animalCase.status === "OPEN"
+  const facts = [
+    {
+      label: "Пол",
+      icon:
+        animalCase.sex === "MALE"
+          ? Mars
+          : animalCase.sex === "FEMALE"
+            ? Venus
+            : CircleHelp,
+      value:
+        animalCase.sex === "MALE"
+          ? "Самец"
+          : animalCase.sex === "FEMALE"
+            ? "Самка"
+            : "Неизвестно",
+    },
+    {
+      label: "Примерный возраст",
+      icon: Cake,
+      value: animalCase.approximateAge || "Не указан",
+    },
+    {
+      label: "Состояние",
+      icon: HeartPulse,
+      value: animalCase.condition || "Не указано",
+    },
+    {
+      label: "Город",
+      icon: MapPin,
+      value: animalCase.cityCode
+        ? getCityName(cities.data, animalCase.cityCode, locale)
+        : "Не указан",
+    },
+    {
+      label: "Объявление создано",
+      icon: CalendarDays,
+      value: new Intl.DateTimeFormat("ru-RU").format(
+        new Date(animalCase.createdAt),
+      ),
+    },
+  ]
 
   return (
-    <section className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-6 [overflow-wrap:anywhere]">
-      <div className="flex flex-col gap-4">
-        <div className="overflow-hidden rounded-xl">
-          <CasePhoto
-            src={animalCase.photoUrl}
-            alt={animalCase.title}
-            priority
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-semibold text-primary">
-            {animalCase.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
-            {caseStatusLabels[animalCase.status]}
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight [overflow-wrap:anywhere] sm:text-4xl">
+    <section className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-5 [overflow-wrap:anywhere] sm:gap-6">
+      <nav
+        aria-label="Навигация по объявлению"
+        className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm"
+      >
+        <Link
+          href={isAuthor ? ROUTES.MY_CASES : ROUTES.CASES}
+          className="-ml-2 inline-flex min-h-11 items-center gap-2 rounded-xl px-2 font-semibold text-primary outline-none transition-colors hover:text-primary-hover focus-visible:ring-3 focus-visible:ring-ring/40"
+        >
+          <ArrowLeft aria-hidden className="size-4" />
+          <span className="sr-only">
+            {isAuthor ? "Назад к моим объявлениям: " : "Назад к объявлениям: "}
+          </span>
+          {animalCase.animalType === "CAT" ? "Кошка" : "Собака"}
+        </Link>
+        <span aria-hidden className="text-muted-foreground">
+          ·
+        </span>
+        <StatusBadge
+          tone={animalCase.status === "OPEN" ? "success" : "muted"}
+          icon={animalCase.status === "OPEN" ? CircleCheck : Lock}
+          className="ml-1"
+        >
+          {caseStatusLabels[animalCase.status]}
+        </StatusBadge>
+      </nav>
+
+      <header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-4 sm:gap-x-6">
+        {hasPhoto && (
+          <div className="size-20 overflow-hidden rounded-full border-4 border-card bg-card shadow-sm sm:row-span-2 sm:size-28 lg:size-32">
+            <CasePhoto
+              src={animalCase.photoUrl}
+              alt={animalCase.title}
+              aspect="aspect-square"
+              priority
+            />
+          </div>
+        )}
+        <div
+          className={cn(
+            "flex min-w-0 flex-col items-start gap-2 sm:pt-1",
+            !hasPhoto && "col-span-2",
+          )}
+        >
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-3xl lg:text-4xl">
             {animalCase.title}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground sm:text-base">
             Автор: {animalCase.author.displayName || "Пользователь"}
           </p>
-          {animalCase.description && (
-            <p className="whitespace-pre-wrap text-muted-foreground [overflow-wrap:anywhere]">
-              {animalCase.description}
-            </p>
+          {animalCase.condition && (
+            <StatusBadge tone="success" icon={PawPrint} className="text-sm">
+              <span className="sr-only">Состояние: </span>
+              {animalCase.condition}
+            </StatusBadge>
           )}
         </div>
-      </div>
+        {canEdit && (
+          <div className={cn("col-span-2", hasPhoto && "sm:col-span-1 sm:col-start-2")}>
+            <Button
+              asChild
+              variant="outline"
+              className="h-11 w-full sm:h-10 sm:w-fit"
+            >
+              <Link href={ROUTES.EDIT_CASE(caseId)}>
+                <Pencil aria-hidden />
+                Редактировать объявление
+              </Link>
+            </Button>
+          </div>
+        )}
+      </header>
 
-      {isAuthor && animalCase.status === "OPEN" && (
-        <Button asChild variant="outline" className="w-full sm:w-fit">
-          <Link href={ROUTES.EDIT_CASE(caseId)}>Редактировать объявление</Link>
-        </Button>
-      )}
       {typeof animalCase.notificationsEnabled === "boolean" &&
         animalCase.status === "OPEN" && (
           <CaseNotifications
@@ -355,55 +483,36 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
           chats={caseChats}
         />
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>О животном</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            {[
-              [
-                "Пол",
-                animalCase.sex === "MALE"
-                  ? "Самец"
-                  : animalCase.sex === "FEMALE"
-                    ? "Самка"
-                    : "Неизвестно",
-              ],
-              ["Примерный возраст", animalCase.approximateAge || "Не указан"],
-              ["Состояние", animalCase.condition || "Не указано"],
-              [
-                "Город",
-                animalCase.cityCode
-                  ? getCityName(cities.data, animalCase.cityCode, locale)
-                  : "Не указан",
-              ],
-              [
-                "Объявление создано",
-                new Intl.DateTimeFormat("ru-RU").format(
-                  new Date(animalCase.createdAt),
-                ),
-              ],
-            ].map(([label, value]) => (
-              <div key={label} className="flex min-w-0 flex-col gap-1">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">
+
+      <SectionCard icon={PawPrint} title="О животном">
+        {animalCase.description && (
+          <p className="whitespace-pre-wrap text-sm leading-relaxed [overflow-wrap:anywhere] sm:text-base">
+            {animalCase.description}
+          </p>
+        )}
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+          {facts.map(({ label, icon, value }) => (
+            <div key={label} className="flex min-w-0 items-center gap-3">
+              <IconCircle icon={icon} tone="muted" size="sm" />
+              <div className="flex min-w-0 flex-col">
+                <dt className="text-xs font-medium text-muted-foreground">
+                  {label}
+                </dt>
+                <dd className="whitespace-pre-wrap font-semibold [overflow-wrap:anywhere]">
                   {value}
                 </dd>
               </div>
-            ))}
-          </dl>
-        </CardContent>
-      </Card>
+            </div>
+          ))}
+        </dl>
+      </SectionCard>
+
       {isAuthor && animalCase.status === "CLOSED" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Закрытие объявления</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm">
+        <SectionCard icon={Lock} title="Закрытие объявления">
+          <div className="flex flex-col gap-2 text-sm">
             {animalCase.closeReason && (
               <p>
-                Причина:{" "}
+                <span className="text-muted-foreground">Причина: </span>
                 {getDictionaryName(
                   closeReasons.data,
                   animalCase.closeReason,
@@ -412,10 +521,13 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
               </p>
             )}
             {animalCase.closeComment && (
-              <p>Комментарий: {animalCase.closeComment}</p>
+              <p className="whitespace-pre-wrap">
+                <span className="text-muted-foreground">Комментарий: </span>
+                {animalCase.closeComment}
+              </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       )}
 
       <AlertDialog
@@ -479,155 +591,167 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
       <FormAlert message={error} />
 
-
       {animalCase.needs.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight">
-            Чем можно помочь
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {isAuthor
+        <SectionCard
+          icon={HandHeart}
+          title="Чем можно помочь"
+          fullWidthBody
+          description={
+            isAuthor
               ? "Здесь появляются люди, которые готовы помочь. Выберите помощника и свяжитесь с ним по контактам из его сообщения."
-              : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."}
-          </p>
-        </div>
-      )}
+              : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."
+          }
+        >
+          <ul className="flex flex-col gap-3">
+            {animalCase.needs.map((need) => {
+              const needResponses = responsesByNeed.get(need.id) ?? []
+              const needName = getDictionaryName(needTypes.data, need.type, locale)
+              return (
+                <li
+                  key={need.id}
+                  className="flex min-w-0 flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-5"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <IconCircle icon={HeartHandshake} size="sm" />
+                    <div className="flex min-w-0 flex-col items-start gap-1.5">
+                      <h3 className="font-bold leading-snug [overflow-wrap:anywhere]">
+                        {needName}
+                      </h3>
+                      <StatusBadge tone={needStatusTones[need.status]}>
+                        {needStatusLabels[need.status]}
+                      </StatusBadge>
+                    </div>
+                  </div>
 
-      <div className="grid gap-4">
-        {animalCase.needs.map((need) => {
-          const needResponses = responsesByNeed.get(need.id) ?? []
-          return (
-            <Card key={need.id}>
-              <CardHeader>
-                <CardTitle>
-                  {getDictionaryName(needTypes.data, need.type, locale)}
-                </CardTitle>
-                <CardDescription>
-                  {needStatusLabels[need.status]}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                {isAuthor && animalCase.status === "OPEN" && (
-                  <div className="flex flex-wrap gap-2">
-                    {need.status === "OPEN" && (
-                      <Button
-                        variant="outline"
-                        disabled={updateNeedStatus.isPending}
-                        onClick={() =>
-                          void handleNeedStatusChange(need, "CLOSED")
-                        }
-                      >
-                        Помощь больше не нужна
-                      </Button>
-                    )}
-                    {need.status === "ASSIGNED" && (
-                      <>
+                  {isAuthor && animalCase.status === "OPEN" && need.status !== "CLOSED" && (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      {need.status === "OPEN" && (
                         <Button
-                          variant="default"
+                          variant="outline"
+                          className={touchButton}
                           disabled={updateNeedStatus.isPending}
                           onClick={() =>
                             void handleNeedStatusChange(need, "CLOSED")
                           }
                         >
-                          Помощь получена
+                          Помощь больше не нужна
+                        </Button>
+                      )}
+                      {need.status === "ASSIGNED" && (
+                        <>
+                          <Button
+                            variant="default"
+                            className={touchButton}
+                            disabled={updateNeedStatus.isPending}
+                            onClick={() =>
+                              void handleNeedStatusChange(need, "CLOSED")
+                            }
+                          >
+                            Помощь получена
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className={touchButton}
+                            disabled={updateNeedStatus.isPending}
+                            onClick={() =>
+                              void handleNeedStatusChange(need, "OPEN")
+                            }
+                          >
+                            Выбрать другого помощника
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {!isAuthor && canAct && !user && need.status === "OPEN" && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Войдите, чтобы предложить помощь и написать автору.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild className="h-11 flex-1 sm:h-10 sm:flex-none">
+                          <Link href={ROUTES.LOGIN}>Войти</Link>
                         </Button>
                         <Button
+                          asChild
                           variant="outline"
-                          disabled={updateNeedStatus.isPending}
-                          onClick={() =>
-                            void handleNeedStatusChange(need, "OPEN")
-                          }
+                          className="h-11 flex-1 sm:h-10 sm:flex-none"
                         >
-                          Выбрать другого помощника
+                          <Link href={ROUTES.REGISTER}>Регистрация</Link>
                         </Button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {!isAuthor && canAct && !user && need.status === "OPEN" && (
-                  <div className="flex flex-col gap-3 rounded-lg border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Войдите, чтобы предложить помощь и написать автору.
-                    </p>
-                    <div className="flex gap-2">
-                      <Button asChild size="sm">
-                        <Link href={ROUTES.LOGIN}>Войти</Link>
-                      </Button>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href={ROUTES.REGISTER}>Регистрация</Link>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {!isAuthor &&
-                  canAct &&
-                  user &&
-                  (need.status === "OPEN" ||
-                    myCaseApplicationsForNeed(need.id).length > 0) && (
-                  <>
-                    {myCaseApplicationsForNeed(need.id).length ? (
-                      <div className="rounded-lg border bg-muted/30 p-3">
-                        <p className="font-medium">
-                          Вы уже предложили здесь помощь.
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Следите за ответом автора в разделе{" "}
-                          <Link
-                            href={ROUTES.MY_TASKS}
-                            className="font-medium text-primary hover:underline"
-                          >
-                            «Мои задачи»
-                          </Link>
-                          .
-                        </p>
-                        <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
-                          {myCaseApplicationsForNeed(need.id).map(
-                            (application) => (
-                              <li
-                                key={application.id}
-                                className="rounded-md border bg-background p-2"
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span>
-                                    {responseStatusLabels[application.status]}
-                                  </span>
-                                </div>
-                                <p className="mt-1 [overflow-wrap:anywhere]">
-                                  {application.message}
-                                </p>
-                              </li>
-                            ),
-                          )}
-                        </ul>
                       </div>
-                    ) : (
-                      <Button
-                        className="self-start"
-                        onClick={() => openOffer(need)}
-                      >
-                        Предложить помощь
-                      </Button>
-                    )}
-                  </>
-                )}
+                    </div>
+                  )}
 
-                {isAuthor && (
-                  <AuthorResponses
-                    responses={needResponses}
-                    need={need}
-                    busy={assignResponse.isPending}
-                    canAssign={canAct && need.status === "OPEN"}
-                    chats={caseChats.byUser}
-                    onAssign={requestAssignment}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+                  {!isAuthor &&
+                    canAct &&
+                    user &&
+                    (need.status === "OPEN" ||
+                      myCaseApplicationsForNeed(need.id).length > 0) && (
+                    <>
+                      {myCaseApplicationsForNeed(need.id).length ? (
+                        <div className="rounded-xl bg-muted/60 p-4">
+                          <p className="font-semibold">
+                            Вы уже предложили здесь помощь.
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Следите за ответом автора в разделе{" "}
+                            <Link
+                              href={ROUTES.MY_TASKS}
+                              className="font-semibold text-primary hover:text-primary-hover hover:underline"
+                            >
+                              «Мои задачи»
+                            </Link>
+                            .
+                          </p>
+                          <ul className="mt-3 space-y-2 text-sm">
+                            {myCaseApplicationsForNeed(need.id).map(
+                              (application) => (
+                                <li
+                                  key={application.id}
+                                  className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3"
+                                >
+                                  <StatusBadge
+                                    tone={responseStatusTones[application.status]}
+                                  >
+                                    {responseStatusLabels[application.status]}
+                                  </StatusBadge>
+                                  <p className="text-muted-foreground [overflow-wrap:anywhere]">
+                                    {application.message}
+                                  </p>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        </div>
+                      ) : (
+                        <Button
+                          className={touchButton}
+                          onClick={() => openOffer(need)}
+                        >
+                          Предложить помощь
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {isAuthor && (
+                    <AuthorResponses
+                      responses={needResponses}
+                      need={need}
+                      busy={assignResponse.isPending}
+                      canAssign={canAct && need.status === "OPEN"}
+                      chats={caseChats.byUser}
+                      onAssign={requestAssignment}
+                    />
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </SectionCard>
+      )}
 
       <Dialog
         open={!!offerNeed}
@@ -684,57 +808,54 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
       </Dialog>
 
       {isAuthor && animalCase.status === "OPEN" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Закрыть объявление</CardTitle>
-            <CardDescription>
-              Если животное уже нашло дом или помощь больше не нужна, закройте
-              объявление — оно пропадёт из общего списка.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+        <SectionCard
+          icon={Lock}
+          title="Закрыть объявление"
+          description="Если животное уже нашло дом или помощь больше не нужна, закройте объявление — оно пропадёт из общего списка."
+        >
+          <Field>
+            <FieldLabel htmlFor="close-reason">Причина закрытия</FieldLabel>
+            <Select value={closeReason} onValueChange={setCloseReason}>
+              <SelectTrigger id="close-reason">
+                <SelectValue placeholder="Выберите причину" />
+              </SelectTrigger>
+              <SelectContent>
+                {closeReasons.data?.map((reason) => (
+                  <SelectItem key={reason.code} value={reason.code}>
+                    {reason.nameRu}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {selectedReason?.requiresComment && (
             <Field>
-              <FieldLabel>Причина закрытия</FieldLabel>
-              <Select value={closeReason} onValueChange={setCloseReason}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите причину" />
-                </SelectTrigger>
-                <SelectContent>
-                  {closeReasons.data?.map((reason) => (
-                    <SelectItem key={reason.code} value={reason.code}>
-                      {reason.nameRu}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FieldLabel htmlFor="close-comment">
+                Комментарий (обязательно для этой причины)
+              </FieldLabel>
+              <Textarea
+                id="close-comment"
+                value={closeComment}
+                onChange={(event) => setCloseComment(event.target.value)}
+                placeholder="Опишите детали закрытия объявления"
+              />
             </Field>
+          )}
 
-            {selectedReason?.requiresComment && (
-              <Field>
-                <FieldLabel>Комментарий (обязательно для этой причины)</FieldLabel>
-                <Textarea
-                  value={closeComment}
-                  onChange={(event) => setCloseComment(event.target.value)}
-                  placeholder="Опишите детали закрытия объявления"
-                />
-              </Field>
-            )}
-
-            <LoadingButton
-              variant="destructive"
-              loading={closeCaseMutation.isPending}
-              loadingText="Закрываем…"
-              disabled={
-                !closeReason ||
-                (!!selectedReason?.requiresComment && !closeComment.trim())
-              }
-              className="w-full sm:w-fit"
-              onClick={() => void handleCloseCase()}
-            >
-              Закрыть объявление
-            </LoadingButton>
-          </CardContent>
-        </Card>
+          <LoadingButton
+            loading={closeCaseMutation.isPending}
+            loadingText="Закрываем…"
+            disabled={
+              !closeReason ||
+              (!!selectedReason?.requiresComment && !closeComment.trim())
+            }
+            className="h-11 w-full px-6 sm:h-10 sm:w-fit"
+            onClick={() => void handleCloseCase()}
+          >
+            Закрыть объявление
+          </LoadingButton>
+        </SectionCard>
       )}
     </section>
   )
@@ -757,43 +878,51 @@ function AuthorResponses({
 }) {
   if (!responses.length)
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
         Пока никто не предложил помощь. Мы покажем здесь всех, кто откликнется.
       </p>
     )
   return (
-    <div className="flex flex-col gap-3">
-      {responses.map((response) => (
-        <div
-          key={response.id}
-          className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between"
-        >
-          <div className="flex flex-col gap-1">
-            <p className="font-medium">
-              {response.user.displayName || "Пользователь"}
-            </p>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]">
-              {response.message}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {responseStatusLabels[response.status]}
-            </p>
-            <ResponseChatStatus conversation={chats.get(response.user.id)} />
-          </div>
-          {canAssign &&
-            response.status === "PENDING" &&
-            need.status === "OPEN" && (
-              <Button
-                disabled={busy}
-                className="shrink-0"
-                onClick={() => onAssign(response)}
-              >
-                Выбрать помощником
-              </Button>
-            )}
-        </div>
-      ))}
-    </div>
+    <ul className="flex flex-col gap-2">
+      {responses.map((response) => {
+        const name = response.user.displayName || "Пользователь"
+        return (
+          <li
+            key={response.id}
+            className="flex flex-col gap-3 rounded-xl border bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+          >
+            <div className="flex min-w-0 items-start gap-3">
+              <UserAvatar user={{ displayName: name }} size="lg" />
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="font-semibold [overflow-wrap:anywhere]">{name}</p>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                  {response.message}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <StatusBadge tone={responseStatusTones[response.status]}>
+                    {responseStatusLabels[response.status]}
+                  </StatusBadge>
+                  <ResponseChatStatus
+                    conversation={chats.get(response.user.id)}
+                  />
+                </div>
+              </div>
+            </div>
+            {canAssign &&
+              response.status === "PENDING" &&
+              need.status === "OPEN" && (
+                <Button
+                  disabled={busy}
+                  className={touchButton}
+                  onClick={() => onAssign(response)}
+                >
+                  Выбрать помощником
+                </Button>
+              )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -809,7 +938,7 @@ function ResponseChatStatus({
       conversation.status === "CLOSED" ? (
         <Link
           href={ROUTES.CHAT(conversation.id)}
-          className="font-medium text-primary hover:underline"
+          className="font-semibold text-primary hover:text-primary-hover hover:underline"
         >
           {conversation.status === "ACTIVE" ? "Чат открыт" : "Чат закрыт"}
           {conversation.unreadCount > 0 &&
@@ -858,32 +987,30 @@ function CaseNotifications({
     },
   })
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <FieldLabel htmlFor="case-notifications" className="font-semibold">
-              Получать уведомления по этому объявлению на email
-            </FieldLabel>
-            <p
-              id="case-notifications-hint"
-              className="text-sm text-muted-foreground"
-            >
-              {isAuthor
-                ? "Напишем, когда кто-то предложит помощь или отменит своё предложение."
-                : "Напишем, когда автор выберет вас помощником, изменит статус просьбы или закроет объявление."}
-            </p>
-          </div>
-          <Switch
-            id="case-notifications"
-            checked={enabled}
-            disabled={toggle.isPending}
-            aria-describedby="case-notifications-hint"
-            onCheckedChange={(next) => toggle.mutate(next)}
-          />
-        </div>
-        <FormAlert message={error} />
-      </CardContent>
-    </Card>
+    <SectionCard
+      icon={Mail}
+      title={
+        <label htmlFor="case-notifications" className="cursor-pointer">
+          Получать уведомления по этому объявлению на email
+        </label>
+      }
+      descriptionId="case-notifications-hint"
+      description={
+        isAuthor
+          ? "Напишем, когда кто-то предложит помощь или отменит своё предложение."
+          : "Напишем, когда автор выберет вас помощником, изменит статус просьбы или закроет объявление."
+      }
+      action={
+        <Switch
+          id="case-notifications"
+          checked={enabled}
+          disabled={toggle.isPending}
+          aria-describedby="case-notifications-hint"
+          onCheckedChange={(next) => toggle.mutate(next)}
+        />
+      }
+    >
+      <FormAlert message={error} />
+    </SectionCard>
   )
 }
