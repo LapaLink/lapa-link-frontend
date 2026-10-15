@@ -68,3 +68,9 @@ export {
   AlertDialogTrigger,
 } from "./alert-dialog"
 export { Toaster } from "./sonner"
+export {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./accordion"

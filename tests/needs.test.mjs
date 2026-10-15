@@ -414,29 +414,30 @@ test("need card shows priority as text, the time window, overdue mark and long c
   const badge = render(file, "NeedPriorityBadge", { priority: "HIGH" })
   assert.match(badge, /Высокий приоритет/)
   assert.match(badge, /<svg/)
-  const details = render(file, "NeedDetails", {
-    need: {
-      ...need,
-      startsAt: null,
-      deadline: "2026-01-10T15:00:00Z",
-      comment: "Очень длинный комментарий. ".repeat(10),
-    },
+  const overdue = render(file, "NeedTimeWindow", {
+    need: { ...need, startsAt: null, deadline: "2026-01-10T15:00:00Z" },
   })
-  assert.match(details, /до 10 янв, 18:00/)
-  assert.match(details, /Срок истёк/)
-  assert.match(details, /line-clamp-3/)
-  assert.match(details, /Показать полностью/)
-  const closed = render(file, "NeedDetails", {
+  assert.match(overdue, /до 10 янв, 18:00/)
+  assert.match(overdue, /Срок истёк/)
+  // Rendered inside the accordion trigger button: phrasing content only.
+  assert.doesNotMatch(overdue, /<(p|div)[\s>]/)
+  const closed = render(file, "NeedTimeWindow", {
     need: { ...need, status: "CLOSED", deadline: "2026-01-10T15:00:00Z" },
   })
   assert.doesNotMatch(closed, /Срок истёк/)
-  assert.doesNotMatch(closed, /Показать полностью/)
   assert.equal(
-    render(file, "NeedDetails", {
-      need: { ...need, startsAt: null, deadline: null, comment: null },
+    render(file, "NeedTimeWindow", {
+      need: { ...need, startsAt: null, deadline: null },
     }),
     "",
   )
+  const long = render(file, "NeedComment", {
+    comment: "Очень длинный комментарий. ".repeat(10),
+  })
+  assert.match(long, /line-clamp-3/)
+  assert.match(long, /Показать полностью/)
+  const short = render(file, "NeedComment", { comment: "Нужна переноска" })
+  assert.doesNotMatch(short, /Показать полностью/)
 })
 
 test("help offers card lists offers, mutes disabled ones and hides add when nothing is left", () => {

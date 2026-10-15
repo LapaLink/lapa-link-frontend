@@ -34,39 +34,34 @@ export function NeedPriorityBadge({ priority }: { priority: NeedPriority }) {
   )
 }
 
-/** Time window, an overdue mark and the comment of a need, shown to everyone. */
-export function NeedDetails({ need }: { need: CaseNeed }) {
+/** Time window of a need with an overdue mark; nothing when no bound is set. */
+export function NeedTimeWindow({ need }: { need: CaseNeed }) {
   const timeWindow = formatNeedWindow(need.startsAt, need.deadline)
-  const overdue = isNeedOverdue(need)
-  if (!timeWindow && !need.comment) return null
+  if (!timeWindow) return null
   return (
-    <div className="flex min-w-0 flex-col gap-2 text-sm">
-      {timeWindow && (
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <CalendarClock
-            aria-hidden
-            className="size-4 shrink-0 text-muted-foreground"
-          />
-          <span className="sr-only">Когда нужна помощь: </span>
-          <span className="font-medium">{timeWindow}</span>
-          {overdue && (
-            <StatusBadge tone="danger" icon={TimerOff}>
-              Срок истёк
-            </StatusBadge>
-          )}
-        </p>
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <CalendarClock
+        aria-hidden
+        className="size-4 shrink-0 text-muted-foreground"
+      />
+      <span className="sr-only">Когда нужна помощь: </span>
+      <span className="font-medium">{timeWindow}</span>
+      {isNeedOverdue(need) && (
+        <StatusBadge tone="danger" icon={TimerOff}>
+          Срок истёк
+        </StatusBadge>
       )}
-      {need.comment && <NeedComment comment={need.comment} />}
-    </div>
+    </span>
   )
 }
 
-function NeedComment({ comment }: { comment: string }) {
+/** Need comment; long ones start collapsed behind "Показать полностью". */
+export function NeedComment({ comment }: { comment: string }) {
   const [expanded, setExpanded] = useState(false)
   const collapsible =
     comment.length > COLLAPSED_COMMENT_LENGTH || comment.split("\n").length > 3
   return (
-    <div className="flex flex-col items-start gap-1">
+    <div className="flex flex-col items-start gap-1 text-sm">
       <p
         className={cn(
           "whitespace-pre-wrap text-muted-foreground [overflow-wrap:anywhere]",
