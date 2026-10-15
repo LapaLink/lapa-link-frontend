@@ -17,7 +17,6 @@ import {
   PasswordChangeCard,
   LanguageCard,
   NotificationsCard,
-  SignOutCard,
   DeleteAccountCard,
   HelpOffersCard,
 } from "./common"
@@ -129,7 +128,6 @@ function AccountContent() {
             }
           />
           <NotificationsCard user={user} />
-          <SignOutCard />
         </div>
       </div>
       <HelpOffersCard user={user} />
