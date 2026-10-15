@@ -83,22 +83,33 @@ test("inbox uses authenticated REST endpoints and preserves backend messages", a
   const calls = []
   const api = load("api/inbox.ts", async (url, options) => {
     calls.push([url, options.method ?? "GET", options.headers.get("Authorization"), options.body])
-    return url.endsWith("read-all") ? response(204) : response(200, url.includes("unread-count") ? { count: 2 } : {})
+    if (url.endsWith("read-all")) return response(204)
+    if (url.endsWith("/notification-channels"))
+      return response(200, [{ channel: "EMAIL", title: "Email", enabled: true, quietFrom: "22:00:00", quietTo: "08:00" }])
+    if (url.includes("/notification-channels/"))
+      return response(200, { channel: "EMAIL", title: "Email", enabled: false, quietFrom: "23:30:00", quietTo: "07:00:00" })
+    return response(200, url.includes("unread-count") ? { count: 2 } : {})
   })
   api.saveTokens(old)
   await api.inboxApi.list(2, 10)
   await api.inboxApi.unreadCount()
   await api.inboxApi.read("notification-id")
   await api.inboxApi.readAll()
-  await api.inboxApi.channels()
-  await api.inboxApi.updateChannel({ channel: "IN_APP", enabled: false })
+  const [email] = await api.inboxApi.channels()
+  assert.equal(email.quietFrom, "22:00")
+  assert.equal(email.quietTo, "08:00")
+  const updated = await api.inboxApi.updateChannel({ channel: "IN_APP", enabled: false, quietFrom: null, quietTo: null })
+  assert.equal(updated.quietFrom, "23:30")
+  assert.equal(updated.quietTo, "07:00")
+  await api.inboxApi.updateChannel({ ...email, enabled: false })
   assert.deepEqual(calls, [
     ["/api/v1/account/inbox?page=2&size=10", "GET", "Bearer old-access", undefined],
     ["/api/v1/account/inbox/unread-count", "GET", "Bearer old-access", undefined],
     ["/api/v1/account/inbox/notification-id/read", "POST", "Bearer old-access", undefined],
     ["/api/v1/account/inbox/read-all", "POST", "Bearer old-access", undefined],
     ["/api/v1/account/notification-channels", "GET", "Bearer old-access", undefined],
-    ["/api/v1/account/notification-channels/IN_APP", "PUT", "Bearer old-access", '{"enabled":false}'],
+    ["/api/v1/account/notification-channels/IN_APP", "PUT", "Bearer old-access", '{"enabled":false,"quietFrom":null,"quietTo":null}'],
+    ["/api/v1/account/notification-channels/EMAIL", "PUT", "Bearer old-access", '{"enabled":false,"quietFrom":"22:00","quietTo":"08:00"}'],
   ])
   const failing = load("api/inbox.ts", async () => response(404, { message: "Уведомление не найдено.", details: { error: "NOTIFICATION_NOT_FOUND" } }))
   failing.saveTokens(old)

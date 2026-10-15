@@ -30,7 +30,11 @@ import {
   FieldError,
   Textarea,
 } from "@/components/ui"
-import { profileSchema, type ProfileValues } from "../schemas"
+import {
+  profileSchema,
+  toUpdateProfileDto,
+  type ProfileValues,
+} from "../schemas"
 
 function valuesOf(user: CurrentUser): ProfileValues {
   return {
@@ -138,11 +142,9 @@ export function ProfileEditForm({
   async function save(values: ProfileValues) {
     form.clearErrors()
     try {
-      const updated = await mutation.mutateAsync({
-        displayName: values.displayName,
-        cityCode: values.cityCode === "__none" ? null : values.cityCode,
-        bio: values.bio.trim() ? values.bio : null,
-      })
+      const updated = await mutation.mutateAsync(
+        toUpdateProfileDto(values, user),
+      )
       form.reset(valuesOf(updated))
       onSaved()
     } catch (error) {

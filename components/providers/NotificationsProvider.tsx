@@ -89,7 +89,7 @@ function Connection({ session }: { session: string }) {
         void client.invalidateQueries({ queryKey: ["account", "applications"] })
         void client.invalidateQueries({ queryKey: ["account", "assignments"] })
         if (item.eventType.startsWith("CHAT_")) void invalidateChatData(client)
-        const href = notificationHref(item.actionUrl)
+        const href = notificationHref(item.actionUrl, item.needId)
         toast(item.title, {
           id: item.id,
           description: item.message,

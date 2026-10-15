@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "cn"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -119,9 +119,11 @@ const touchButton = "h-11 w-full rounded-full px-5 sm:h-10 sm:w-auto"
 
 type CaseDetailsProps = {
   caseId: string
+  /** Need to expand, scroll to and highlight, e.g. from a notification link. */
+  highlightNeedId?: string
 }
 
-export function CaseDetails({ caseId }: CaseDetailsProps) {
+export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const client = useQueryClient()
   const { user } = useAuth()
   const locale = useDictionaryLocale()
@@ -312,6 +314,17 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
     }
   }
 
+  const highlightedNeedId = details.data?.needs?.some(
+    (need) => need.id === highlightNeedId,
+  )
+    ? highlightNeedId
+    : undefined
+  useEffect(() => {
+    if (highlightedNeedId)
+      document
+        .getElementById(`need-${highlightedNeedId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" })
+  }, [highlightedNeedId])
 
   if (details.isLoading || (details.data && !details.data.author && !details.error))
     return (
@@ -633,10 +646,16 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
               Добавить потребность
             </Button>
           )}
-          {/* The first need starts expanded so its actions are visible at once. */}
+          {/* The first (or linked) need starts expanded so its actions are visible at once. */}
           <Accordion
+            // Re-open the right need when a link points to another one.
+            key={highlightedNeedId}
             type="multiple"
-            defaultValue={animalCase.needs.slice(0, 1).map((need) => need.id)}
+            defaultValue={
+              highlightedNeedId
+                ? [highlightedNeedId]
+                : animalCase.needs.slice(0, 1).map((need) => need.id)
+            }
             className="empty:hidden"
           >
             {animalCase.needs.map((need) => {
@@ -648,7 +667,12 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                 <AccordionItem
                   key={need.id}
                   value={need.id}
-                  className="group/need min-w-0"
+                  id={`need-${need.id}`}
+                  className={cn(
+                    "group/need min-w-0 scroll-mt-24",
+                    need.id === highlightedNeedId &&
+                      "rounded-2xl bg-primary-soft/40 px-2 ring-2 ring-primary/30",
+                  )}
                 >
                   <div className="flex min-w-0 items-start gap-1">
                     <AccordionTrigger>

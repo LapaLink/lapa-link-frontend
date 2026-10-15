@@ -13,6 +13,9 @@ export type CurrentUser = {
   emailVerifiedAt?: string | null
   cityCode?: string | null
   bio?: string | null
+  /** Home point for help offer radius matching; visible to the owner only. */
+  homeLatitude?: number | null
+  homeLongitude?: number | null
 }
 
 export type LoginDto = {

@@ -18,8 +18,12 @@ export const inboxNotificationSchema = z.object({
   actionUrl: z.string().nullable(),
 })
 
-export function notificationHref(value: string | null) {
-  return value && /^\/cases\/[a-f0-9-]{36}$/i.test(value) ? value : null
+/** Same-site case link; with `needId` the case page opens and highlights that need. */
+export function notificationHref(value: string | null, needId?: string | null) {
+  if (!value || !/^\/cases\/[a-f0-9-]{36}$/i.test(value)) return null
+  return needId && /^[a-f0-9-]{36}$/i.test(needId)
+    ? `${value}?need=${needId}`
+    : value
 }
 
 /** Parse incremental UTF-8 SSE, including fragmented CRLF and multiline data. */

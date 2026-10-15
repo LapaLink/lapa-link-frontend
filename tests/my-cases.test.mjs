@@ -54,6 +54,7 @@ function renderPage(
     props = {},
     onFormDefaults,
     emailEnabled = true,
+    channels,
   } = {},
 ) {
   const modules = new Map()
@@ -70,7 +71,7 @@ function renderPage(
       mutateAsync: async () => user,
     }),
     useUpdateNotification: () => ({ isPending: false, mutate() {} }),
-    useNotificationChannels: () => ({ data: [{ channel: "EMAIL", title: "На электронную почту", enabled: emailEnabled }, { channel: "IN_APP", title: "В приложении", enabled: true }], isPending: false, isError: false }),
+    useNotificationChannels: () => ({ data: channels ?? [{ channel: "EMAIL", title: "На электронную почту", enabled: emailEnabled }, { channel: "IN_APP", title: "В приложении", enabled: true }], isPending: false, isError: false }),
     useUpdateNotificationChannel: () => ({ isPending: false, mutate() {} }),
     useUpdateLocale: () => ({ isPending: false }),
     useChatPermission: () => ({
@@ -485,6 +486,33 @@ test("notification settings are built from the API list with translated titles",
     { data: [], props: { user: { ...owner, emailVerifiedAt: "2026-01-01T00:00:00Z" } } },
   )
   assert.ok(!verified.includes("email не подтверждён"))
+})
+
+test("notification settings group channels by event and show email quiet hours", () => {
+  const html = renderPage(
+    "components/pages/Account/common/NotificationsCard.tsx",
+    "NotificationsCard",
+    {
+      data: [
+        { eventType: "WELCOME", channel: "EMAIL", title: "Приветственное письмо", enabled: true },
+        { eventType: "HELP_OFFER_MATCHED", channel: "EMAIL", title: "Новые потребности рядом", enabled: true },
+        { eventType: "HELP_OFFER_MATCHED", channel: "IN_APP", title: "Новые потребности рядом", enabled: false },
+      ],
+      channels: [
+        { channel: "EMAIL", title: "Электронная почта", enabled: true, quietFrom: "22:00", quietTo: "08:00" },
+        { channel: "IN_APP", title: "В приложении", enabled: true, quietFrom: null, quietTo: null },
+      ],
+      props: { user: { ...owner, emailVerifiedAt: "2026-01-01T00:00:00Z" } },
+    },
+  )
+  assert.ok(html.includes("Каналы"))
+  assert.ok(html.includes("Что присылать"))
+  assert.equal(html.split("Новые потребности рядом").length - 1, 1)
+  assert.ok(html.includes('id="notification-HELP_OFFER_MATCHED-EMAIL"'))
+  assert.ok(html.includes('id="notification-HELP_OFFER_MATCHED-IN_APP"'))
+  // Quiet hours belong to EMAIL only.
+  assert.equal(html.split("Тихие часы").length - 1, 1)
+  assert.ok(html.includes("22:00–08:00"))
 })
 
 test("language card marks the account locale as selected", () => {

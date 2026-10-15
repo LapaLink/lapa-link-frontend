@@ -5,6 +5,15 @@ import type {
 } from "@/types"
 import { authorizedRequest } from "./instance"
 
+/** Quiet hours may come as "22:00" or "22:00:00"; the UI works with "HH:mm". */
+const withShortTimes = (
+  setting: NotificationChannelSetting,
+): NotificationChannelSetting => ({
+  ...setting,
+  quietFrom: setting.quietFrom?.slice(0, 5) ?? null,
+  quietTo: setting.quietTo?.slice(0, 5) ?? null,
+})
+
 export const inboxApi = {
   list: (page = 0, size = 10, signal?: AbortSignal) =>
     authorizedRequest<PageResponse<InboxNotification>>(
@@ -28,14 +37,30 @@ export const inboxApi = {
       { signal, headers: { Accept: "text/event-stream" } },
       { stream: true },
     ),
-  channels: (signal?: AbortSignal) =>
-    authorizedRequest<NotificationChannelSetting[]>(
-      "/account/notification-channels",
-      { signal },
-    ),
-  updateChannel: ({ channel, enabled }: NotificationChannelSetting) =>
-    authorizedRequest<NotificationChannelSetting>(
-      `/account/notification-channels/${channel}`,
-      { method: "PUT", body: JSON.stringify({ enabled }) },
+  channels: async (signal?: AbortSignal) =>
+    (
+      await authorizedRequest<NotificationChannelSetting[]>(
+        "/account/notification-channels",
+        { signal },
+      )
+    ).map(withShortTimes),
+  /**
+   * Replaces the whole channel setting: send the current quiet hours too, or
+   * they are cleared. Quiet hours are EMAIL only and must be null for IN_APP.
+   */
+  updateChannel: async ({
+    channel,
+    enabled,
+    quietFrom,
+    quietTo,
+  }: Omit<NotificationChannelSetting, "title">) =>
+    withShortTimes(
+      await authorizedRequest<NotificationChannelSetting>(
+        `/account/notification-channels/${channel}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ enabled, quietFrom, quietTo }),
+        },
+      ),
     ),
 }

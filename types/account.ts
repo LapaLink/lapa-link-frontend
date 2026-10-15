@@ -5,10 +5,14 @@ import type {
   HelpApplicationStatus,
 } from "./cases"
 
+/** Replaces every profile field: omitted or null coordinates clear the home point. */
 export type UpdateProfileDto = {
   displayName: string
   cityCode: string | null
   bio: string | null
+  /** Both coordinates or neither. */
+  homeLatitude: number | null
+  homeLongitude: number | null
 }
 
 export type UserProfile = {

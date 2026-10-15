@@ -19,6 +19,7 @@ import {
   NotificationsCard,
   DeleteAccountCard,
   HelpOffersCard,
+  HomeAreaCard,
 } from "./common"
 
 export function Account() {
@@ -110,10 +111,7 @@ function AccountContent() {
       <FormAlert message={summaryError?.message} />
       <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-5 sm:gap-6">
-          {/* Anchor for the "укажите город" hint in HelpOffersCard. */}
-          <div id="profile" className="min-w-0 scroll-mt-24">
-            <ProfileCard user={user} />
-          </div>
+          <ProfileCard user={user} />
           <LanguageCard user={user} />
           <PasswordChangeCard />
         </div>
@@ -129,6 +127,10 @@ function AccountContent() {
           />
           <NotificationsCard user={user} />
         </div>
+      </div>
+      {/* Anchor for the "укажите домашнюю точку" hint in HelpOffersCard. */}
+      <div id="home-area" className="min-w-0 scroll-mt-24">
+        <HomeAreaCard user={user} />
       </div>
       <HelpOffersCard user={user} />
       <DeleteAccountCard />

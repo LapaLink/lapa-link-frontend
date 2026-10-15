@@ -142,6 +142,25 @@ test("notifications validate payload and restrict navigation to case pages", () 
     events.notificationHref("/cases/2032112f-4957-43d7-99db-4ee94d178eff"),
     "/cases/2032112f-4957-43d7-99db-4ee94d178eff",
   )
+  // HELP_OFFER_MATCHED and other need events open the case at that need.
+  assert.equal(
+    events.notificationHref(
+      "/cases/2032112f-4957-43d7-99db-4ee94d178eff",
+      "8a6c2f8e-4f0e-4c1a-9d4e-2f7b9c3d1e5a",
+    ),
+    "/cases/2032112f-4957-43d7-99db-4ee94d178eff?need=8a6c2f8e-4f0e-4c1a-9d4e-2f7b9c3d1e5a",
+  )
+  assert.equal(
+    events.notificationHref(
+      "/cases/2032112f-4957-43d7-99db-4ee94d178eff",
+      "x&next=//evil.test",
+    ),
+    "/cases/2032112f-4957-43d7-99db-4ee94d178eff",
+  )
+  assert.equal(
+    events.notificationHref(null, "8a6c2f8e-4f0e-4c1a-9d4e-2f7b9c3d1e5a"),
+    null,
+  )
 })
 
 test("SSE adds a notification once without exceeding page size", () => {

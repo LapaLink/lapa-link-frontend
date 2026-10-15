@@ -58,7 +58,7 @@ import {
 
 /**
  * "Готовность помогать": the kinds of help the user offers, with a radius
- * from the profile city and free-text availability. Offers can be switched
+ * from the home point ("Мой район") and free-text availability. Offers can be switched
  * off temporarily without deleting them.
  */
 export function HelpOffersCard({ user }: { user: CurrentUser }) {
@@ -117,16 +117,15 @@ export function HelpOffersCard({ user }: { user: CurrentUser }) {
       description="Отметьте, чем вы готовы помогать — так мы сможем предлагать вам подходящие задачи."
       fullWidthBody
     >
-      {!user.cityCode && (
+      {!!offers.data?.length && user.homeLatitude == null && (
         <p className="rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary">
-          Радиус считается от вашего города.{" "}
           <a
-            href="#profile"
+            href="#home-area"
             className="font-semibold underline underline-offset-2 hover:text-primary-hover"
           >
-            Укажите город в профиле
+            Укажите домашнюю точку
           </a>
-          , чтобы он учитывался.
+          , чтобы учитывался радиус.
         </p>
       )}
       {offers.isPending ? (
@@ -339,7 +338,7 @@ function HelpOfferForm({
           {offer ? typeName(offer.type) : "Добавить вид помощи"}
         </DialogTitle>
         <DialogDescription>
-          Укажите, как далеко от своего города готовы помогать и когда вам
+          Укажите, как далеко от домашней точки готовы помогать и когда вам
           удобно.
         </DialogDescription>
       </DialogHeader>
@@ -387,7 +386,7 @@ function HelpOfferForm({
                   aria-describedby="radiusKm-description radiusKm-error"
                 />
                 <FieldDescription id="radiusKm-description">
-                  От 1 до 100 км от города в профиле.
+                  От 1 до 100 км от домашней точки.
                 </FieldDescription>
                 <FieldError id="radiusKm-error">
                   {fieldState.error?.message}

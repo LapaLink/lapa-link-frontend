@@ -18,4 +18,7 @@ export type NotificationChannelSetting = {
   /** Channel name translated to the session language. */
   title: string
   enabled: boolean
+  /** EMAIL only: Minsk time "HH:mm"; both set or both null. May wrap past midnight. */
+  quietFrom: string | null
+  quietTo: string | null
 }

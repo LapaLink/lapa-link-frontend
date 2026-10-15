@@ -453,7 +453,7 @@ test("help offers card lists offers, mutes disabled ones and hides add when noth
   const html = render(file, "HelpOffersCard", {}, {
     data: offers,
     needTypes,
-    user: { id: "u", cityCode: null },
+    user: { id: "u", homeLatitude: null, homeLongitude: null },
   })
   assert.match(html, /Готовность помогать/)
   assert.match(html, /Перевозка/)
@@ -462,15 +462,22 @@ test("help offers card lists offers, mutes disabled ones and hides add when noth
   assert.match(html, /Временно выключено/)
   assert.match(html, /opacity-60/)
   assert.match(html, /Активно/)
-  assert.match(html, /href="#profile"/)
+  assert.match(html, /href="#home-area"/)
   assert.doesNotMatch(html, /Добавить вид помощи/)
 
-  const withCity = render(file, "HelpOffersCard", {}, {
+  const withHome = render(file, "HelpOffersCard", {}, {
+    data: offers,
+    needTypes,
+    user: { id: "u", homeLatitude: 53.9, homeLongitude: 27.56 },
+  })
+  assert.doesNotMatch(withHome, /href="#home-area"/)
+
+  const empty = render(file, "HelpOffersCard", {}, {
     data: [],
     needTypes,
-    user: { id: "u", cityCode: "minsk" },
+    user: { id: "u", homeLatitude: null, homeLongitude: null },
   })
-  assert.match(withCity, /Отметьте, чем вы готовы помогать/)
-  assert.match(withCity, /Добавить вид помощи/)
-  assert.doesNotMatch(withCity, /href="#profile"/)
+  assert.match(empty, /Отметьте, чем вы готовы помогать/)
+  assert.match(empty, /Добавить вид помощи/)
+  assert.doesNotMatch(empty, /href="#home-area"/)
 })

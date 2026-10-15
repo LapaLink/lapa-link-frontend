@@ -2,9 +2,11 @@ import { z } from "zod"
 import { emailSchema, passwordSchema, otpCodeSchema } from "@/lib/validation"
 import type {
   CreateHelpOfferDto,
+  CurrentUser,
   HelpOffer,
   NeedType,
   UpdateHelpOfferDto,
+  UpdateProfileDto,
 } from "@/types"
 
 export {
@@ -40,6 +42,20 @@ export const profileSchema = z.object({
   bio: z.string().max(1000, "Расскажите о себе в пределах 1000 символов."),
 })
 export type ProfileValues = z.infer<typeof profileSchema>
+
+/** PUT /account/profile replaces every field, so the home point is sent as is. */
+export function toUpdateProfileDto(
+  values: ProfileValues,
+  user: CurrentUser,
+): UpdateProfileDto {
+  return {
+    displayName: values.displayName,
+    cityCode: values.cityCode === "__none" ? null : values.cityCode,
+    bio: values.bio.trim() ? values.bio : null,
+    homeLatitude: user.homeLatitude ?? null,
+    homeLongitude: user.homeLongitude ?? null,
+  }
+}
 
 export const HELP_OFFER_AVAILABILITY_MAX = 500
 const radiusMessage = "Укажите радиус от 1 до 100 км."

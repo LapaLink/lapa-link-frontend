@@ -2,9 +2,19 @@ import { CaseDetails } from "@/components/pages"
 
 type CaseDetailsPageProps = {
   params: Promise<{ caseId: string }>
+  searchParams: Promise<{ need?: string | string[] }>
 }
 
-export default async function CaseDetailsPage({ params }: CaseDetailsPageProps) {
+export default async function CaseDetailsPage({
+  params,
+  searchParams,
+}: CaseDetailsPageProps) {
   const { caseId } = await params
-  return <CaseDetails caseId={caseId} />
+  const { need } = await searchParams
+  return (
+    <CaseDetails
+      caseId={caseId}
+      highlightNeedId={typeof need === "string" ? need : undefined}
+    />
+  )
 }
