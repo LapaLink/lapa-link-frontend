@@ -1,5 +1,10 @@
 import type { Tokens } from "@/types"
-import { getSessionRevision, readTokens, saveTokens } from "@/lib/auth"
+import {
+  getSessionRevision,
+  markUserBlocked,
+  readTokens,
+  saveTokens,
+} from "@/lib/auth"
 
 // Account locale is bound to the session it was loaded in, so a logout or a
 // login as another user falls back to the browser language until /me resolves.
@@ -242,6 +247,17 @@ export async function authorizedRequest<T>(
   try {
     return await send(tokens.accessToken)
   } catch (error) {
+    // The server ends a blocked user's session on their next request.
+    if (
+      error instanceof ApiError &&
+      error.status === 403 &&
+      error.code === "USER_BLOCKED" &&
+      revision === getSessionRevision() &&
+      readTokens()?.accessToken === tokens.accessToken
+    ) {
+      markUserBlocked()
+      saveTokens(null)
+    }
     if (!(error instanceof ApiError) || !isSessionError(error)) throw error
     if (revision !== getSessionRevision()) throw error
     if (error.code === "TOKEN_EXPIRED" && refreshOnExpired) {

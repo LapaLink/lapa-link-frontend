@@ -12,6 +12,7 @@ import {
   setPasswordResetEmail,
   takeAccountDeleted,
   takePasswordResetDone,
+  takeUserBlocked,
 } from "@/lib/auth"
 import { ROUTES } from "@/lib/constants"
 import { Form, FormField, FormAlert, LoadingButton } from "@/components/common"
@@ -43,6 +44,8 @@ export function LoginForm() {
       if (takePasswordResetDone())
         setNotice("Пароль изменён. Войдите с новым паролем.")
       else if (takeAccountDeleted()) setNotice("Аккаунт удалён.")
+      else if (takeUserBlocked())
+        setNotice("Аккаунт заблокирован. Вы вышли из аккаунта.")
     }, 0)
     return () => clearTimeout(timer)
   }, [])

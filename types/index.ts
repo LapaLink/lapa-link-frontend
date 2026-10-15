@@ -6,9 +6,12 @@ export type {
   CreateCaseDto,
   AnimalCase,
   CaseNeed,
+  CreateNeedDto,
+  UpdateNeedDto,
   CaseNotificationSettings,
   CaseStatus,
   NeedStatus,
+  NeedPriority,
   HelpApplicationStatus,
   AssignmentStatus,
   PageResponse,
@@ -49,6 +52,9 @@ export type {
   EmailConfirmationDto,
   MyHelpApplication,
   MyAssignment,
+  HelpOffer,
+  CreateHelpOfferDto,
+  UpdateHelpOfferDto,
 } from "./account"
 export type { InboxNotification, NotificationChannelSetting } from "./inbox"
 export type {

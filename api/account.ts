@@ -10,12 +10,15 @@ import type {
   PasswordChangeDto,
   UserLocale,
   AssignmentStatus,
+  CreateHelpOfferDto,
   HelpApplicationStatus,
+  HelpOffer,
   MyAssignment,
   MyHelpApplication,
   PageResponse,
   OtpResponse,
   Tokens,
+  UpdateHelpOfferDto,
 } from "@/types"
 import { getSessionRevision } from "@/lib/auth"
 import { authorizedRequest, setRequestLocale } from "./instance"
@@ -116,5 +119,28 @@ export const accountApi = {
   getAssignments: (status?: AssignmentStatus, page = 0, size = 20) =>
     authorizedRequest<PageResponse<MyAssignment>>(
       `/account/assignments${query({ status, page, size })}`,
+    ),
+  /** Kinds of help the user is ready to give, disabled ones included, oldest first. */
+  getHelpOffers: (signal?: AbortSignal) =>
+    authorizedRequest<HelpOffer[]>("/account/help-offers", { signal }),
+  /** One offer per need type; a duplicate fails with HELP_OFFER_ALREADY_EXISTS. */
+  createHelpOffer: (data: CreateHelpOfferDto) =>
+    authorizedRequest<HelpOffer>("/account/help-offers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  /** Partial update; the type cannot be changed. */
+  updateHelpOffer: (offerId: string, data: UpdateHelpOfferDto) =>
+    authorizedRequest<HelpOffer>(
+      `/account/help-offers/${encodeURIComponent(offerId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    ),
+  deleteHelpOffer: (offerId: string) =>
+    authorizedRequest<void>(
+      `/account/help-offers/${encodeURIComponent(offerId)}`,
+      { method: "DELETE" },
     ),
 }

@@ -20,6 +20,7 @@ export const queryKeys = {
   myAssignments: (status?: AssignmentStatus) =>
     ["account", "assignments", status ?? "ALL"] as const,
   notifications: ["account", "notifications"] as const,
+  helpOffers: ["account", "help-offers"] as const,
   chat: ["chat"] as const,
   chatPermission: (targetType: string, targetId: string) =>
     ["chat", "permission", targetType, targetId] as const,

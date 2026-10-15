@@ -5,6 +5,7 @@ const tones = {
   primary: "bg-primary-soft text-primary",
   success: "bg-success text-success-foreground",
   muted: "bg-muted text-muted-foreground",
+  danger: "bg-destructive/10 text-destructive",
 }
 
 /** Small pill for a status or a short attribute; the text carries the meaning, the tone only supports it. */

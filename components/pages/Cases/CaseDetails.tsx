@@ -19,6 +19,7 @@ import {
   Mars,
   PawPrint,
   Pencil,
+  Plus,
   Venus,
 } from "lucide-react"
 import { accountApi, casesApi, getErrorMessage } from "@/api"
@@ -84,6 +85,8 @@ import {
 import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
 import { filterValidTaskRecords } from "@/lib/tasks"
 import { CaseChat, useCaseConversations } from "./CaseChat"
+import { NeedDetails, NeedPriorityBadge } from "./NeedDetails"
+import { NeedFormDialog } from "./NeedFormDialog"
 
 const needStatusTones = {
   OPEN: "primary",
@@ -124,6 +127,8 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   } | null>(null)
   const [pendingAssignment, setPendingAssignment] =
     useState<HelpApplication | null>(null)
+  // Need form: `{}` adds a need, `{ need }` edits it, null keeps it closed.
+  const [needForm, setNeedForm] = useState<{ need?: CaseNeed } | null>(null)
 
   const details = useQuery({
     queryKey: queryKeys.caseDetail(caseId),
@@ -591,7 +596,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
       <FormAlert message={error} />
 
-      {animalCase.needs.length > 0 && (
+      {(animalCase.needs.length > 0 || canEdit) && (
         <SectionCard
           icon={HandHeart}
           title="Чем можно помочь"
@@ -602,7 +607,17 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
               : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."
           }
         >
-          <ul className="flex flex-col gap-3">
+          {canEdit && (
+            <Button
+              variant="outline"
+              className="h-11 w-full sm:h-10 sm:w-fit"
+              onClick={() => setNeedForm({})}
+            >
+              <Plus aria-hidden />
+              Добавить потребность
+            </Button>
+          )}
+          <ul className="flex flex-col gap-3 empty:hidden">
             {animalCase.needs.map((need) => {
               const needResponses = responsesByNeed.get(need.id) ?? []
               const needName = getDictionaryName(needTypes.data, need.type, locale)
@@ -617,14 +632,30 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
                       <h3 className="font-bold leading-snug [overflow-wrap:anywhere]">
                         {needName}
                       </h3>
-                      <StatusBadge tone={needStatusTones[need.status]}>
-                        {needStatusLabels[need.status]}
-                      </StatusBadge>
+                      <div className="flex flex-wrap gap-1.5">
+                        <StatusBadge tone={needStatusTones[need.status]}>
+                          {needStatusLabels[need.status]}
+                        </StatusBadge>
+                        {need.priority && (
+                          <NeedPriorityBadge priority={need.priority} />
+                        )}
+                      </div>
                     </div>
                   </div>
 
+                  <NeedDetails need={need} />
+
                   {isAuthor && animalCase.status === "OPEN" && need.status !== "CLOSED" && (
                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <Button
+                        variant="outline"
+                        className={touchButton}
+                        disabled={updateNeedStatus.isPending}
+                        onClick={() => setNeedForm({ need })}
+                      >
+                        <Pencil aria-hidden />
+                        Изменить
+                      </Button>
                       {need.status === "OPEN" && (
                         <Button
                           variant="outline"
@@ -751,6 +782,17 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
             })}
           </ul>
         </SectionCard>
+      )}
+
+      {canEdit && (
+        <NeedFormDialog
+          caseId={caseId}
+          need={needForm?.need}
+          open={!!needForm}
+          onOpenChange={(open) => {
+            if (!open) setNeedForm(null)
+          }}
+        />
       )}
 
       <Dialog

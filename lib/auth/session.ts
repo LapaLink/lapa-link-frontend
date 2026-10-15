@@ -67,6 +67,17 @@ export function takeAccountDeleted() {
   return deleted
 }
 
+// One-shot hand-off of the "account blocked" notice to the login screen.
+const USER_BLOCKED_KEY = "lapalink.user-blocked"
+export function markUserBlocked() {
+  sessionStorage.setItem(USER_BLOCKED_KEY, "1")
+}
+export function takeUserBlocked() {
+  const blocked = sessionStorage.getItem(USER_BLOCKED_KEY) === "1"
+  sessionStorage.removeItem(USER_BLOCKED_KEY)
+  return blocked
+}
+
 export function getServerSessionSnapshot() {
   return "initializing"
 }

@@ -19,6 +19,7 @@ export type MyCaseListItem = Omit<CaseListItem, "cityCode"> & {
 export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
 export type CaseStatus = "OPEN" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
+export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 export type HelpApplicationStatus = "PENDING" | "ACCEPTED" | "CANCELLED"
 export type AssignmentStatus = "ACTIVE" | "CANCELLED" | "COMPLETED"
 
@@ -59,7 +60,33 @@ export type CaseNeed = {
   caseId: string
   type: string
   status: NeedStatus
+  priority: NeedPriority
+  /** ISO-8601 UTC start of the time window. */
+  startsAt: string | null
+  /** ISO-8601 UTC deadline. */
+  deadline: string | null
+  comment: string | null
 }
+
+export type CreateNeedDto = {
+  type: string
+  priority?: NeedPriority
+  startsAt?: string
+  deadline?: string
+  comment?: string
+}
+
+/**
+ * Partial need update: a missing field is left as is, so a time window bound
+ * cannot be cleared; an empty comment clears it.
+ */
+export type UpdateNeedDto = Partial<{
+  status: Exclude<NeedStatus, "ASSIGNED">
+  priority: NeedPriority
+  startsAt: string
+  deadline: string
+  comment: string
+}>
 
 export type CaseAuthor = {
   id: string
