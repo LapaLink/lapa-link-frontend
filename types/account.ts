@@ -72,3 +72,28 @@ export type MyAssignment = {
   createdAt: string
   updatedAt: string
 }
+
+export type HelpOffer = {
+  id: string
+  /** Need type code from /need-types. */
+  type: string
+  /** 1..100 km from the profile home zone. */
+  radiusKm: number
+  availability: string | null
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type CreateHelpOfferDto = {
+  type: string
+  radiusKm: number
+  availability?: string
+}
+
+/** Partial update: a missing field is left as is, an empty availability clears it. */
+export type UpdateHelpOfferDto = Partial<{
+  radiusKm: number
+  availability: string
+  active: boolean
+}>

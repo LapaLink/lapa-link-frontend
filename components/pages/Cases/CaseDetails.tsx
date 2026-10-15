@@ -10,6 +10,8 @@ import {
   CalendarDays,
   CircleCheck,
   CircleHelp,
+  CircleX,
+  Ellipsis,
   HandHeart,
   HeartHandshake,
   HeartPulse,
@@ -19,6 +21,7 @@ import {
   Mars,
   PawPrint,
   Pencil,
+  Plus,
   Venus,
 } from "lucide-react"
 import { accountApi, casesApi, getErrorMessage } from "@/api"
@@ -50,6 +53,10 @@ import {
   UserAvatar,
 } from "@/components/common"
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -65,6 +72,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Field,
   FieldLabel,
   Select,
@@ -84,6 +95,12 @@ import {
 import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
 import { filterValidTaskRecords } from "@/lib/tasks"
 import { CaseChat, useCaseConversations } from "./CaseChat"
+import {
+  NeedComment,
+  NeedPriorityBadge,
+  NeedTimeWindow,
+} from "./NeedDetails"
+import { NeedFormDialog } from "./NeedFormDialog"
 
 const needStatusTones = {
   OPEN: "primary",
@@ -124,6 +141,10 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   } | null>(null)
   const [pendingAssignment, setPendingAssignment] =
     useState<HelpApplication | null>(null)
+  // Need form: `{}` adds a need, `{ need }` edits it, null keeps it closed.
+  const [needForm, setNeedForm] = useState<{ need?: CaseNeed } | null>(null)
+  // Need whose pending responses are compared in the helper picker.
+  const [pickerNeed, setPickerNeed] = useState<CaseNeed | null>(null)
 
   const details = useQuery({
     queryKey: queryKeys.caseDetail(caseId),
@@ -591,7 +612,7 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
 
       <FormAlert message={error} />
 
-      {animalCase.needs.length > 0 && (
+      {(animalCase.needs.length > 0 || canEdit) && (
         <SectionCard
           icon={HandHeart}
           title="Чем можно помочь"
@@ -602,155 +623,246 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
               : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."
           }
         >
-          <ul className="flex flex-col gap-3">
+          {canEdit && (
+            <Button
+              variant="outline"
+              className="h-11 w-full sm:h-10 sm:w-fit"
+              onClick={() => setNeedForm({})}
+            >
+              <Plus aria-hidden />
+              Добавить потребность
+            </Button>
+          )}
+          {/* The first need starts expanded so its actions are visible at once. */}
+          <Accordion
+            type="multiple"
+            defaultValue={animalCase.needs.slice(0, 1).map((need) => need.id)}
+            className="empty:hidden"
+          >
             {animalCase.needs.map((need) => {
               const needResponses = responsesByNeed.get(need.id) ?? []
               const needName = getDictionaryName(needTypes.data, need.type, locale)
+              const canManageNeed =
+                isAuthor && animalCase.status === "OPEN" && need.status !== "CLOSED"
               return (
-                <li
+                <AccordionItem
                   key={need.id}
-                  className="flex min-w-0 flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-5"
+                  value={need.id}
+                  className="group/need min-w-0"
                 >
-                  <div className="flex min-w-0 items-start gap-3">
-                    <IconCircle icon={HeartHandshake} size="sm" />
-                    <div className="flex min-w-0 flex-col items-start gap-1.5">
-                      <h3 className="font-bold leading-snug [overflow-wrap:anywhere]">
-                        {needName}
-                      </h3>
-                      <StatusBadge tone={needStatusTones[need.status]}>
-                        {needStatusLabels[need.status]}
-                      </StatusBadge>
-                    </div>
-                  </div>
-
-                  {isAuthor && animalCase.status === "OPEN" && need.status !== "CLOSED" && (
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      {need.status === "OPEN" && (
-                        <Button
-                          variant="outline"
-                          className={touchButton}
-                          disabled={updateNeedStatus.isPending}
-                          onClick={() =>
-                            void handleNeedStatusChange(need, "CLOSED")
-                          }
+                  <div className="flex min-w-0 items-start gap-1">
+                    <AccordionTrigger>
+                      <span className="flex min-w-0 flex-1 items-start gap-3">
+                        <span
+                          aria-hidden
+                          className="flex size-10 shrink-0 items-center justify-center rounded-xl text-foreground/70 transition-colors group-data-[state=open]/need:bg-primary-soft group-data-[state=open]/need:text-primary"
                         >
-                          Помощь больше не нужна
-                        </Button>
-                      )}
-                      {need.status === "ASSIGNED" && (
-                        <>
-                          <Button
-                            variant="default"
-                            className={touchButton}
-                            disabled={updateNeedStatus.isPending}
-                            onClick={() =>
-                              void handleNeedStatusChange(need, "CLOSED")
-                            }
-                          >
-                            Помощь получена
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className={touchButton}
-                            disabled={updateNeedStatus.isPending}
-                            onClick={() =>
-                              void handleNeedStatusChange(need, "OPEN")
-                            }
-                          >
-                            Выбрать другого помощника
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {!isAuthor && canAct && !user && need.status === "OPEN" && (
-                    <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-muted-foreground">
-                        Войдите, чтобы предложить помощь и написать автору.
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button asChild className="h-11 flex-1 sm:h-10 sm:flex-none">
-                          <Link href={ROUTES.LOGIN}>Войти</Link>
-                        </Button>
-                        <Button
-                          asChild
-                          variant="outline"
-                          className="h-11 flex-1 sm:h-10 sm:flex-none"
-                        >
-                          <Link href={ROUTES.REGISTER}>Регистрация</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {!isAuthor &&
-                    canAct &&
-                    user &&
-                    (need.status === "OPEN" ||
-                      myCaseApplicationsForNeed(need.id).length > 0) && (
-                    <>
-                      {myCaseApplicationsForNeed(need.id).length ? (
-                        <div className="rounded-xl bg-muted/60 p-4">
-                          <p className="font-semibold">
-                            Вы уже предложили здесь помощь.
-                          </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Следите за ответом автора в разделе{" "}
-                            <Link
-                              href={ROUTES.MY_TASKS}
-                              className="font-semibold text-primary hover:text-primary-hover hover:underline"
-                            >
-                              «Мои задачи»
-                            </Link>
-                            .
-                          </p>
-                          <ul className="mt-3 space-y-2 text-sm">
-                            {myCaseApplicationsForNeed(need.id).map(
-                              (application) => (
-                                <li
-                                  key={application.id}
-                                  className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3"
-                                >
-                                  <StatusBadge
-                                    tone={responseStatusTones[application.status]}
-                                  >
-                                    {responseStatusLabels[application.status]}
-                                  </StatusBadge>
-                                  <p className="text-muted-foreground [overflow-wrap:anywhere]">
-                                    {application.message}
-                                  </p>
-                                </li>
-                              ),
+                          <HeartHandshake className="size-5" />
+                        </span>
+                        <span className="flex min-w-0 flex-col items-start gap-1.5">
+                          <span className="font-bold leading-snug [overflow-wrap:anywhere]">
+                            {needName}
+                          </span>
+                          <span className="flex flex-wrap gap-1.5">
+                            <StatusBadge tone={needStatusTones[need.status]}>
+                              {needStatusLabels[need.status]}
+                            </StatusBadge>
+                            {need.priority && (
+                              <NeedPriorityBadge priority={need.priority} />
                             )}
-                          </ul>
-                        </div>
-                      ) : (
-                        <Button
-                          className={touchButton}
-                          onClick={() => openOffer(need)}
-                        >
-                          Предложить помощь
-                        </Button>
-                      )}
-                    </>
-                  )}
+                          </span>
+                          <NeedTimeWindow need={need} />
+                        </span>
+                      </span>
+                    </AccordionTrigger>
+                    {canManageNeed && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="mt-3 size-11 shrink-0 sm:size-10"
+                            aria-label={`Действия: ${needName}`}
+                            disabled={updateNeedStatus.isPending}
+                          >
+                            <Ellipsis aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="min-h-10"
+                            onSelect={() => setNeedForm({ need })}
+                          >
+                            <Pencil aria-hidden />
+                            Изменить
+                          </DropdownMenuItem>
+                          {need.status === "OPEN" && (
+                            <DropdownMenuItem
+                              variant="destructive"
+                              className="min-h-10"
+                              onSelect={() =>
+                                void handleNeedStatusChange(need, "CLOSED")
+                              }
+                            >
+                              <CircleX aria-hidden />
+                              Помощь больше не нужна
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  <AccordionContent className="flex min-w-0 flex-col gap-4">
+                    {need.comment && <NeedComment comment={need.comment} />}
 
-                  {isAuthor && (
-                    <AuthorResponses
-                      responses={needResponses}
-                      need={need}
-                      busy={assignResponse.isPending}
-                      canAssign={canAct && need.status === "OPEN"}
-                      chats={caseChats.byUser}
-                      onAssign={requestAssignment}
-                    />
-                  )}
-                </li>
+                    {!isAuthor && canAct && !user && need.status === "OPEN" && (
+                      <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          Войдите, чтобы предложить помощь и написать автору.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button asChild className="h-11 flex-1 sm:h-10 sm:flex-none">
+                            <Link href={ROUTES.LOGIN}>Войти</Link>
+                          </Button>
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="h-11 flex-1 sm:h-10 sm:flex-none"
+                          >
+                            <Link href={ROUTES.REGISTER}>Регистрация</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {!isAuthor &&
+                      canAct &&
+                      user &&
+                      (need.status === "OPEN" ||
+                        myCaseApplicationsForNeed(need.id).length > 0) && (
+                      <>
+                        {myCaseApplicationsForNeed(need.id).length ? (
+                          <div className="rounded-xl bg-muted/60 p-4">
+                            <p className="font-semibold">
+                              Вы уже предложили здесь помощь.
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Следите за ответом автора в разделе{" "}
+                              <Link
+                                href={ROUTES.MY_TASKS}
+                                className="font-semibold text-primary hover:text-primary-hover hover:underline"
+                              >
+                                «Мои задачи»
+                              </Link>
+                              .
+                            </p>
+                            <ul className="mt-3 space-y-2 text-sm">
+                              {myCaseApplicationsForNeed(need.id).map(
+                                (application) => (
+                                  <li
+                                    key={application.id}
+                                    className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3"
+                                  >
+                                    <StatusBadge
+                                      tone={responseStatusTones[application.status]}
+                                    >
+                                      {responseStatusLabels[application.status]}
+                                    </StatusBadge>
+                                    <p className="text-muted-foreground [overflow-wrap:anywhere]">
+                                      {application.message}
+                                    </p>
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </div>
+                        ) : (
+                          <Button
+                            className={touchButton}
+                            onClick={() => openOffer(need)}
+                          >
+                            Предложить помощь
+                          </Button>
+                        )}
+                      </>
+                    )}
+
+                    {isAuthor && (
+                      <AuthorNeedPanel
+                        responses={needResponses}
+                        need={need}
+                        assignBusy={assignResponse.isPending}
+                        statusBusy={updateNeedStatus.isPending}
+                        canManage={canManageNeed}
+                        chats={caseChats.byUser}
+                        onPick={() => setPickerNeed(need)}
+                        onStatusChange={(next) =>
+                          void handleNeedStatusChange(need, next)
+                        }
+                      />
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
               )
             })}
-          </ul>
+          </Accordion>
         </SectionCard>
+      )}
+
+      <Dialog
+        open={!!pickerNeed}
+        onOpenChange={(open) => {
+          if (!open) setPickerNeed(null)
+        }}
+      >
+        {pickerNeed && (
+          <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Выбрать помощника</DialogTitle>
+              <DialogDescription>
+                {getDictionaryName(needTypes.data, pickerNeed.type, locale)}:
+                сравните предложения и выберите одного человека.
+              </DialogDescription>
+            </DialogHeader>
+            <ul className="flex flex-col gap-2">
+              {(responsesByNeed.get(pickerNeed.id) ?? [])
+                .filter((response) => response.status === "PENDING")
+                .map((response) => (
+                  <li
+                    key={response.id}
+                    className="flex flex-col gap-3 rounded-xl border bg-background/60 p-3 sm:p-4"
+                  >
+                    <HelperRow
+                      response={response}
+                      conversation={caseChats.byUser.get(response.user.id)}
+                      fullMessage
+                    />
+                    <Button
+                      className={touchButton}
+                      disabled={assignResponse.isPending}
+                      onClick={() => {
+                        setPickerNeed(null)
+                        void requestAssignment(response)
+                      }}
+                    >
+                      Выбрать помощником
+                    </Button>
+                  </li>
+                ))}
+            </ul>
+          </DialogContent>
+        )}
+      </Dialog>
+
+      {canEdit && (
+        <NeedFormDialog
+          caseId={caseId}
+          need={needForm?.need}
+          open={!!needForm}
+          onOpenChange={(open) => {
+            if (!open) setNeedForm(null)
+          }}
+        />
       )}
 
       <Dialog
@@ -861,68 +973,144 @@ export function CaseDetails({ caseId }: CaseDetailsProps) {
   )
 }
 
-function AuthorResponses({
+/**
+ * Author's part of an expanded need: the chosen helper, the main status
+ * actions and everyone who responded. Choosing among responses happens in a
+ * separate picker dialog.
+ */
+function AuthorNeedPanel({
   responses,
   need,
-  busy,
-  canAssign,
+  assignBusy,
+  statusBusy,
+  canManage,
   chats,
-  onAssign,
+  onPick,
+  onStatusChange,
 }: {
   responses: HelpApplication[]
   need: CaseNeed
-  busy: boolean
-  canAssign: boolean
+  assignBusy: boolean
+  statusBusy: boolean
+  canManage: boolean
   chats: Map<string, Conversation>
-  onAssign: (response: HelpApplication) => void
+  onPick: () => void
+  onStatusChange: (next: NeedStatus) => void
 }) {
-  if (!responses.length)
-    return (
-      <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-        Пока никто не предложил помощь. Мы покажем здесь всех, кто откликнется.
-      </p>
-    )
+  const accepted = responses.find((response) => response.status === "ACCEPTED")
+  const others = responses.filter((response) => response !== accepted)
+  const pendingCount = responses.filter(
+    (response) => response.status === "PENDING",
+  ).length
   return (
-    <ul className="flex flex-col gap-2">
-      {responses.map((response) => {
-        const name = response.user.displayName || "Пользователь"
-        return (
-          <li
-            key={response.id}
-            className="flex flex-col gap-3 rounded-xl border bg-background/60 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+    <div className="flex min-w-0 flex-col gap-4">
+      {accepted && (
+        <section aria-labelledby={`helper-${need.id}`} className="flex flex-col gap-2">
+          <h4
+            id={`helper-${need.id}`}
+            className="text-sm font-semibold text-muted-foreground"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <UserAvatar user={{ displayName: name }} size="lg" />
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="font-semibold [overflow-wrap:anywhere]">{name}</p>
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                  {response.message}
-                </p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <StatusBadge tone={responseStatusTones[response.status]}>
-                    {responseStatusLabels[response.status]}
-                  </StatusBadge>
-                  <ResponseChatStatus
-                    conversation={chats.get(response.user.id)}
-                  />
-                </div>
-              </div>
-            </div>
-            {canAssign &&
-              response.status === "PENDING" &&
-              need.status === "OPEN" && (
-                <Button
-                  disabled={busy}
-                  className={touchButton}
-                  onClick={() => onAssign(response)}
-                >
-                  Выбрать помощником
-                </Button>
-              )}
-          </li>
+            Выбранный помощник
+          </h4>
+          <HelperRow
+            response={accepted}
+            conversation={chats.get(accepted.user.id)}
+            fullMessage
+          />
+        </section>
+      )}
+
+      {canManage && need.status === "ASSIGNED" && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            className={cn(touchButton, "sm:flex-1")}
+            disabled={statusBusy}
+            onClick={() => onStatusChange("CLOSED")}
+          >
+            Помощь получена
+          </Button>
+          <Button
+            variant="outline"
+            className={cn(touchButton, "sm:flex-1")}
+            disabled={statusBusy}
+            onClick={() => onStatusChange("OPEN")}
+          >
+            Выбрать другого помощника
+          </Button>
+        </div>
+      )}
+      {canManage && need.status === "OPEN" && pendingCount > 0 && (
+        <Button className={touchButton} disabled={assignBusy} onClick={onPick}>
+          Выбрать помощника · {pendingCount}
+        </Button>
+      )}
+
+      {others.length > 0 ? (
+        <section aria-labelledby={`responses-${need.id}`} className="flex flex-col gap-2">
+          <h4
+            id={`responses-${need.id}`}
+            className="text-sm font-semibold text-muted-foreground"
+          >
+            Откликнулись · {others.length}
+          </h4>
+          <ul className="flex flex-col divide-y rounded-xl border bg-background/60 px-3 sm:px-4">
+            {others.map((response) => (
+              <li key={response.id} className="py-3">
+                <HelperRow
+                  response={response}
+                  conversation={chats.get(response.user.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        !accepted && (
+          <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+            Пока никто не предложил помощь. Мы покажем здесь всех, кто
+            откликнется.
+          </p>
         )
-      })}
-    </ul>
+      )}
+    </div>
+  )
+}
+
+/**
+ * One responder in a compact row. The message is cut to a line unless
+ * `fullMessage` is set (the chosen helper and the picker need the contacts).
+ */
+function HelperRow({
+  response,
+  conversation,
+  fullMessage = false,
+}: {
+  response: HelpApplication
+  conversation: Conversation | undefined
+  fullMessage?: boolean
+}) {
+  const name = response.user.displayName || "Пользователь"
+  return (
+    <div className="flex min-w-0 items-start gap-3">
+      <UserAvatar user={{ displayName: name }} size="lg" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="font-semibold [overflow-wrap:anywhere]">{name}</p>
+        <p
+          className={cn(
+            "text-sm text-muted-foreground [overflow-wrap:anywhere]",
+            fullMessage ? "whitespace-pre-wrap" : "line-clamp-1",
+          )}
+        >
+          {response.message}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <StatusBadge tone={responseStatusTones[response.status]}>
+            {responseStatusLabels[response.status]}
+          </StatusBadge>
+          <ResponseChatStatus conversation={conversation} />
+        </div>
+      </div>
+    </div>
   )
 }
 

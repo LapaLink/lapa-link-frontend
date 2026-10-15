@@ -9,9 +9,11 @@ import type {
   CaseNotificationSettings,
   CaseStatus,
   CreateCaseDto,
+  CreateNeedDto,
   HelpApplication,
   NeedStatus,
   PageResponse,
+  UpdateNeedDto,
 } from "@/types"
 import { readTokens } from "@/lib/auth"
 import { ApiError, authorizedRequest, request } from "./instance"
@@ -82,13 +84,30 @@ export const casesApi = {
         body: JSON.stringify({ enabled }),
       },
     ),
-  addNeed: (caseId: string, type: string) =>
+  /** Adds a need; only the type is required, priority defaults to MEDIUM on the server. */
+  addNeed: (
+    caseId: string,
+    type: string,
+    details: Omit<CreateNeedDto, "type"> = {},
+  ) =>
     authorizedRequest<CaseNeed>(`/cases/${encodeURIComponent(caseId)}/needs`, {
       method: "POST",
-      body: JSON.stringify({ type }),
+      body: JSON.stringify({ type, ...details }),
     }),
   getNeeds: (caseId: string) =>
     authorizedRequest<CaseNeed[]>(`/cases/${encodeURIComponent(caseId)}/needs`),
+  /**
+   * Partially updates a need: send only changed fields. A closed need cannot
+   * be changed (NEED_CLOSED) and status ASSIGNED is not accepted.
+   */
+  updateNeed: (caseId: string, needId: string, data: UpdateNeedDto) =>
+    authorizedRequest<CaseNeed>(
+      `/cases/${encodeURIComponent(caseId)}/needs/${encodeURIComponent(needId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    ),
   updateNeedStatus: (caseId: string, needId: string, status: NeedStatus) =>
     authorizedRequest<CaseNeed>(
       `/cases/${encodeURIComponent(caseId)}/needs/${encodeURIComponent(needId)}`,

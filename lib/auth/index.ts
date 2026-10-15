@@ -8,6 +8,8 @@ export {
   getServerSessionSnapshot,
   markAccountDeleted,
   takeAccountDeleted,
+  markUserBlocked,
+  takeUserBlocked,
 } from "./session"
 export {
   createOtpFlowStorage,

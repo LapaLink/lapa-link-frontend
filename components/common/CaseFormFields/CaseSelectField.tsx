@@ -20,7 +20,7 @@ export function CaseSelectField({
   disabled,
   onChange,
 }: {
-  name: "animalType" | "sex" | "cityCode"
+  name: "animalType" | "sex" | "cityCode" | "type"
   label: string
   placeholder: string
   children: ReactNode

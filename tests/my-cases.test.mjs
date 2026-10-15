@@ -316,6 +316,52 @@ test("case details displays animal attributes and author-only edit action", () =
   assert.ok(!stranger.includes('href="/cases/case-1/edit"'))
 })
 
+test("needs are an accordion: summary with an author menu, the first one expanded", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const needs = [
+    {
+      id: "need-1",
+      caseId: item.id,
+      type: "FOSTER",
+      status: "OPEN",
+      priority: "HIGH",
+      startsAt: null,
+      deadline: null,
+      comment: "Первая потребность",
+    },
+    {
+      id: "need-2",
+      caseId: item.id,
+      type: "TRANSPORT",
+      status: "CLOSED",
+      priority: "LOW",
+      startsAt: null,
+      deadline: null,
+      comment: "Вторая потребность",
+    },
+  ]
+  const html = renderPage(file, "CaseDetails", {
+    data: { ...item, needs },
+    props: { caseId: item.id },
+  })
+  assert.equal(html.match(/data-slot="accordion-item"/g).length, 2)
+  assert.match(html, /Высокий приоритет/)
+  assert.match(html, /Низкий приоритет/)
+  // Collapsed items keep only the summary; the first one shows its body.
+  assert.ok(html.includes("Первая потребность"))
+  assert.ok(!html.includes("Вторая потребность"))
+  // Actions live in the ⋯ menu, only for needs that are not closed.
+  assert.ok(html.includes('aria-label="Действия: FOSTER"'))
+  assert.ok(!html.includes('aria-label="Действия: TRANSPORT"'))
+  assert.ok(html.includes("Пока никто не предложил помощь"))
+  const stranger = renderPage(file, "CaseDetails", {
+    user: { id: "other" },
+    data: { ...item, needs },
+    props: { caseId: item.id },
+  })
+  assert.ok(!stranger.includes("Действия:"))
+})
+
 test("public cards link to details, use logo placeholder and paginate six items", () => {
   const html = renderPage("components/pages/Cases/CasesList.tsx", "CasesList", {
     data: { content: [item], totalPages: 2 },
