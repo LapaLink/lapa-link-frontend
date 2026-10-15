@@ -15,5 +15,7 @@ export type InboxNotification = {
 
 export type NotificationChannelSetting = {
   channel: "EMAIL" | "IN_APP"
+  /** Channel name translated to the session language. */
+  title: string
   enabled: boolean
 }

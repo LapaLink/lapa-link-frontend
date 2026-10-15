@@ -14,14 +14,6 @@ import { FormAlert, IconCircle, SectionCard } from "@/components/common"
 import { Button, Skeleton, Switch } from "@/components/ui"
 import type { CurrentUser } from "@/types"
 
-// Labels for known event types; unknown types fall back to their code.
-const eventLabels: Record<string, string> = {
-  WELCOME: "Приветственное письмо после регистрации",
-}
-const channelLabels: Record<string, string> = {
-  EMAIL: "Email",
-}
-
 export function NotificationsCard({ user }: { user: CurrentUser }) {
   const settings = useQuery({
     queryKey: queryKeys.notifications,
@@ -70,9 +62,7 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
                 htmlFor={`channel-${setting.channel}`}
                 className="min-w-0 flex-1 cursor-pointer text-sm font-semibold"
               >
-                {setting.channel === "EMAIL"
-                  ? "На электронную почту"
-                  : "В приложении"}
+                {setting.title}
               </label>
               <Switch
                 id={`channel-${setting.channel}`}
@@ -146,10 +136,12 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
                   className="flex min-w-0 flex-1 cursor-pointer flex-col gap-0.5"
                 >
                   <span className="text-sm font-semibold [overflow-wrap:anywhere]">
-                    {eventLabels[setting.eventType] ?? setting.eventType}
+                    {setting.title}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {channelLabels[setting.channel] ?? setting.channel}
+                    {channels.data?.find(
+                      (item) => item.channel === setting.channel,
+                    )?.title ?? setting.channel}
                   </span>
                 </label>
                 <Switch

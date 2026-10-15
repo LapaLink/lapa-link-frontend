@@ -70,7 +70,7 @@ function renderPage(
       mutateAsync: async () => user,
     }),
     useUpdateNotification: () => ({ isPending: false, mutate() {} }),
-    useNotificationChannels: () => ({ data: [{ channel: "EMAIL", enabled: emailEnabled }, { channel: "IN_APP", enabled: true }], isPending: false, isError: false }),
+    useNotificationChannels: () => ({ data: [{ channel: "EMAIL", title: "На электронную почту", enabled: emailEnabled }, { channel: "IN_APP", title: "В приложении", enabled: true }], isPending: false, isError: false }),
     useUpdateNotificationChannel: () => ({ isPending: false, mutate() {} }),
     useUpdateLocale: () => ({ isPending: false }),
     useChatPermission: () => ({
@@ -450,7 +450,7 @@ test("case notifications switch is shown only to participants of an open case", 
 
 test("disabled email channel also disables the welcome email switch", () => {
   const html = renderPage("components/pages/Account/common/NotificationsCard.tsx", "NotificationsCard", {
-    data: [{ eventType: "WELCOME", channel: "EMAIL", enabled: true }],
+    data: [{ eventType: "WELCOME", channel: "EMAIL", title: "Приветственное письмо", enabled: true }],
     emailEnabled: false,
     props: { user: { ...owner, emailVerifiedAt: "2026-10-11" } },
   })
@@ -460,20 +460,21 @@ test("disabled email channel also disables the welcome email switch", () => {
   assert.ok(html.includes("В приложении"))
 })
 
-test("notification settings are built from the API list with a code fallback", () => {
+test("notification settings are built from the API list with translated titles", () => {
   const html = renderPage(
     "components/pages/Account/common/NotificationsCard.tsx",
     "NotificationsCard",
     {
       data: [
-        { eventType: "WELCOME", channel: "EMAIL", enabled: true },
-        { eventType: "NEW_FEATURE_DIGEST", channel: "EMAIL", enabled: false },
+        { eventType: "WELCOME", channel: "EMAIL", title: "Приветственное письмо", enabled: true },
+        { eventType: "NEW_FEATURE_DIGEST", channel: "EMAIL", title: "Новые возможности", enabled: false },
       ],
       props: { user: { ...owner, emailVerifiedAt: null } },
     },
   )
-  assert.ok(html.includes("Приветственное письмо после регистрации"))
-  assert.ok(html.includes("NEW_FEATURE_DIGEST"))
+  assert.ok(html.includes("Приветственное письмо"))
+  assert.ok(html.includes("Новые возможности"))
+  assert.ok(html.includes("На электронную почту"))
   assert.match(html, /role="switch"[^>]*aria-checked="true"/)
   assert.match(html, /role="switch"[^>]*aria-checked="false"/)
   assert.ok(html.includes("email не подтверждён"))

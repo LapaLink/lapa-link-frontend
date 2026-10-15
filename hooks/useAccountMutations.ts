@@ -142,6 +142,11 @@ export function useUpdateLocale() {
         { queryKey: ACCOUNT_QUERY_KEY },
         (current) => (current ? { ...current, locale } : current),
       )
+      // Setting titles are translated to the session language.
+      void client.invalidateQueries({ queryKey: queryKeys.notifications })
+      void client.invalidateQueries({
+        queryKey: queryKeys.notificationChannels,
+      })
       return locale
     },
   })

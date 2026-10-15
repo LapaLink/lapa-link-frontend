@@ -40,9 +40,17 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
           size="lg"
           className="size-10 shrink-0 rounded-full p-0 sm:h-11 sm:w-auto sm:rounded-lg sm:px-3"
           disabled={logout.isPending}
-          aria-label="Меню профиля"
+          aria-label={`Меню профиля${unread ? `, непрочитанных сообщений: ${unread}` : ""}`}
         >
-          <UserAvatar user={user} />
+          <span className="relative shrink-0">
+            <UserAvatar user={user} />
+            {unread > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-card bg-primary"
+              />
+            )}
+          </span>
           <span className="hidden max-w-40 truncate sm:inline">
             {user.displayName}
           </span>

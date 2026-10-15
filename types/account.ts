@@ -38,6 +38,8 @@ export type UserLocale = "ru" | "be"
 export type NotificationSetting = {
   eventType: string
   channel: string
+  /** Event name translated to the session language. */
+  title: string
   enabled: boolean
 }
 
