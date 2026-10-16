@@ -1,9 +1,9 @@
 import type {
   AnimalCase,
   UpdateCaseDto,
-  AnimalType,
   Assignment,
   CaseDetails,
+  CaseFeedFilter,
   CaseListItem,
   CaseNeed,
   CaseNotificationSettings,
@@ -17,14 +17,6 @@ import type {
 } from "@/types"
 import { readTokens } from "@/lib/auth"
 import { ApiError, authorizedRequest, request } from "./instance"
-
-type CaseListParams = {
-  animalType?: AnimalType
-  cityCode?: string
-  title?: string
-  page?: number
-  size?: number
-}
 
 function query(params: Record<string, string | number | undefined>) {
   const search = new URLSearchParams()
@@ -41,9 +33,19 @@ export const casesApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  list: (params: CaseListParams = {}, signal?: AbortSignal) =>
+  /** Public feed. Empty strings and undefined are not sent; there is no `sort` (use `orderBy`). */
+  list: (params: CaseFeedFilter = {}, signal?: AbortSignal) =>
     request<PageResponse<CaseListItem>>(`/cases${query(params)}`, { signal }),
-  getCases: (params: CaseListParams = {}) => casesApi.list(params),
+  getCases: (params: CaseFeedFilter = {}) => casesApi.list(params),
+  /**
+   * Feed of cases with an OPEN need matching the user's active help offers:
+   * within their radius of the home point, or in the profile city without one.
+   */
+  matching: (params: CaseFeedFilter = {}, signal?: AbortSignal) =>
+    authorizedRequest<PageResponse<CaseListItem>>(
+      `/account/help-offers/matching-cases${query(params)}`,
+      { signal },
+    ),
   /**
    * Public case details. Sent with the access token when signed in so the
    * backend can fill `notificationsEnabled`; falls back to an anonymous

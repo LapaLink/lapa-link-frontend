@@ -776,7 +776,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                                 href={ROUTES.MY_TASKS}
                                 className="font-semibold text-primary hover:text-primary-hover hover:underline"
                               >
-                                «Мои задачи»
+                                «Мои отклики»
                               </Link>
                               .
                             </p>

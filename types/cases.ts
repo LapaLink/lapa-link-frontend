@@ -20,6 +20,35 @@ export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
 export type CaseStatus = "OPEN" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
+
+/** Feed order; ties go newest first. DISTANCE needs a point. */
+export type CaseFeedSort = "NEWEST" | "DISTANCE" | "PRIORITY"
+
+/**
+ * Feed query for GET /cases and /account/help-offers/matching-cases.
+ * needType, priority and needStatus apply to the same need of a case.
+ * latitude and longitude go together; radiusKm and orderBy=DISTANCE require
+ * them, otherwise the backend answers 400 FEED_POINT_REQUIRED.
+ */
+export type CaseFeedFilter = {
+  animalType?: AnimalType
+  cityCode?: string
+  /** Legacy title-only search; the UI uses `search`. */
+  title?: string
+  /** Title and description, up to 200 characters. */
+  search?: string
+  /** Code from /need-types. */
+  needType?: string
+  priority?: NeedPriority
+  needStatus?: NeedStatus
+  latitude?: number
+  longitude?: number
+  /** Integer 1..100. */
+  radiusKm?: number
+  orderBy?: CaseFeedSort
+  page?: number
+  size?: number
+}
 export type HelpApplicationStatus = "PENDING" | "ACCEPTED" | "CANCELLED"
 export type AssignmentStatus = "ACTIVE" | "CANCELLED" | "COMPLETED"
 

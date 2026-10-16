@@ -481,3 +481,25 @@ test("help offers card lists offers, mutes disabled ones and hides add when noth
   assert.match(empty, /Добавить вид помощи/)
   assert.doesNotMatch(empty, /href="#home-area"/)
 })
+
+test("onboarding help step keeps existing offers checked and offers the rest", () => {
+  const file = "components/pages/Onboarding/common/HelpOffersStep.tsx"
+  const needTypes = [
+    { code: "TRANSPORT", nameRu: "Перевозка", nameBe: "Перавозка", active: true },
+    { code: "FOSTER", nameRu: "Передержка", nameBe: "Перадзяржка", active: true },
+    { code: "OLD", nameRu: "Устаревшее", nameBe: "Састарэлае", active: false },
+  ]
+  const steps = { onNext() {}, onBack() {}, onSkip() {} }
+  const html = render(file, "HelpOffersStep", steps, { data: [offer], needTypes })
+  assert.match(html, /aria-pressed="true" disabled=""[^>]*>.*?Перевозка.*?уже добавлено/)
+  assert.match(html, /aria-pressed="false"[^>]*>Передержка/)
+  assert.doesNotMatch(html, /Устаревшее/)
+  assert.doesNotMatch(html, /Выберите хотя бы один вид помощи/)
+  assert.match(html, /Назад/)
+  assert.match(html, /Пропустить/)
+  assert.match(html, /Далее/)
+
+  const empty = render(file, "HelpOffersStep", steps, { data: [], needTypes })
+  assert.match(empty, /Выберите хотя бы один вид помощи/)
+  assert.doesNotMatch(empty, /уже добавлено/)
+})

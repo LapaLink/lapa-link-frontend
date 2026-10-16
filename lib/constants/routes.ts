@@ -8,6 +8,8 @@ export const ROUTES = {
   PASSWORD_RESET_CODE: "/forgot-password/code",
   NEW_PASSWORD: "/forgot-password/new-password",
   ACCOUNT: "/account",
+  /** Step-by-step profile setup shown right after registration. */
+  WELCOME: "/welcome",
   MY_TASKS: "/my-tasks",
   MY_CASES: "/my-cases",
   EDIT_CASE: (caseId: string) => `/cases/${caseId}/edit`,

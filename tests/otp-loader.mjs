@@ -20,6 +20,7 @@ export function load(file, { fetch, local = new Map(), session = new Map(), over
     setTimeout,
     clearTimeout,
     URL,
+    URLSearchParams,
     Headers,
     Response,
     TextEncoder,

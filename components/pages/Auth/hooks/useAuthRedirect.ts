@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 
-export function useAuthRedirect() {
+/** Sends a signed-in user away from an auth page, by default to the home page. */
+export function useAuthRedirect(target: string = ROUTES.HOME) {
   const { user } = useAuth()
   const router = useRouter()
   useEffect(() => {
-    if (user) router.replace(ROUTES.HOME)
-  }, [user, router])
+    if (user) router.replace(target)
+  }, [user, router, target])
 }

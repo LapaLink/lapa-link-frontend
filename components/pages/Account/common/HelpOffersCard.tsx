@@ -114,7 +114,7 @@ export function HelpOffersCard({ user }: { user: CurrentUser }) {
     <SectionCard
       icon={HandHeart}
       title="Готовность помогать"
-      description="Отметьте, чем вы готовы помогать — так мы сможем предлагать вам подходящие задачи."
+      description="Отметьте, чем вы готовы помогать, — будем присылать объявления рядом, где нужна такая помощь."
       fullWidthBody
     >
       {!!offers.data?.length && user.homeLatitude == null && (

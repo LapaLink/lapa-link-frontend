@@ -23,7 +23,7 @@ export const registrationFlow: OtpFlow = {
 
 /**
  * Sets the password and name; `complete` stores the returned tokens, so the
- * user lands in the app already signed in.
+ * user lands signed in on the profile setup (onboarding).
  */
 export async function submitRegistration(
   confirmation: OtpConfirmation,
@@ -36,7 +36,7 @@ export async function submitRegistration(
       ...values,
     })
     registrationStorage.clearConfirmation()
-    return { redirect: ROUTES.HOME }
+    return { redirect: ROUTES.WELCOME }
   } catch (error) {
     const action = getOtpFlowErrorAction(error)
     if (action === "confirmation-invalid")

@@ -1,24 +1,65 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import dynamic from "next/dynamic"
+import { useEffect, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { CloudOff, MapPin, PawPrint, Search, SlidersHorizontal } from "lucide-react"
+import { cn } from "cn"
+import {
+  ArrowUpDown,
+  CircleAlert,
+  CloudOff,
+  HandHeart,
+  Heart,
+  ListFilter,
+  LocateFixed,
+  Lock,
+  Map as MapIcon,
+  MapPin,
+  PawPrint,
+  RotateCcw,
+  Search,
+  X,
+} from "lucide-react"
 import { casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
   useCities,
   useDictionaryLocale,
   useDebouncedValue,
+  useNeedTypes,
 } from "@/hooks"
+import {
+  FEED_DEFAULT_RADIUS_KM,
+  FEED_SEARCH_MAX,
+  changeFeed,
+  feedQueryString,
+  hasFeedFilters,
+  parseFeedState,
+  toFeedFilter,
+  type FeedPoint,
+  type FeedState,
+} from "@/lib/cases"
 import { ROUTES } from "@/lib/constants"
-import { getCityName } from "@/lib/dictionaries"
-import type { AnimalType } from "@/types"
+import { getCityName, getDictionaryName } from "@/lib/dictionaries"
+import type {
+  AnimalType,
+  CaseFeedSort,
+  NeedPriority,
+  NeedStatus,
+} from "@/types"
 import {
   Button,
   Card,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   Input,
   Select,
   SelectContent,
@@ -26,6 +67,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Skeleton,
   Field,
   FieldLabel,
 } from "@/components/ui"
@@ -34,67 +76,144 @@ import {
   FormAlert,
   CasePhoto,
   CaseCardsSkeleton,
-  IconCircle,
   ListPagination,
   PageHeader,
   StatusBadge,
 } from "@/components/common"
+import { needStatusLabels } from "./statusLabels"
+import { needPriorityLabels } from "./schemas"
 
+const PAGE_SIZE = 6
+const ALL = "all"
+
+const FeedMap = dynamic(() => import("../Account/common/HomeAreaMap"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full rounded-2xl sm:h-72" />,
+})
+
+const sortLabels: Record<CaseFeedSort, string> = {
+  NEWEST: "Новые",
+  DISTANCE: "Ближе ко мне",
+  PRIORITY: "Срочные",
+}
+
+const geolocationHint =
+  "Не удалось определить местоположение. Разрешите доступ к геолокации в браузере или выберите точку на карте."
+
+/**
+ * Local draft for a text or range control, written to the URL 350 ms after
+ * the last change so typing or dragging doesn't fire a request per step.
+ */
+function useDebouncedCommit<T>(initial: T, commit: (value: T) => void) {
+  const [draft, setDraft] = useState(initial)
+  const debounced = useDebouncedValue(draft)
+  const applied = useRef(debounced)
+  const commitRef = useRef(commit)
+  useEffect(() => {
+    commitRef.current = commit
+  })
+  useEffect(() => {
+    if (Object.is(applied.current, debounced)) return
+    applied.current = debounced
+    commitRef.current(debounced)
+  }, [debounced])
+  return [draft, setDraft] as const
+}
+
+/**
+ * Case feed with filters, order and the "Подходит мне" mode. All of it lives
+ * in the URL query string (old `?title=` links map to `search`); any change
+ * goes back to the first page. Needs a Suspense boundary (useSearchParams).
+ */
 export function CasesList() {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const locale = useDictionaryLocale()
   const cities = useCities()
-  const [filters, setFilters] = useState({
-    animalType: "all",
-    cityCode: "all",
-    title: "",
-  })
-  const search = useDebouncedValue(filters.title.trim())
-  const [position, setPosition] = useState({
-    page: 0,
-    search: "",
-    animalType: "all",
-    cityCode: "all",
-  })
-  const matches =
-    position.search === search &&
-    position.animalType === filters.animalType &&
-    position.cityCode === filters.cityCode
-  const page = matches ? position.page : 0
-  const setPage = (next: number) =>
-    setPosition({
-      page: next,
-      search,
-      animalType: filters.animalType,
-      cityCode: filters.cityCode,
+  const needTypes = useNeedTypes()
+  const router = useRouter()
+  const state = parseFeedState(useSearchParams())
+  const [mapOpen, setMapOpen] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [pointHint, setPointHint] = useState("")
+
+  const navigate = (next: FeedState) => {
+    const query = feedQueryString(next)
+    router.replace(query ? `${ROUTES.CASES}?${query}` : ROUTES.CASES, {
+      scroll: false,
     })
-  const cases = useQuery({
-    queryKey: [
-      "cases",
-      "list",
-      {
-        animalType: filters.animalType,
-        cityCode: filters.cityCode,
-        title: search,
-        page,
-        size: 6,
+  }
+  const update = (patch: Partial<Omit<FeedState, "page">>) =>
+    navigate(changeFeed(state, patch))
+
+  const [searchText, setSearchText] = useDebouncedCommit(
+    state.search,
+    (value) => {
+      const search = value.trim().slice(0, FEED_SEARCH_MAX)
+      if (search !== state.search) update({ search })
+    },
+  )
+  const [radius, setRadius] = useDebouncedCommit(
+    state.radiusKm ?? FEED_DEFAULT_RADIUS_KM,
+    (radiusKm) => {
+      if (state.point && radiusKm !== state.radiusKm) update({ radiusKm })
+    },
+  )
+
+  const setPoint = (point: FeedPoint) => {
+    setPointHint("")
+    const radiusKm = state.radiusKm ?? FEED_DEFAULT_RADIUS_KM
+    setRadius(radiusKm)
+    update({ point, radiusKm })
+  }
+  function locate() {
+    const fail = () => {
+      setLocating(false)
+      setPointHint(geolocationHint)
+      // A denied location must not leave radius or DISTANCE without a point.
+      if (state.point || state.orderBy === "DISTANCE")
+        update({ point: undefined })
+    }
+    if (!navigator.geolocation) return fail()
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false)
+        setPoint({ latitude: coords.latitude, longitude: coords.longitude })
       },
-    ],
+      fail,
+      { enableHighAccuracy: false, timeout: 15_000, maximumAge: 300_000 },
+    )
+  }
+  function reset() {
+    setSearchText("")
+    setRadius(FEED_DEFAULT_RADIUS_KM)
+    setPointHint("")
+    navigate(
+      changeFeed(parseFeedState(new URLSearchParams()), { mode: state.mode }),
+    )
+  }
+
+  const matching = state.mode === "matching"
+  const filter = toFeedFilter(state, PAGE_SIZE)
+  const cases = useQuery({
+    queryKey: ["cases", "list", state.mode, filter],
+    // The signal aborts the request once the filters move on.
     queryFn: ({ signal }) =>
-      casesApi.list(
-        {
-          animalType:
-            filters.animalType === "all"
-              ? undefined
-              : (filters.animalType as AnimalType),
-          cityCode: filters.cityCode === "all" ? undefined : filters.cityCode,
-          title: search || undefined,
-          page,
-          size: 6,
-        },
-        signal,
-      ),
+      matching
+        ? casesApi.matching(filter, signal)
+        : casesApi.list(filter, signal),
+    // "Подходит мне" waits for the session check; without a session the
+    // authorized request fails with the usual 401.
+    enabled: !matching || !authLoading,
   })
+
+  const sortedNeedTypes = [...(needTypes.data ?? [])].sort(
+    (a, b) => a.sortOrder - b.sortOrder,
+  )
+  const city = cities.data
+    ?.flatMap((group) => group.cities)
+    .find((item) => item.code === state.cityCode)
+
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
       <PageHeader
@@ -113,74 +232,353 @@ export function CasesList() {
           </>
         }
       />
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          role="group"
+          aria-label="Какие объявления показать"
+          className="flex w-full gap-1 rounded-full border bg-card p-1 sm:w-fit"
+        >
+          {(
+            [
+              ["all", "Все объявления"],
+              ["matching", "Подходит мне"],
+            ] as const
+          ).map(([mode, label]) => (
+            <Button
+              key={mode}
+              type="button"
+              variant="ghost"
+              aria-pressed={state.mode === mode}
+              // "Подходит мне" needs an account: guests see it locked.
+              disabled={mode === "matching" && !user}
+              className={cn(
+                "h-11 flex-1 rounded-full px-5 sm:h-10 sm:flex-none",
+                state.mode === mode
+                  ? "bg-primary text-primary-foreground hover:bg-primary-hover hover:text-primary-foreground"
+                  : "text-foreground",
+              )}
+              onClick={() => update({ mode })}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        {!user && !authLoading && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Lock aria-hidden className="size-4 shrink-0" />
+            «Подходит мне» доступно только авторизованным пользователям
+          </p>
+        )}
+      </div>
       <div
         role="search"
         aria-label="Фильтры объявлений"
-        className="grid gap-4 rounded-2xl border bg-card p-5 sm:p-6 md:grid-cols-[auto_repeat(3,minmax(0,1fr))] md:items-end"
+        className="flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:p-6"
       >
-        <span className="hidden md:mb-1 md:block">
-          <IconCircle icon={SlidersHorizontal} />
-        </span>
-        <Field>
-          <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
-          <Select
-            value={filters.animalType}
-            onValueChange={(animalType) =>
-              setFilters((current) => ({ ...current, animalType }))
-            }
+        {(hasFeedFilters(state) || searchText) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-11 self-end text-muted-foreground sm:-mt-2 sm:-mb-3 sm:h-8"
+            onClick={reset}
           >
-            <SelectTrigger id="animal-filter">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="all">Все животные</SelectItem>
-                <SelectItem value="CAT">Кошка</SelectItem>
-                <SelectItem value="DOG">Собака</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="city-filter">Город</FieldLabel>
-          <Select
-            value={filters.cityCode}
-            onValueChange={(cityCode) =>
-              setFilters((current) => ({ ...current, cityCode }))
-            }
-          >
-            <SelectTrigger id="city-filter">
-              <SelectValue placeholder="Любой город" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="all">Любой город</SelectItem>
-                {cities.data?.flatMap((group) =>
-                  group.cities.map((city) => (
-                    <SelectItem key={city.code} value={city.code}>
-                      {getCityName(cities.data, city.code, locale)}
+            <RotateCcw aria-hidden />
+            Сбросить фильтры
+          </Button>
+        )}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field>
+            <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
+            <Select
+              value={state.animalType ?? ALL}
+              onValueChange={(value) =>
+                update({
+                  animalType: value === ALL ? undefined : (value as AnimalType),
+                })
+              }
+            >
+              <SelectTrigger id="animal-filter">
+                <PawPrint aria-hidden className="text-primary" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>Все животные</SelectItem>
+                  <SelectItem value="CAT">Кошка</SelectItem>
+                  <SelectItem value="DOG">Собака</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="city-filter">Город</FieldLabel>
+            <Select
+              value={state.cityCode ?? ALL}
+              onValueChange={(value) =>
+                update({ cityCode: value === ALL ? undefined : value })
+              }
+            >
+              <SelectTrigger id="city-filter">
+                <MapPin aria-hidden className="text-primary" />
+                <SelectValue placeholder="Любой город" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>Любой город</SelectItem>
+                  {cities.data?.flatMap((group) =>
+                    group.cities.map((city) => (
+                      <SelectItem key={city.code} value={city.code}>
+                        {getCityName(cities.data, city.code, locale)}
+                      </SelectItem>
+                    )),
+                  )}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="search-filter">Поиск</FieldLabel>
+            <div className="relative">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id="search-filter"
+                type="search"
+                placeholder="Поиск по заголовку и описанию"
+                maxLength={FEED_SEARCH_MAX}
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="need-type-filter">Тип помощи</FieldLabel>
+            <Select
+              value={state.needType ?? ALL}
+              onValueChange={(value) =>
+                update({ needType: value === ALL ? undefined : value })
+              }
+            >
+              <SelectTrigger id="need-type-filter">
+                <Heart aria-hidden className="text-primary" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>Любой тип помощи</SelectItem>
+                  {sortedNeedTypes.map((type) => (
+                    <SelectItem key={type.code} value={type.code}>
+                      {getDictionaryName(needTypes.data, type.code, locale)}
                     </SelectItem>
-                  )),
-                )}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="title-filter">Название</FieldLabel>
-          <Input
-            id="title-filter"
-            placeholder="Поиск по названию"
-            value={filters.title}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                title: event.target.value,
-              }))
-            }
-          />
-        </Field>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="priority-filter">Приоритет</FieldLabel>
+            <Select
+              value={state.priority ?? ALL}
+              onValueChange={(value) =>
+                update({
+                  priority: value === ALL ? undefined : (value as NeedPriority),
+                })
+              }
+            >
+              <SelectTrigger id="priority-filter">
+                <CircleAlert aria-hidden className="text-primary" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>Любой</SelectItem>
+                  {(["HIGH", "MEDIUM", "LOW"] as const).map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {needPriorityLabels[priority]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="need-status-filter">
+              Статус потребности
+            </FieldLabel>
+            <Select
+              value={state.needStatus ?? ALL}
+              onValueChange={(value) =>
+                update({
+                  needStatus: value === ALL ? undefined : (value as NeedStatus),
+                })
+              }
+            >
+              <SelectTrigger id="need-status-filter">
+                <ListFilter aria-hidden className="text-primary" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value={ALL}>Любой статус</SelectItem>
+                  {(["OPEN", "ASSIGNED", "CLOSED"] as const).map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {needStatusLabels[status]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-xl border bg-background/60 p-3 sm:p-4 lg:flex-row lg:items-center">
+          <fieldset className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <legend className="sr-only">Рядом со мной</legend>
+            <p
+              aria-hidden
+              className="flex items-center gap-2 text-sm font-bold"
+            >
+              <MapPin className="size-4 text-primary" />
+              Рядом со мной
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full sm:h-9"
+                disabled={locating}
+                onClick={locate}
+              >
+                <LocateFixed aria-hidden />
+                {locating ? "Определяем…" : "Моё местоположение"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full sm:h-9"
+                onClick={() => setMapOpen(true)}
+              >
+                <MapIcon aria-hidden />
+                На карте
+              </Button>
+              {state.point ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 rounded-full sm:h-9"
+                  onClick={() => update({ point: undefined })}
+                >
+                  <X aria-hidden />
+                  Убрать точку
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Укажите точку, чтобы искать рядом
+                </span>
+              )}
+            </div>
+            <div className="flex min-w-48 flex-1 flex-col gap-1">
+              <div className="flex items-baseline gap-3">
+                <label
+                  htmlFor="radius-filter"
+                  className="text-xs text-muted-foreground"
+                >
+                  Радиус
+                </label>
+                <span
+                  className={cn(
+                    "text-xs font-semibold",
+                    !state.point && "text-muted-foreground",
+                  )}
+                >
+                  {radius} км
+                </span>
+              </div>
+              <input
+                id="radius-filter"
+                type="range"
+                min={1}
+                max={100}
+                step={1}
+                value={radius}
+                disabled={!state.point}
+                aria-valuetext={`до ${radius} км`}
+                onChange={(event) => setRadius(Number(event.target.value))}
+                className="h-7 w-full cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </fieldset>
+          <div className="flex items-center gap-3 border-t pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
+            <ArrowUpDown aria-hidden className="size-4 shrink-0 text-primary" />
+            <div className="flex min-w-44 flex-1 flex-col gap-1">
+              <label
+                htmlFor="sort-filter"
+                className="text-xs text-muted-foreground"
+              >
+                Сортировка
+              </label>
+              <Select
+                value={state.orderBy}
+                onValueChange={(value) =>
+                  update({ orderBy: value as CaseFeedSort })
+                }
+              >
+                <SelectTrigger id="sort-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {(["NEWEST", "DISTANCE", "PRIORITY"] as const).map(
+                      (orderBy) => (
+                        <SelectItem
+                          key={orderBy}
+                          value={orderBy}
+                          // Ordering by distance needs a point (FEED_POINT_REQUIRED).
+                          disabled={orderBy === "DISTANCE" && !state.point}
+                        >
+                          {sortLabels[orderBy]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <FormAlert message={pointHint} />
       </div>
+
+      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Точка для поиска рядом</DialogTitle>
+            <DialogDescription>
+              Нажмите на карту — покажем объявления в выбранном радиусе от этой
+              точки.
+            </DialogDescription>
+          </DialogHeader>
+          <FeedMap
+            point={state.point ?? null}
+            city={
+              city
+                ? { latitude: city.latitude, longitude: city.longitude }
+                : null
+            }
+            onPick={setPoint}
+          />
+          <DialogFooter>
+            <Button type="button" onClick={() => setMapOpen(false)}>
+              Готово
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {cases.isPending ? (
         <CaseCardsSkeleton />
       ) : cases.isError ? (
@@ -204,32 +602,49 @@ export function CasesList() {
           </Button>
         </EmptyState>
       ) : cases.data.content.length ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {cases.data.content.map((item) => (
-            <Link
-              key={item.id}
-              href={ROUTES.CASE_DETAILS(item.id)}
-              className="group min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-            >
-              <Card className="h-full min-w-0 pt-0 transition-colors group-hover:border-primary/30">
-                <CasePhoto src={item.photoUrl} alt={item.title} />
-                <CardHeader className="gap-3">
-                  <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
-                    {item.title}
-                  </CardTitle>
-                  <div className="flex flex-wrap gap-2">
-                    <StatusBadge tone="primary" icon={PawPrint}>
-                      {item.animalType === "CAT" ? "Кошка" : "Собака"}
-                    </StatusBadge>
-                    <StatusBadge icon={MapPin}>
-                      {getCityName(cities.data, item.cityCode, locale)}
-                    </StatusBadge>
-                  </div>
-                </CardHeader>
-              </Card>
+        <>
+          <p role="status" className="-mb-1 text-sm text-muted-foreground">
+            Найдено объявлений: {cases.data.totalElements}
+          </p>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {cases.data.content.map((item) => (
+              <Link
+                key={item.id}
+                href={ROUTES.CASE_DETAILS(item.id)}
+                className="group min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+              >
+                <Card className="h-full min-w-0 pt-0 transition-colors group-hover:border-primary/30">
+                  <CasePhoto src={item.photoUrl} alt={item.title} />
+                  <CardHeader className="gap-3">
+                    <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
+                      {item.title}
+                    </CardTitle>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge tone="primary" icon={PawPrint}>
+                        {item.animalType === "CAT" ? "Кошка" : "Собака"}
+                      </StatusBadge>
+                      <StatusBadge icon={MapPin}>
+                        {getCityName(cities.data, item.cityCode, locale)}
+                      </StatusBadge>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : matching ? (
+        <EmptyState
+          icon={HandHeart}
+          title="Нет подходящих объявлений"
+          description="Здесь появятся объявления, где нужна помощь, которую вы отметили в профиле, — в вашем радиусе или в городе профиля."
+        >
+          <Button asChild variant="outline" className="h-11 sm:h-10">
+            <Link href={`${ROUTES.ACCOUNT}#help-offers`}>
+              Настроить, чем готов помочь
             </Link>
-          ))}
-        </div>
+          </Button>
+        </EmptyState>
       ) : (
         <EmptyState
           icon={Search}
@@ -239,10 +654,10 @@ export function CasesList() {
       )}
       {cases.data && (
         <ListPagination
-          page={page}
+          page={state.page}
           totalPages={cases.data.totalPages}
           busy={cases.isFetching}
-          onPageChange={setPage}
+          onPageChange={(page) => navigate({ ...state, page })}
         />
       )}
     </section>

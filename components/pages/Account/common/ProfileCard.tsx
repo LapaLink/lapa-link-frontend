@@ -1,6 +1,6 @@
 "use client"
 
-import { useForm, useWatch } from "react-hook-form"
+import { useForm, useWatch, type UseFormReturn } from "react-hook-form"
 import { useState } from "react"
 import { Pencil, MapPin, UserRound } from "lucide-react"
 import { getCityName } from "@/lib/dictionaries"
@@ -36,12 +36,35 @@ import {
   type ProfileValues,
 } from "../schemas"
 
-function valuesOf(user: CurrentUser): ProfileValues {
+export function valuesOf(user: CurrentUser): ProfileValues {
   return {
     displayName: user.displayName,
     cityCode: user.cityCode ?? "__none",
     bio: user.bio ?? "",
   }
+}
+
+/** Puts a failed profile save on the form: field errors under fields, the message on top. */
+export function setProfileSaveError(
+  form: UseFormReturn<ProfileValues>,
+  error: unknown,
+) {
+  if (error instanceof ApiError && error.code === "UNKNOWN_CITY") {
+    form.setError("cityCode", { message: error.message })
+    return
+  }
+  if (error instanceof ApiError) {
+    for (const name of ["displayName", "cityCode", "bio"] as const) {
+      if (error.fields[name])
+        form.setError(name, { message: error.fields[name] })
+    }
+  }
+  form.setError("root", {
+    message: getErrorMessage(
+      error,
+      "Не удалось сохранить изменения. Попробуйте ещё раз.",
+    ),
+  })
 }
 
 export function ProfileCard({ user }: { user: CurrentUser }) {
@@ -148,22 +171,7 @@ export function ProfileEditForm({
       form.reset(valuesOf(updated))
       onSaved()
     } catch (error) {
-      if (error instanceof ApiError && error.code === "UNKNOWN_CITY") {
-        form.setError("cityCode", { message: error.message })
-      } else {
-        if (error instanceof ApiError) {
-          for (const name of ["displayName", "cityCode", "bio"] as const) {
-            if (error.fields[name])
-              form.setError(name, { message: error.fields[name] })
-          }
-        }
-        form.setError("root", {
-          message: getErrorMessage(
-            error,
-            "Не удалось сохранить изменения. Попробуйте ещё раз.",
-          ),
-        })
-      }
+      setProfileSaveError(form, error)
     }
   }
   return (

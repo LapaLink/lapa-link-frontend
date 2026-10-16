@@ -132,7 +132,10 @@ function AccountContent() {
       <div id="home-area" className="min-w-0 scroll-mt-24">
         <HomeAreaCard user={user} />
       </div>
-      <HelpOffersCard user={user} />
+      {/* Anchor for the "Подходит мне" empty feed link. */}
+      <div id="help-offers" className="min-w-0 scroll-mt-24">
+        <HelpOffersCard user={user} />
+      </div>
       <DeleteAccountCard />
     </section>
   )

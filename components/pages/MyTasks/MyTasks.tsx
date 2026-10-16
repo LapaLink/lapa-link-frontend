@@ -73,28 +73,28 @@ const TASK_GROUPS: Array<{
     key: "active",
     title: "Я помогаю",
     description:
-      "Автор выбрал вас помощником. Договоритесь о деталях, а после помощи отметьте задачу выполненной.",
-    empty: "Сейчас вы никому не помогаете. Когда автор выберет вас, задача появится здесь.",
+      "Автор выбрал вас помощником. Договоритесь о деталях, а когда поможете — нажмите «Я помог(ла)».",
+    empty: "Сейчас вы никому не помогаете. Когда автор выберет вас по отклику, объявление появится здесь.",
   },
   {
     key: "pending",
     title: "Жду ответа",
     description:
-      "Вы предложили помощь — автор объявления ещё не выбрал помощника.",
-    empty: "Нет предложений, которые ждут ответа.",
+      "Вы откликнулись — автор объявления ещё не выбрал помощника.",
+    empty: "Нет откликов, которые ждут ответа.",
   },
   {
     key: "completed",
     title: "Выполнено",
     description: "Добрые дела, которые вы уже сделали. Спасибо!",
-    empty: "Здесь появятся задачи, которые вы выполнили.",
+    empty: "Здесь появится помощь, которую вы уже оказали.",
   },
   {
     key: "cancelled",
     title: "Отменено",
     description:
-      "Предложения, которые вы отозвали, или задачи, где помощь больше не нужна.",
-    empty: "Отменённых задач нет.",
+      "Отклики, которые вы отозвали, или объявления, где помощь больше не нужна.",
+    empty: "Отменённых откликов нет.",
   },
 ]
 
@@ -192,7 +192,7 @@ export function MyTasks() {
         status: item.status,
         statusLabel: assignmentStatusLabels[item.status],
         dateLabel: formatDate(item.updatedAt ?? item.createdAt),
-        summary: "Автор выбрал вас помощником. Когда поможете — отметьте задачу выполненной.",
+        summary: "Автор выбрал вас помощником. Когда поможете — нажмите «Я помог(ла)».",
         type: "assignment" as const,
         needId: item.need.id,
       })),
@@ -271,7 +271,7 @@ export function MyTasks() {
   ]
   const errorMessage = getErrorMessage(
     queries.find((query) => query.isError)?.error,
-    "Не удалось загрузить задачи.",
+    "Не удалось загрузить отклики.",
   )
   const totalItems = taskGroupsData.reduce(
     (sum, group) => sum + group.items.length,
@@ -307,14 +307,14 @@ export function MyTasks() {
       return {
         label: "Отозвать предложение",
         action: "cancel-response" as const,
-        prompt: `Отозвать предложение помощи «${getDictionaryName(needTypes.data, item.needType, locale)}» в объявлении «${item.title}»? Предложить эту помощь повторно будет нельзя.`,
+        prompt: `Отозвать отклик «${getDictionaryName(needTypes.data, item.needType, locale)}» в объявлении «${item.title}»? Откликнуться на эту потребность повторно будет нельзя.`,
       }
     }
     if (item.type === "assignment" && item.status === "ACTIVE") {
       return {
         label: "Я помог(ла)",
         action: "complete-task" as const,
-        prompt: `Отметить задачу «${getDictionaryName(needTypes.data, item.needType, locale)}» выполненной? Просьба будет закрыта, остальные предложения помощи отменятся. Это действие нельзя отменить.`,
+        prompt: `Отметить помощь «${getDictionaryName(needTypes.data, item.needType, locale)}» выполненной? Потребность будет закрыта, остальные отклики на неё отменятся. Это действие нельзя отменить.`,
       }
     }
     return null
@@ -329,7 +329,7 @@ export function MyTasks() {
         <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
           <PageHeader
             eyebrow="Личный кабинет"
-            title="Мои задачи"
+            title="Мои отклики"
             description="Здесь видно, кому вы предложили помощь и где вас уже ждут."
             actions={
               <Button asChild variant="outline" className="h-11 sm:h-10">
@@ -371,7 +371,7 @@ export function MyTasks() {
               ))}
             </div>
           ) : hasError ? (
-            <EmptyState icon={CloudOff} title="Не получилось загрузить задачи">
+            <EmptyState icon={CloudOff} title="Не получилось загрузить отклики">
               <FormAlert message={errorMessage} />
               <Button
                 variant="outline"
@@ -385,7 +385,7 @@ export function MyTasks() {
             <EmptyState
               icon={HeartHandshake}
               title="Вы ещё никому не предлагали помощь"
-              description="Откройте объявление, выберите, с чем можете помочь, и напишите автору. Все ваши предложения и задачи появятся здесь."
+              description="Откройте объявление, выберите, с чем можете помочь, и напишите автору. Все ваши отклики появятся здесь."
             >
               <Button asChild className="h-11 sm:h-10">
                 <Link href={ROUTES.CASES}>Посмотреть объявления</Link>
@@ -395,7 +395,7 @@ export function MyTasks() {
             <div className="flex flex-col gap-4">
               <div
                 role="tablist"
-                aria-label="Статус задач"
+                aria-label="Статус откликов"
                 className="flex gap-2 overflow-x-auto pb-1"
               >
                 {taskGroupsData.map((group) => {

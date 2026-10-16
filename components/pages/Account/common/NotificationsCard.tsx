@@ -47,6 +47,20 @@ function groupByEvent(settings: readonly NotificationSetting[]) {
 }
 
 export function NotificationsCard({ user }: { user: CurrentUser }) {
+  return (
+    <SectionCard
+      icon={Bell}
+      title="Уведомления"
+      description="Выберите, где и о чём хотите получать новости."
+      fullWidthBody
+    >
+      <NotificationSettings user={user} />
+    </SectionCard>
+  )
+}
+
+/** Channels with EMAIL quiet hours, then per-event switches. Every change saves at once. */
+export function NotificationSettings({ user }: { user: CurrentUser }) {
   const settings = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: ({ signal }) => accountApi.getNotifications(signal),
@@ -66,12 +80,7 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
   }
 
   return (
-    <SectionCard
-      icon={Bell}
-      title="Уведомления"
-      description="Выберите, где и о чём хотите получать новости."
-      fullWidthBody
-    >
+    <>
       <section
         aria-labelledby="notification-channels"
         className="flex flex-col gap-3"
@@ -217,7 +226,7 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
         Уведомления по объявлениям настраиваются на странице объявления. Коды
         подтверждения и восстановления пароля приходят всегда.
       </p>
-    </SectionCard>
+    </>
   )
 }
 

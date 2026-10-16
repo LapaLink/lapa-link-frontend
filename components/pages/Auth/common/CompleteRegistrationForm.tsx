@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { ApiError } from "@/api"
 import { useCompleteRegistration, useCooldown } from "@/hooks"
 import type { OtpConfirmation } from "@/lib/auth"
+import { ROUTES } from "@/lib/constants"
 import {
   Form,
   FormAlert,
@@ -39,7 +40,9 @@ export function CompleteRegistrationForm() {
   const router = useRouter()
   const { secondsLeft: wait, start: startCooldown } = useCooldown()
   const busy = form.formState.isSubmitting || complete.isPending
-  useAuthRedirect()
+  // The session appears as soon as registration completes: go on to onboarding,
+  // the same target as `submitRegistration`, so the two redirects never race.
+  useAuthRedirect(ROUTES.WELCOME)
 
   useEffect(() => {
     const timer = setTimeout(() => {

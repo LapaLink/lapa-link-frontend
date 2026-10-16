@@ -95,7 +95,7 @@ test("full flow: email → code → password and name → signed in without a se
     { password: "GoodPass123", displayName: "Анна" },
     mutation.mutationFn,
   )
-  assert.deepEqual({ ...done }, { redirect: "/" })
+  assert.deepEqual({ ...done }, { redirect: "/welcome" })
   assert.deepEqual(JSON.parse(local.get("lapalink.session")), tokens)
   assert.deepEqual(calls.at(-1), ["/api/v1/account/me", "Bearer new-access"])
   assert.equal(FLOW_KEYS.some((key) => session.has(key)), false)

@@ -55,6 +55,7 @@ function renderPage(
     onFormDefaults,
     emailEnabled = true,
     channels,
+    query = "",
   } = {},
 ) {
   const modules = new Map()
@@ -107,6 +108,7 @@ function renderPage(
     "next/navigation": {
       useRouter: () => ({ replace() {} }),
       usePathname: () => "/my-cases",
+      useSearchParams: () => new URLSearchParams(query),
     },
     "next/link": {
       __esModule: true,
@@ -159,7 +161,7 @@ function renderPage(
     }
     vm.runInNewContext(
       `(function(module, exports, require) { ${compiled}\n})`,
-      { console, URL, Intl, Date },
+      { console, URL, URLSearchParams, Intl, Date },
     )(mod, mod.exports, resolve)
     return mod.exports
   }
@@ -372,6 +374,35 @@ test("public cards link to details, use logo placeholder and paginate six items"
   assert.ok(html.includes('src="/icon.svg"'))
   assert.ok(html.includes("1 из 2"))
   assert.ok(!html.includes(">Открыть<"))
+})
+
+test("feed: old title links fill search, guests see the matching mode locked, no point disables radius", () => {
+  const file = "components/pages/Cases/CasesList.tsx"
+  const guest = renderPage(file, "CasesList", {
+    user: null,
+    query: "title=рыжий",
+    data: { content: [item], totalPages: 1, totalElements: 1 },
+  })
+  assert.match(guest, /id="search-filter"[^>]*value="рыжий"/)
+  assert.ok(guest.includes("Найдено объявлений: 1"))
+  assert.match(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
+  assert.ok(guest.includes("доступно только авторизованным"))
+  assert.ok(!guest.includes('href="/my-cases"'))
+  assert.match(guest.match(/<input[^>]*id="radius-filter"[^>]*>/)?.[0] ?? "", /disabled=""/)
+  assert.ok(guest.includes("Укажите точку, чтобы искать рядом"))
+  assert.ok(guest.includes("Сбросить фильтры"))
+
+  const matching = renderPage(file, "CasesList", {
+    query: "mode=matching&latitude=53.9&longitude=27.56&radiusKm=20",
+    data: { content: [], totalPages: 0, totalElements: 0 },
+  })
+  assert.match(matching, /aria-pressed="true"[^>]*>Подходит мне/)
+  assert.ok(matching.includes("Нет подходящих объявлений"))
+  assert.ok(matching.includes('href="/account#help-offers"'))
+  const radius = matching.match(/<input[^>]*id="radius-filter"[^>]*>/)?.[0] ?? ""
+  assert.ok(radius.includes('value="20"'), radius)
+  assert.ok(!radius.includes('disabled=""'), radius)
+  assert.ok(matching.includes("Убрать точку"))
 })
 
 test("details tolerate incomplete cached data and preserve paragraph wrapping", () => {

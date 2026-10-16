@@ -17,6 +17,8 @@ export type {
   PageResponse,
   CaseAuthor,
   CaseListItem,
+  CaseFeedFilter,
+  CaseFeedSort,
   CaseDetails,
   Applicant,
   HelpApplication,

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import { ClipboardList, Menu, Newspaper, Plus, Search } from "lucide-react"
 import { NavigationLink as Link } from "@/components/providers"
+import { useAuth } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import {
@@ -14,11 +15,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui"
 
-const links = [
+const allLinks = [
   { href: ROUTES.CASES, label: "Объявления", icon: Search },
   { href: ROUTES.CREATE_CASE, label: "Подать объявление", icon: Plus },
-  { href: ROUTES.MY_CASES, label: "Мои объявления", icon: Newspaper },
-  { href: ROUTES.MY_TASKS, label: "Мои задачи", icon: ClipboardList },
+  {
+    href: ROUTES.MY_CASES,
+    label: "Мои объявления",
+    icon: Newspaper,
+    private: true,
+  },
+  {
+    href: ROUTES.MY_TASKS,
+    label: "Мои отклики",
+    icon: ClipboardList,
+    private: true,
+  },
 ]
 
 function isActive(pathname: string, href: string) {
@@ -30,9 +41,12 @@ function isActive(pathname: string, href: string) {
   return pathname === href
 }
 
-/** Main site sections: inline links on wide screens, a menu button on phones. */
+/** Main site sections: inline links on wide screens, a menu button on phones. Personal ones only for signed-in users. */
 export function MainNavigation() {
   const pathname = usePathname() ?? ""
+  const { user } = useAuth()
+  // Personal sections are hidden from guests (and while the session loads).
+  const links = user ? allLinks : allLinks.filter((link) => !link.private)
   return (
     <>
       <nav
