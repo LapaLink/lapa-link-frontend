@@ -217,6 +217,23 @@ test("profile starts in read mode and renders full bio and localized city", () =
   assert.ok(html.includes("[overflow-wrap:anywhere]"))
 })
 
+test("profile summary shows name, city and counters linking to their lists", () => {
+  const user = { ...owner, cityCode: "minsk" }
+  const html = renderPage(
+    "components/pages/Account/common/ProfileSummaryCard.tsx",
+    "ProfileSummaryCard",
+    { user, data: { totalElements: 3 }, props: { user, onEdit() {} } },
+  )
+  assert.ok(html.includes("Автор"))
+  assert.ok(html.includes("Минск"))
+  assert.ok(html.includes(">объявления<"))
+  assert.ok(html.includes('href="/my-cases"'))
+  assert.ok(html.includes('href="/my-tasks#active"'))
+  assert.ok(html.includes('href="/my-tasks#completed"'))
+  assert.ok(html.includes('href="#photo"'))
+  assert.ok(html.includes("Редактировать профиль"))
+})
+
 test("my cases route renders real card fields, details and edit navigation", () => {
   assert.ok(fs.existsSync("app/(main)/my-cases/page.tsx"))
   assert.ok(fs.existsSync("app/(main)/cases/[caseId]/edit/page.tsx"))

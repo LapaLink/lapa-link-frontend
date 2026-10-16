@@ -56,9 +56,6 @@ export function AvatarEditor({ user }: { user: CurrentUser }) {
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
         <UserAvatar user={user} size="profile" />
         <div className="flex w-full min-w-0 flex-col gap-3">
-          <p className="text-center text-sm text-muted-foreground sm:text-left">
-            JPEG, PNG, GIF или WEBP, до 5 МБ.
-          </p>
           <input
             ref={fileInput}
             type="file"
@@ -102,6 +99,9 @@ export function AvatarEditor({ user }: { user: CurrentUser }) {
               </LoadingButton>
             )}
           </div>
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
+            JPEG, PNG, GIF или WEBP, до 5 МБ.
+          </p>
         </div>
       </div>
       <FormAlert message={error} />

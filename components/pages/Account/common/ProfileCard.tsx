@@ -2,6 +2,7 @@
 
 import { useForm, useWatch, type UseFormReturn } from "react-hook-form"
 import { useState } from "react"
+import { cn } from "cn"
 import { Pencil, MapPin, UserRound } from "lucide-react"
 import { getCityName } from "@/lib/dictionaries"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -67,20 +68,73 @@ export function setProfileSaveError(
   })
 }
 
-export function ProfileCard({ user }: { user: CurrentUser }) {
-  const [editing, setEditing] = useState(false)
+/**
+ * "Личная информация": name, city and bio in read mode, the edit form in
+ * place. Pass `editing` and `onEditingChange` to open the form from outside
+ * (the profile summary card); without them the card keeps its own state.
+ */
+export function ProfileCard({
+  user,
+  editing: controlledEditing,
+  onEditingChange,
+}: {
+  user: CurrentUser
+  editing?: boolean
+  onEditingChange?: (editing: boolean) => void
+}) {
+  const [ownEditing, setOwnEditing] = useState(false)
+  const editing = controlledEditing ?? ownEditing
+  const setEditing = onEditingChange ?? setOwnEditing
   const [notice, setNotice] = useTransientNotice()
   const cities = useCities()
   const locale = useDictionaryLocale()
+  const rows = [
+    ["Имя", user.displayName],
+    [
+      "Город",
+      <span key="city" className="flex items-center gap-2">
+        <MapPin className="size-4 shrink-0 text-primary" aria-hidden />
+        {user.cityCode
+          ? getCityName(cities.data, user.cityCode, locale)
+          : "Город не указан"}
+      </span>,
+    ],
+    [
+      "О себе",
+      <span
+        key="bio"
+        className={cn(
+          "block max-h-64 overflow-y-auto overscroll-contain whitespace-pre-wrap leading-relaxed",
+          !user.bio?.trim() && "text-muted-foreground",
+        )}
+      >
+        {user.bio?.trim()
+          ? user.bio
+          : "Расскажите немного о себе и чем можете помочь животным."}
+      </span>,
+    ],
+  ] as const
   return (
     <SectionCard
       className="min-w-0"
       icon={UserRound}
-      title="Личные данные"
-      description={
-        editing
-          ? "Обновите информацию о себе."
-          : "Познакомимся поближе. Здесь то, что вы рассказали о себе."
+      title="Личная информация"
+      description={editing ? "Обновите информацию о себе." : undefined}
+      action={
+        !editing && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setNotice("")
+              setEditing(true)
+            }}
+            className="h-11 rounded-full bg-primary-soft px-4 font-semibold text-primary hover:bg-primary-soft/70 hover:text-primary-hover sm:h-10"
+          >
+            <Pencil data-icon="inline-start" />
+            Редактировать
+          </Button>
+        )
       }
       fullWidthBody
     >
@@ -95,51 +149,21 @@ export function ProfileCard({ user }: { user: CurrentUser }) {
         />
       ) : (
         <>
-          <dl className="flex min-w-0 flex-col gap-5">
-            <div className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">Имя</dt>
-              <dd className="text-lg font-bold [overflow-wrap:anywhere]">
-                {user.displayName}
-              </dd>
-            </div>
-            <div className="flex flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">Город</dt>
-              <dd className="flex items-center gap-2 font-medium [overflow-wrap:anywhere]">
-                <MapPin
-                  className="size-4 shrink-0 text-primary"
-                  aria-hidden
-                />
-                {user.cityCode
-                  ? getCityName(cities.data, user.cityCode, locale)
-                  : "Город не указан"}
-              </dd>
-            </div>
-            <div className="flex min-w-0 flex-col gap-1">
-              <dt className="text-sm text-muted-foreground">О себе</dt>
-              <dd className="max-h-64 overflow-y-auto overscroll-contain whitespace-pre-wrap leading-relaxed [overflow-wrap:anywhere]">
-                {user.bio?.trim()
-                  ? user.bio
-                  : "Расскажите немного о себе и чем можете помочь животным."}
-              </dd>
-            </div>
+          <dl className="grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-[9rem_minmax(0,1fr)]">
+            {rows.map(([label, value]) => (
+              <div key={label} className="contents">
+                <dt className="text-sm text-muted-foreground">{label}</dt>
+                <dd className="-mt-3 font-medium [overflow-wrap:anywhere] sm:mt-0">
+                  {value}
+                </dd>
+              </div>
+            ))}
           </dl>
           {notice && (
             <p role="status" className="text-sm text-success-foreground">
               {notice}
             </p>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setNotice("")
-              setEditing(true)
-            }}
-            className="h-11 w-full border-primary/25 bg-primary-soft/40 font-semibold text-primary hover:text-primary-hover"
-          >
-            <Pencil data-icon="inline-start" />
-            Редактировать
-          </Button>
         </>
       )}
     </SectionCard>

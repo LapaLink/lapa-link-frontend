@@ -26,18 +26,25 @@ export function EmailChangeCard({
   return (
     <SectionCard
       icon={Mail}
-      title="Электронная почта"
-      description={
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="break-all font-medium text-foreground">{email}</span>
-          {verified !== undefined && (
-            <StatusBadge tone={verified ? "success" : "muted"}>
-              {verified ? "подтверждён" : "не подтверждён"}
-            </StatusBadge>
-          )}
-        </span>
-      }
+      title="Контакты"
+      description="Укажите, как с вами связаться."
+      fullWidthBody
     >
+      <p className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden
+          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70"
+        >
+          <Mail className="size-4" />
+        </span>
+        <span className="sr-only">Электронная почта: </span>
+        <span className="min-w-0 text-sm font-medium break-all">{email}</span>
+        {verified !== undefined && (
+          <StatusBadge tone={verified ? "success" : "muted"}>
+            {verified ? "Подтверждён" : "Не подтверждён"}
+          </StatusBadge>
+        )}
+      </p>
       {!open && change.notice && (
         <p role="status" className="text-sm text-success-foreground">
           {change.notice}
@@ -50,11 +57,11 @@ export function EmailChangeCard({
       )}
       <Button
         variant="outline"
-        className="h-11 self-start sm:h-10"
+        className="h-11 self-start rounded-full px-5 sm:h-10"
         onClick={() => setOpen(true)}
       >
         {!change.pending && <Pencil data-icon="inline-start" />}
-        {change.pending ? "Ввести код" : "Изменить email"}
+        {change.pending ? "Ввести код" : "Изменить"}
       </Button>
       <Dialog
         open={open}
