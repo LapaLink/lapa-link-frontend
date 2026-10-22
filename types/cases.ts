@@ -37,8 +37,12 @@ export type CaseFeedFilter = {
   title?: string
   /** Title and description, up to 200 characters. */
   search?: string
-  /** Code from /need-types. */
-  needType?: string
+  /**
+   * Codes from /need-types (active ones, else 400 UNKNOWN_NEED_TYPE): a case
+   * matches if it has a need of any of them. Without needStatus, needType and
+   * priority look only at needs that are not CLOSED.
+   */
+  needType?: readonly string[]
   priority?: NeedPriority
   needStatus?: NeedStatus
   latitude?: number
@@ -132,7 +136,16 @@ export type CaseListItem = {
   createdAt: string
 }
 
+/** Photo of a case gallery; position 0 is the cover (`photoUrl`). */
+export type CaseGalleryPhoto = {
+  id: string
+  url: string
+  position: number
+}
+
 export type CaseDetails = Omit<AnimalCase, "authorId"> & {
+  /** Whole gallery sorted by position; only in details and /photos responses. */
+  photos?: CaseGalleryPhoto[]
   closeReason?: string | null
   closeComment?: string | null
   closedAt?: string | null

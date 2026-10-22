@@ -856,7 +856,7 @@ test("case validation enforces required fields, coordinates and text limits", ()
   )
 })
 
-test("case creation sends JSON without photo and typed multipart with photo", async () => {
+test("case creation sends JSON without photos and typed multipart with photos", async () => {
   const storage = new Map([["lapalink.session", JSON.stringify(old)]])
   const received = []
   const { casesApi } = load(
@@ -881,7 +881,8 @@ test("case creation sends JSON without photo and typed multipart with photo", as
   )
   assert.equal(JSON.parse(received[0].options.body).cityCode, "minsk")
   const photo = new File(["photo"], "dog.png", { type: "image/png" })
-  await casesApi.create(dto, photo)
+  const second = new File(["photo"], "dog-2.webp", { type: "image/webp" })
+  await casesApi.create(dto, [photo, second])
   const multipart = received[1].options
   assert.equal(multipart.headers.has("Content-Type"), false)
   assert.equal(multipart.body.get("case").type, "application/json")
@@ -889,7 +890,11 @@ test("case creation sends JSON without photo and typed multipart with photo", as
     JSON.parse(await multipart.body.get("case").text()).cityCode,
     "minsk",
   )
-  assert.equal(multipart.body.get("photo").name, "dog.png")
+  assert.deepEqual(
+    multipart.body.getAll("photos").map((file) => file.name),
+    ["dog.png", "dog-2.webp"],
+  )
+  assert.equal(multipart.body.has("photo"), false)
   assert.equal(multipart.headers.get("Authorization"), "Bearer old-access")
   await casesApi.addNeed("case-1", "NEW_TYPE")
   assert.equal(received[2].url, "/api/v1/cases/case-1/needs")

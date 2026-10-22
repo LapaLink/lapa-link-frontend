@@ -4,6 +4,7 @@ import type {
   Assignment,
   CaseDetails,
   CaseFeedFilter,
+  CaseGalleryPhoto,
   CaseListItem,
   CaseNeed,
   CaseNotificationSettings,
@@ -18,10 +19,16 @@ import type {
 import { readTokens } from "@/lib/auth"
 import { ApiError, authorizedRequest, request } from "./instance"
 
-function query(params: Record<string, string | number | undefined>) {
+function query(
+  params: Record<string, string | number | readonly string[] | undefined>,
+) {
   const search = new URLSearchParams()
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") search.set(key, String(value))
+    // Arrays go as a repeated parameter: needType=A&needType=B.
+    if (Array.isArray(value))
+      value.forEach((item) => item !== "" && search.append(key, item))
+    else if (value !== undefined && value !== "")
+      search.set(key, String(value))
   })
   const value = search.toString()
   return value ? `?${value}` : ""
@@ -63,20 +70,50 @@ export const casesApi = {
     }
   },
   getCaseById: (caseId: string) => casesApi.getById(caseId),
-  create: (data: CreateCaseDto, photo?: File) => {
-    if (!photo)
+  /**
+   * Creates a case; photos go to the gallery in this order, the first is the
+   * cover. Atomic: one rejected file and nothing is created. The response has
+   * no gallery, load the details for photo ids.
+   */
+  create: (data: CreateCaseDto, photos: readonly File[] = []) => {
+    if (!photos.length)
       return authorizedRequest<AnimalCase>("/cases", {
         method: "POST",
         body: JSON.stringify(data),
       })
     const body = new FormData()
+    // The `case` part must be application/json, hence the Blob.
     body.append(
       "case",
       new Blob([JSON.stringify(data)], { type: "application/json" }),
     )
-    body.append("photo", photo)
+    photos.forEach((photo) => body.append("photos", photo))
     return authorizedRequest<AnimalCase>("/cases", { method: "POST", body })
   },
+  /** Appends photos to the end of the gallery (all or none); returns the whole gallery. */
+  addPhotos: (caseId: string, photos: readonly File[]) => {
+    const body = new FormData()
+    photos.forEach((photo) => body.append("photos", photo))
+    return authorizedRequest<CaseGalleryPhoto[]>(
+      `/cases/${encodeURIComponent(caseId)}/photos`,
+      { method: "POST", body },
+    )
+  },
+  /** Removes a photo; the next one becomes the cover if needed. Returns the whole gallery. */
+  deletePhoto: (caseId: string, photoId: string) =>
+    authorizedRequest<CaseGalleryPhoto[]>(
+      `/cases/${encodeURIComponent(caseId)}/photos/${encodeURIComponent(photoId)}`,
+      { method: "DELETE" },
+    ),
+  /**
+   * Sets the gallery order; the first photo becomes the cover. `photoIds`
+   * must list every photo exactly once (else INVALID_CASE_PHOTO_ORDER).
+   */
+  reorderPhotos: (caseId: string, photoIds: readonly string[]) =>
+    authorizedRequest<CaseGalleryPhoto[]>(
+      `/cases/${encodeURIComponent(caseId)}/photos/order`,
+      { method: "PATCH", body: JSON.stringify({ photoIds }) },
+    ),
   /** Turns the current participant's email notifications for a case on or off. */
   setNotifications: (caseId: string, enabled: boolean) =>
     authorizedRequest<CaseNotificationSettings>(

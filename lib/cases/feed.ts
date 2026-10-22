@@ -15,7 +15,8 @@ export type FeedState = {
   animalType?: AnimalType
   cityCode?: string
   search: string
-  needType?: string
+  /** Need type codes; a case matches if it has a need of any of them. */
+  needTypes: string[]
   priority?: NeedPriority
   needStatus?: NeedStatus
   point?: FeedPoint
@@ -62,9 +63,19 @@ function normalize(state: FeedState): FeedState {
   }
 }
 
+/**
+ * Need type codes from `needType=A&needType=B` and/or `needType=A,B`:
+ * trimmed, without empty values and repeats.
+ */
+function parseNeedTypes(values: readonly string[]) {
+  const codes = values.flatMap((value) => value.split(","))
+  return [...new Set(codes.map((code) => code.trim()).filter(Boolean))]
+}
+
 /** Reads the feed state from the URL; invalid values are ignored, `title` maps to `search`. */
 export function parseFeedState(params: {
   get(name: string): string | null
+  getAll(name: string): string[]
 }): FeedState {
   const latitude = coordinate(params.get("latitude"), 90)
   const longitude = coordinate(params.get("longitude"), 180)
@@ -77,7 +88,7 @@ export function parseFeedState(params: {
     search: (params.get("search") ?? params.get("title") ?? "")
       .trim()
       .slice(0, FEED_SEARCH_MAX),
-    needType: params.get("needType")?.trim() || undefined,
+    needTypes: parseNeedTypes(params.getAll("needType")),
     priority: oneOf(PRIORITIES, params.get("priority")),
     needStatus: oneOf(NEED_STATUSES, params.get("needStatus")),
     point:
@@ -103,7 +114,7 @@ export function feedQueryString(state: FeedState) {
   set("animalType", state.animalType)
   set("cityCode", state.cityCode)
   set("search", state.search)
-  set("needType", state.needType)
+  state.needTypes.forEach((code) => params.append("needType", code))
   set("priority", state.priority)
   set("needStatus", state.needStatus)
   if (state.point) {
@@ -124,14 +135,26 @@ export function changeFeed(
   return normalize({ ...state, ...patch, page: 0 })
 }
 
-/** API parameters for the state; `sort` is never sent, the order goes as `orderBy`. */
-export function toFeedFilter(state: FeedState, size: number): CaseFeedFilter {
+/**
+ * API parameters for the state; `sort` is never sent, the order goes as
+ * `orderBy`. Pass `activeNeedTypes` (codes of enabled types from the
+ * dictionary) to drop unknown or disabled codes, e.g. from an old link: the
+ * backend rejects them with 400 UNKNOWN_NEED_TYPE.
+ */
+export function toFeedFilter(
+  state: FeedState,
+  size: number,
+  activeNeedTypes?: readonly string[],
+): CaseFeedFilter {
   const { point } = normalize(state)
+  const needTypes = activeNeedTypes
+    ? state.needTypes.filter((code) => activeNeedTypes.includes(code))
+    : state.needTypes
   return {
     animalType: state.animalType,
     cityCode: state.cityCode,
     search: state.search || undefined,
-    needType: state.needType,
+    needType: needTypes.length ? needTypes : undefined,
     priority: state.priority,
     needStatus: state.needStatus,
     latitude: point && round(point.latitude),

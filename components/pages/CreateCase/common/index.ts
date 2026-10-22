@@ -1,5 +1,5 @@
 export { AnimalFields, AnimalDetailsFields } from "./AnimalFields"
 export { CityField } from "./CityField"
-export { PhotoField } from "./PhotoField"
+export { PhotosField } from "./PhotosField"
 export { NeedTypesField } from "./NeedTypesField"
 export { PublicationResult } from "./PublicationResult"

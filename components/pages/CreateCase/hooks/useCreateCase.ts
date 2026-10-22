@@ -28,6 +28,7 @@ export function useCreateCase() {
       sex: "UNKNOWN",
       approximateAge: "",
       condition: "",
+      photos: [],
       needTypes: [],
     },
   })
@@ -51,7 +52,7 @@ export function useCreateCase() {
         if (!values) return
         animalCase = await casesApi.create(
           toCreateCaseDto(values),
-          values.photo,
+          values.photos,
         )
         ensureSession()
         savedCase.current = animalCase

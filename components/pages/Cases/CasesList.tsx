@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
   ArrowUpDown,
+  ChevronDown,
   CircleAlert,
   CloudOff,
   HandHeart,
@@ -56,6 +57,12 @@ import {
   CardTitle,
   Dialog,
   DialogContent,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -194,7 +201,21 @@ export function CasesList() {
   }
 
   const matching = state.mode === "matching"
-  const filter = toFeedFilter(state, PAGE_SIZE)
+  const sortedNeedTypes = (needTypes.data ?? [])
+    .filter((type) => type.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  // Unknown or disabled codes (e.g. from an old link) would get 400
+  // UNKNOWN_NEED_TYPE, so codes are checked against the dictionary first.
+  const filter = toFeedFilter(
+    state,
+    PAGE_SIZE,
+    needTypes.data && sortedNeedTypes.map((type) => type.code),
+  )
+  const needTypeName = (code: string) =>
+    getDictionaryName(needTypes.data, code, locale)
+  const selectedNeedTypes = state.needTypes.filter((code) =>
+    sortedNeedTypes.some((type) => type.code === code),
+  )
   const cases = useQuery({
     queryKey: ["cases", "list", state.mode, filter],
     // The signal aborts the request once the filters move on.
@@ -204,12 +225,11 @@ export function CasesList() {
         : casesApi.list(filter, signal),
     // "Подходит мне" waits for the session check; without a session the
     // authorized request fails with the usual 401.
-    enabled: !matching || !authLoading,
+    // Need type codes wait for the dictionary that validates them.
+    enabled:
+      (!matching || !authLoading) &&
+      (!state.needTypes.length || !!needTypes.data),
   })
-
-  const sortedNeedTypes = [...(needTypes.data ?? [])].sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  )
   const city = cities.data
     ?.flatMap((group) => group.cities)
     .find((item) => item.code === state.cityCode)
@@ -357,27 +377,66 @@ export function CasesList() {
           </Field>
           <Field>
             <FieldLabel htmlFor="need-type-filter">Тип помощи</FieldLabel>
-            <Select
-              value={state.needType ?? ALL}
-              onValueChange={(value) =>
-                update({ needType: value === ALL ? undefined : value })
-              }
-            >
-              <SelectTrigger id="need-type-filter">
-                <Heart aria-hidden className="text-primary" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={ALL}>Любой тип помощи</SelectItem>
-                  {sortedNeedTypes.map((type) => (
-                    <SelectItem key={type.code} value={type.code}>
-                      {getDictionaryName(needTypes.data, type.code, locale)}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            {/* Several types at once: a case matches if it needs any of them. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  id="need-type-filter"
+                  type="button"
+                  className="flex h-12 w-full min-w-0 items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.03] px-4 text-left text-base shadow-xs transition-colors outline-none hover:border-primary/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+                >
+                  <Heart aria-hidden className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {selectedNeedTypes.length === 0
+                      ? "Любой тип помощи"
+                      : selectedNeedTypes.length === 1
+                        ? needTypeName(selectedNeedTypes[0])
+                        : `${needTypeName(selectedNeedTypes[0])} и ещё ${selectedNeedTypes.length - 1}`}
+                  </span>
+                  <ChevronDown
+                    aria-hidden
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
+              >
+                {sortedNeedTypes.map((type) => (
+                  <DropdownMenuCheckboxItem
+                    key={type.code}
+                    className="min-h-10"
+                    checked={selectedNeedTypes.includes(type.code)}
+                    // Keep the menu open to tick several types.
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={(checked) =>
+                      update({
+                        needTypes: checked
+                          ? [...selectedNeedTypes, type.code]
+                          : selectedNeedTypes.filter(
+                              (code) => code !== type.code,
+                            ),
+                      })
+                    }
+                  >
+                    {needTypeName(type.code)}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {selectedNeedTypes.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="min-h-10"
+                      onSelect={() => update({ needTypes: [] })}
+                    >
+                      <X aria-hidden />
+                      Любой тип помощи
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </Field>
           <Field>
             <FieldLabel htmlFor="priority-filter">Приоритет</FieldLabel>

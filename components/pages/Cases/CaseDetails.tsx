@@ -100,6 +100,7 @@ import {
   NeedPriorityBadge,
   NeedTimeWindow,
 } from "./NeedDetails"
+import { CaseGallery, galleryOf } from "./CaseGallery"
 import { NeedFormDialog } from "./NeedFormDialog"
 
 const needStatusTones = {
@@ -383,6 +384,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       (item) => item.need.id === needId,
     )
   const hasPhoto = !!animalCase.photoUrl
+  const gallery = galleryOf(animalCase)
   const canEdit = isAuthor && animalCase.status === "OPEN"
   const facts = [
     {
@@ -516,6 +518,10 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           hasActiveResponse={hasActiveResponse}
           chats={caseChats}
         />
+      )}
+
+      {gallery.length > 0 && (
+        <CaseGallery photos={gallery} title={animalCase.title} />
       )}
 
       <SectionCard icon={PawPrint} title="О животном">

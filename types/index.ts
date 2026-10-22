@@ -17,6 +17,7 @@ export type {
   PageResponse,
   CaseAuthor,
   CaseListItem,
+  CaseGalleryPhoto,
   CaseFeedFilter,
   CaseFeedSort,
   CaseDetails,

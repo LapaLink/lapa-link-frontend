@@ -1,5 +1,9 @@
 import { z } from "zod"
-import { imageSchema, approximateAgeSchema } from "@/lib/validation"
+import {
+  CASE_PHOTOS_MAX,
+  imageSchema,
+  approximateAgeSchema,
+} from "@/lib/validation"
 import type { CreateCaseDto } from "@/types"
 
 function coordinate(limit: number, label: string) {
@@ -35,7 +39,13 @@ export const createCaseSchema = z.object({
     .string()
     .trim()
     .max(500, "Описание состояния должно быть не длиннее 500 символов."),
-  photo: imageSchema.optional(),
+  photos: z
+    .array(imageSchema)
+    .max(
+      CASE_PHOTOS_MAX,
+      `В объявлении может быть не больше ${CASE_PHOTOS_MAX} фото.`,
+    )
+    .optional(),
   needTypes: z
     .array(z.string().min(1).max(32))
     .refine(

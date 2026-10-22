@@ -19,7 +19,7 @@ import {
   AnimalDetailsFields,
   AnimalFields,
   CityField,
-  PhotoField,
+  PhotosField,
   NeedTypesField,
   PublicationResult,
 } from "./common"
@@ -149,7 +149,7 @@ function CreateCaseContent() {
                   <div>
                     {step === 0 && <AnimalFields />}
                     {step === 1 && <AnimalDetailsFields />}
-                    {step === 2 && <PhotoField />}
+                    {step === 2 && <PhotosField />}
                     {step === 3 && <CityField locale={locale} />}
                     {step === 4 && <NeedTypesField locale={locale} />}
                   </div>
@@ -175,7 +175,7 @@ function CreateCaseContent() {
                     className="flex-1"
                     loading={busy}
                     loadingText="Публикуем…"
-                    disabled={!!form.formState.errors.photo}
+                    disabled={!!form.formState.errors.photos}
                   >
                     Опубликовать
                   </LoadingButton>
@@ -184,7 +184,7 @@ function CreateCaseContent() {
                     type="button"
                     size="lg"
                     className="flex-1"
-                    disabled={!!form.formState.errors.photo}
+                    disabled={!!form.formState.errors.photos}
                     onClick={() => void goNext()}
                   >
                     Далее

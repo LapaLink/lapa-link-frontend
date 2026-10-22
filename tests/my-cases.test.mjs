@@ -590,3 +590,28 @@ test("case chat block shows the switch to the author and nothing to users withou
   assert.ok(!stranger.includes("Написать автору"))
   assert.ok(!stranger.includes("Автор пока не включил чат"))
 })
+
+test("gallery editor marks the first photo as cover and offers reorder and delete", () => {
+  const photos = [
+    { id: "p1", url: "/images/u/1.png", position: 0 },
+    { id: "p2", url: "/images/u/2.png", position: 1 },
+  ]
+  const html = renderPage(
+    "components/pages/EditCase/common/CaseGalleryEditor.tsx",
+    "CaseGalleryEditor",
+    { props: { caseId: "case-1", photos } },
+  )
+  assert.equal(html.split("Обложка").length - 1, 1)
+  assert.ok(!html.includes("Сделать фото 1 обложкой"))
+  assert.ok(html.includes("Сделать фото 2 обложкой"))
+  assert.match(html, /aria-label="Сдвинуть фото 1 левее"[^>]*disabled=""|disabled=""[^>]*aria-label="Сдвинуть фото 1 левее"/)
+  assert.ok(html.includes("Удалить фото 2"))
+  assert.ok(html.includes("Добавить фото (2 из 10)"))
+
+  const gallery = renderPage("components/pages/Cases/CaseGallery.tsx", "CaseGallery", {
+    props: { photos, title: "Кот" },
+  })
+  assert.ok(gallery.includes("Кот, фото 1 из 2"))
+  assert.ok(gallery.includes("1 из 2"))
+  assert.ok(gallery.includes("Показать фото 2"))
+})

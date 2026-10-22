@@ -15,6 +15,7 @@ import {
 } from "@/components/common"
 import { Button, Card, CardContent, Skeleton } from "@/components/ui"
 import { canEditCase } from "./schemas"
+import { CaseGalleryEditor } from "./common/CaseGalleryEditor"
 import { EditCaseForm } from "./common/EditCaseForm"
 
 function EditSkeleton() {
@@ -87,7 +88,13 @@ function EditCaseContent({ caseId }: { caseId: string }) {
           </Button>
         </EmptyState>
       ) : (
-        <EditCaseForm key={caseId} item={details.data} />
+        <>
+          <CaseGalleryEditor
+            caseId={caseId}
+            photos={details.data.photos ?? []}
+          />
+          <EditCaseForm key={caseId} item={details.data} />
+        </>
       )}
     </section>
   )

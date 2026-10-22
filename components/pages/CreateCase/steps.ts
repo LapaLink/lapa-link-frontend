@@ -18,7 +18,7 @@ export const CREATE_CASE_STEPS: {
   {
     title: "Фото",
     description: "С фото объявление заметнее. Этот шаг можно пропустить.",
-    fields: ["photo"],
+    fields: ["photos"],
   },
   {
     title: "Место находки",
