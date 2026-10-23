@@ -107,10 +107,7 @@ const sortLabels: Record<CaseFeedSort, string> = {
 const geolocationHint =
   "Не удалось определить местоположение. Разрешите доступ к геолокации в браузере или выберите точку на карте."
 
-/**
- * Local draft for a text or range control, written to the URL 350 ms after
- * the last change so typing or dragging doesn't fire a request per step.
- */
+
 function useDebouncedCommit<T>(initial: T, commit: (value: T) => void) {
   const [draft, setDraft] = useState(initial)
   const debounced = useDebouncedValue(draft)
