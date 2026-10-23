@@ -26,6 +26,12 @@ export type {
   Assignment,
 } from "./cases"
 export type {
+  ComplaintTargetType,
+  ComplaintStatus,
+  CreateComplaintDto,
+  Complaint,
+} from "./complaints"
+export type {
   DictionaryLocale,
   DictionaryEntry,
   City,

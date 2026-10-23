@@ -104,6 +104,7 @@ import {
 } from "./NeedDetails"
 import { CaseGallery, galleryOf } from "./CaseGallery"
 import { NeedFormDialog } from "./NeedFormDialog"
+import { ReportCaseButton } from "./ReportCaseButton"
 
 const needStatusTones = {
   OPEN: "primary",
@@ -502,6 +503,11 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                 Редактировать объявление
               </Link>
             </Button>
+          </div>
+        )}
+        {user && !isAuthor && animalCase.status === "OPEN" && (
+          <div className={cn("col-span-2", hasPhoto && "sm:col-span-1 sm:col-start-2")}>
+            <ReportCaseButton caseId={caseId} />
           </div>
         )}
       </header>
