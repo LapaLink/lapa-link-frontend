@@ -268,6 +268,8 @@ test("editing hydrates current values, enforces limits and sends only editable c
   assert.equal(canEditCase(item, "other"), false)
   assert.equal(canEditCase(item), false)
   assert.equal(canEditCase({ ...item, status: "CLOSED" }, "owner"), false)
+  assert.equal(canEditCase({ ...item, status: "PENDING_REVIEW" }, "owner"), true)
+  assert.equal(canEditCase({ ...item, status: "REJECTED" }, "owner"), false)
   for (const patch of [
     { title: " " },
     { title: "x".repeat(151) },

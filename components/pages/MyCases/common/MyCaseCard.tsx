@@ -1,12 +1,6 @@
 import { CasePhoto, IconCircle, StatusBadge } from "@/components/common"
 import Link from "next/link"
-import {
-  CircleCheck,
-  HeartHandshake,
-  Lock,
-  MapPin,
-  MessageCircle,
-} from "lucide-react"
+import { HeartHandshake, MapPin, MessageCircle } from "lucide-react"
 import {
   Button,
   Card,
@@ -16,10 +10,18 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui"
+import { caseStatusAppearance } from "../../Cases/statusLabels"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
-import type { MyCaseListItem } from "@/types"
+import type { CaseStatus, MyCaseListItem } from "@/types"
+
+const statusLabels: Record<CaseStatus, string> = {
+  PENDING_REVIEW: "На проверке",
+  OPEN: "Активно",
+  REJECTED: "Отклонено",
+  CLOSED: "Закрыто",
+}
 
 export function MyCaseCard({
   item,
@@ -29,17 +31,18 @@ export function MyCaseCard({
   city: string
 }) {
   const isOpen = item.status === "OPEN"
+  const editable = isOpen || item.status === "PENDING_REVIEW"
   const hasApplications = item.applicationsCount > 0
   return (
     <Card className="relative min-w-0 overflow-hidden pt-0 transition-colors hover:border-primary/30">
       <div className="relative">
         <CasePhoto src={item.photoUrl} alt={item.title} />
         <StatusBadge
-          tone={isOpen ? "success" : "muted"}
-          icon={isOpen ? CircleCheck : Lock}
+          tone={caseStatusAppearance[item.status].tone}
+          icon={caseStatusAppearance[item.status].icon}
           className="absolute left-3 top-3 shadow-sm ring-1 ring-card"
         >
-          {isOpen ? "Активно" : "Закрыто"}
+          {statusLabels[item.status]}
         </StatusBadge>
       </div>
       <CardHeader>
@@ -75,6 +78,12 @@ export function MyCaseCard({
             </span>
           </p>
         </div>
+        {item.status === "PENDING_REVIEW" && (
+          <p className="rounded-xl bg-primary-soft px-3 py-2 text-sm font-medium text-primary">
+            Объявление проверяет модератор. После одобрения оно появится в
+            общем списке.
+          </p>
+        )}
         {isOpen && (
           <p
             className={cn(
@@ -95,7 +104,7 @@ export function MyCaseCard({
         </p>
       </CardContent>
       <CardFooter className="flex flex-col gap-2">
-        {isOpen ? (
+        {editable ? (
           <>
             <Button asChild className="relative z-10 h-11 w-full sm:h-10">
               <Link href={ROUTES.CASE_DETAILS(item.id)}>
@@ -110,6 +119,10 @@ export function MyCaseCard({
               <Link href={ROUTES.EDIT_CASE(item.id)}>Редактировать</Link>
             </Button>
           </>
+        ) : item.status === "REJECTED" ? (
+          <span className="text-sm text-muted-foreground">
+            Объявление отклонено модератором — причина указана внутри.
+          </span>
         ) : (
           <span className="text-sm text-muted-foreground">
             Объявление закрыто — спасибо, что помогли!

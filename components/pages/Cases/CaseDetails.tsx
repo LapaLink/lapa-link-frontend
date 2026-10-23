@@ -6,11 +6,12 @@ import { cn } from "cn"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
+  Ban,
   Cake,
   CalendarDays,
-  CircleCheck,
   CircleHelp,
   CircleX,
+  Clock,
   Ellipsis,
   HandHeart,
   HeartHandshake,
@@ -88,6 +89,7 @@ import {
   Switch,
 } from "@/components/ui"
 import {
+  caseStatusAppearance,
   caseStatusLabels,
   needStatusLabels,
   responseStatusLabels,
@@ -385,7 +387,9 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     )
   const hasPhoto = !!animalCase.photoUrl
   const gallery = galleryOf(animalCase)
-  const canEdit = isAuthor && animalCase.status === "OPEN"
+  const editable =
+    animalCase.status === "OPEN" || animalCase.status === "PENDING_REVIEW"
+  const canEdit = isAuthor && editable
   const facts = [
     {
       label: "Пол",
@@ -448,8 +452,8 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           ·
         </span>
         <StatusBadge
-          tone={animalCase.status === "OPEN" ? "success" : "muted"}
-          icon={animalCase.status === "OPEN" ? CircleCheck : Lock}
+          tone={caseStatusAppearance[animalCase.status].tone}
+          icon={caseStatusAppearance[animalCase.status].icon}
           className="ml-1"
         >
           {caseStatusLabels[animalCase.status]}
@@ -501,6 +505,30 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           </div>
         )}
       </header>
+
+      {isAuthor && animalCase.status === "PENDING_REVIEW" && (
+        <SectionCard
+          icon={Clock}
+          title="Объявление на проверке"
+          description="Модератор проверит объявление перед публикацией. Пока его видите только вы — после одобрения оно появится в общем списке, и мы пришлём уведомление. Объявление можно редактировать и дополнять, пока оно на проверке."
+        />
+      )}
+
+      {isAuthor && animalCase.status === "REJECTED" && (
+        <SectionCard
+          icon={Ban}
+          tone="danger"
+          title="Объявление отклонено"
+          description="Модератор не допустил объявление к публикации, его видите только вы. Вы можете создать новое объявление с учётом замечаний."
+        >
+          {animalCase.rejectionReason && (
+            <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+              <span className="text-muted-foreground">Причина: </span>
+              {animalCase.rejectionReason}
+            </p>
+          )}
+        </SectionCard>
+      )}
 
       {typeof animalCase.notificationsEnabled === "boolean" &&
         animalCase.status === "OPEN" && (
@@ -668,7 +696,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
               const needResponses = responsesByNeed.get(need.id) ?? []
               const needName = getDictionaryName(needTypes.data, need.type, locale)
               const canManageNeed =
-                isAuthor && animalCase.status === "OPEN" && need.status !== "CLOSED"
+                isAuthor && editable && need.status !== "CLOSED"
               return (
                 <AccordionItem
                   key={need.id}
@@ -949,7 +977,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         )}
       </Dialog>
 
-      {isAuthor && animalCase.status === "OPEN" && (
+      {canEdit && (
         <SectionCard
           icon={Lock}
           title="Закрыть объявление"

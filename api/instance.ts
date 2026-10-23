@@ -55,6 +55,8 @@ export function getErrorMessage(error: unknown, fallback: string): string {
       NOT_CHAT_OWNER: "Управлять чатом может только автор объявления.",
       CHAT_NOT_WRITABLE: "В этот диалог сейчас нельзя писать.",
       CASE_CLOSED: "Объявление закрыто.",
+      CASE_NOT_PUBLISHED:
+        "Объявление ещё на проверке у модератора или отклонено.",
     }
 
     if (error.code && codeMap[error.code]) return codeMap[error.code]

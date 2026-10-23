@@ -59,5 +59,9 @@ export function toUpdateCaseDto(
 }
 
 export function canEditCase(item: CaseDetails, userId?: string) {
-  return !!userId && item.author.id === userId && item.status === "OPEN"
+  return (
+    !!userId &&
+    item.author.id === userId &&
+    (item.status === "OPEN" || item.status === "PENDING_REVIEW")
+  )
 }

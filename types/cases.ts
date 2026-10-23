@@ -17,7 +17,8 @@ export type MyCaseListItem = Omit<CaseListItem, "cityCode"> & {
   applicationsCount: number
 }
 export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
-export type CaseStatus = "OPEN" | "CLOSED"
+/** PENDING_REVIEW and REJECTED exist only with premoderation; such cases are visible to the author and moderators only. */
+export type CaseStatus = "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 
@@ -149,6 +150,8 @@ export type CaseDetails = Omit<AnimalCase, "authorId"> & {
   closeReason?: string | null
   closeComment?: string | null
   closedAt?: string | null
+  /** Moderator's reason, only for REJECTED. */
+  rejectionReason?: string | null
   author: CaseAuthor
   needs: CaseNeed[]
   /** Current user's email notifications for this case; null when not a participant or anonymous. */

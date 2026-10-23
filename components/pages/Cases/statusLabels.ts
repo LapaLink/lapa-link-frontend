@@ -1,3 +1,4 @@
+import { Ban, CircleCheck, Clock, Lock, type LucideIcon } from "lucide-react"
 import type {
   AssignmentStatus,
   CaseStatus,
@@ -6,9 +7,21 @@ import type {
 } from "@/types"
 
 export const caseStatusLabels: Record<CaseStatus, string> = {
+  PENDING_REVIEW: "На проверке",
   OPEN: "Открыто",
+  REJECTED: "Отклонено",
   CLOSED: "Закрыто",
 }
+
+export const caseStatusAppearance = {
+  PENDING_REVIEW: { tone: "primary", icon: Clock },
+  OPEN: { tone: "success", icon: CircleCheck },
+  REJECTED: { tone: "danger", icon: Ban },
+  CLOSED: { tone: "muted", icon: Lock },
+} as const satisfies Record<
+  CaseStatus,
+  { tone: "primary" | "success" | "danger" | "muted"; icon: LucideIcon }
+>
 
 export const needStatusLabels: Record<NeedStatus, string> = {
   OPEN: "Ищем помощника",

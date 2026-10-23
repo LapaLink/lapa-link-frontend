@@ -38,18 +38,25 @@ export function PublicationResult({
   onCreateAnother: () => void
   onSkipType: (type: string) => void
 }) {
+  const pendingReview = animalCase.status === "PENDING_REVIEW"
   return (
     <Card>
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col items-center gap-3 text-center">
           <IconCircle icon={CheckCircle2} tone={finished ? "success" : "primary"} />
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            {finished ? "Объявление опубликовано" : "Объявление создано"}
+            {!finished
+              ? "Объявление создано"
+              : pendingReview
+                ? "Объявление отправлено на проверку"
+                : "Объявление опубликовано"}
           </h1>
           <p className="max-w-md text-sm text-muted-foreground">
-            {finished
-              ? "Спасибо, что помогаете животным. Данные сохранены."
-              : "Само объявление уже сохранено. Осталось добавить выбранные виды помощи."}
+            {!finished
+              ? "Само объявление уже сохранено. Осталось добавить выбранные виды помощи."
+              : pendingReview
+                ? "Модератор проверит объявление, после одобрения оно появится в общем списке. Мы пришлём уведомление."
+                : "Спасибо, что помогаете животным. Данные сохранены."}
           </p>
         </div>
         <div className="flex flex-col items-start gap-2 rounded-2xl border bg-background/60 p-4">
