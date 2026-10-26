@@ -1,6 +1,11 @@
 import { Card, CardContent, Skeleton } from "@/components/ui"
 
-export function CaseCardsSkeleton() {
+export function CaseCardsSkeleton({
+  aspect = "aspect-video",
+}: {
+  /** Tailwind aspect-ratio class of the photo placeholder. */
+  aspect?: string
+}) {
   return (
     <div
       role="status"
@@ -9,7 +14,7 @@ export function CaseCardsSkeleton() {
     >
       {Array.from({ length: 6 }, (_, key) => (
         <Card key={key} className="min-w-0 pt-0">
-          <Skeleton className="aspect-video w-full" />
+          <Skeleton className={`${aspect} w-full`} />
           <CardContent className="flex flex-col gap-4">
             <Skeleton className="h-6 w-3/4" />
             <div className="flex gap-2">

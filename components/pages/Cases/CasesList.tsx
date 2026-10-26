@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
+  ArrowRight,
   ArrowUpDown,
   ChevronDown,
   CircleAlert,
@@ -19,8 +20,10 @@ import {
   Map as MapIcon,
   MapPin,
   PawPrint,
+  Plus,
   RotateCcw,
   Search,
+  SlidersHorizontal,
   X,
 } from "lucide-react"
 import { casesApi, getErrorMessage } from "@/api"
@@ -53,6 +56,7 @@ import type {
 import {
   Button,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
   Dialog,
@@ -104,6 +108,27 @@ const sortLabels: Record<CaseFeedSort, string> = {
   PRIORITY: "Срочные",
 }
 
+const publishedFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+})
+const publishedFormatWithYear = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+})
+
+/** "26 октября"; the year is added only for earlier years. */
+function formatPublished(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ""
+  return (
+    date.getFullYear() === new Date().getFullYear()
+      ? publishedFormat
+      : publishedFormatWithYear
+  ).format(date)
+}
+
 const geolocationHint =
   "Не удалось определить местоположение. Разрешите доступ к геолокации в браузере или выберите точку на карте."
 
@@ -139,6 +164,9 @@ export function CasesList() {
   const [mapOpen, setMapOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   const [pointHint, setPointHint] = useState("")
+  const [nearOpen, setNearOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const navigate = (next: FeedState) => {
     const query = feedQueryString(next)
@@ -231,11 +259,19 @@ export function CasesList() {
     ?.flatMap((group) => group.cities)
     .find((item) => item.code === state.cityCode)
 
+  const nearVisible = nearOpen || !!state.point
+  const moreVisible = moreOpen || !!state.needStatus
+  // Neutral fields: the burgundy accent is kept for actions.
+  const fieldClass =
+    "border-input bg-background hover:border-foreground/25 focus-visible:bg-background"
+  const chipClass = "h-11 rounded-full sm:h-9"
+
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
       <PageHeader
-        eyebrow="Объявления"
-        title="Кому сейчас нужна помощь"
+        eyebrow="Помощь животным"
+        title="Кому нужна помощь?"
+        description="Найдите животное или помогите тем, кто рядом с вами."
         actions={
           <>
             {user && (
@@ -244,7 +280,10 @@ export function CasesList() {
               </Button>
             )}
             <Button asChild className="h-11 sm:h-10">
-              <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
+              <Link href={ROUTES.CREATE_CASE}>
+                <Plus aria-hidden />
+                Создать объявление
+              </Link>
             </Button>
           </>
         }
@@ -253,7 +292,7 @@ export function CasesList() {
         <div
           role="group"
           aria-label="Какие объявления показать"
-          className="flex w-full gap-1 rounded-full border bg-card p-1 sm:w-fit"
+          className="flex w-full gap-1 rounded-full bg-muted p-1 sm:w-fit"
         >
           {(
             [
@@ -281,31 +320,38 @@ export function CasesList() {
           ))}
         </div>
         {!user && !authLoading && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="flex items-center gap-2 text-sm text-foreground/75">
             <Lock aria-hidden className="size-4 shrink-0" />
             «Подходит мне» доступно только авторизованным пользователям
           </p>
         )}
       </div>
+      {/* On phones the filters fold behind a button to leave room for cases. */}
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 sm:hidden"
+        aria-expanded={filtersOpen}
+        aria-controls="feed-filters"
+        onClick={() => setFiltersOpen((open) => !open)}
+      >
+        <SlidersHorizontal aria-hidden />
+        {filtersOpen ? "Скрыть фильтры" : "Фильтры"}
+        {hasFeedFilters(state) && (
+          <span aria-hidden className="size-2 rounded-full bg-primary" />
+        )}
+      </Button>
       <div
+        id="feed-filters"
         role="search"
         aria-label="Фильтры объявлений"
-        className="flex flex-col gap-4 rounded-2xl border bg-card p-5 sm:p-6"
-      >
-        {(hasFeedFilters(state) || searchText) && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-11 self-end text-muted-foreground sm:-mt-2 sm:-mb-3 sm:h-8"
-            onClick={reset}
-          >
-            <RotateCcw aria-hidden />
-            Сбросить фильтры
-          </Button>
+        className={cn(
+          "flex-col gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-foreground/5 sm:flex sm:p-5",
+          filtersOpen ? "flex" : "hidden",
         )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field>
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field className="gap-1.5">
             <FieldLabel htmlFor="animal-filter">Тип животного</FieldLabel>
             <Select
               value={state.animalType ?? ALL}
@@ -315,7 +361,10 @@ export function CasesList() {
                 })
               }
             >
-              <SelectTrigger id="animal-filter">
+              <SelectTrigger
+                id="animal-filter"
+                className={cn("data-[size=default]:h-11", fieldClass)}
+              >
                 <PawPrint aria-hidden className="text-primary" />
                 <SelectValue />
               </SelectTrigger>
@@ -328,7 +377,7 @@ export function CasesList() {
               </SelectContent>
             </Select>
           </Field>
-          <Field>
+          <Field className="gap-1.5">
             <FieldLabel htmlFor="city-filter">Город</FieldLabel>
             <Select
               value={state.cityCode ?? ALL}
@@ -336,7 +385,10 @@ export function CasesList() {
                 update({ cityCode: value === ALL ? undefined : value })
               }
             >
-              <SelectTrigger id="city-filter">
+              <SelectTrigger
+                id="city-filter"
+                className={cn("data-[size=default]:h-11", fieldClass)}
+              >
                 <MapPin aria-hidden className="text-primary" />
                 <SelectValue placeholder="Любой город" />
               </SelectTrigger>
@@ -354,25 +406,7 @@ export function CasesList() {
               </SelectContent>
             </Select>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="search-filter">Поиск</FieldLabel>
-            <div className="relative">
-              <Search
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id="search-filter"
-                type="search"
-                placeholder="Поиск по заголовку и описанию"
-                maxLength={FEED_SEARCH_MAX}
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </Field>
-          <Field>
+          <Field className="gap-1.5">
             <FieldLabel htmlFor="need-type-filter">Тип помощи</FieldLabel>
             {/* Several types at once: a case matches if it needs any of them. */}
             <DropdownMenu>
@@ -380,12 +414,15 @@ export function CasesList() {
                 <button
                   id="need-type-filter"
                   type="button"
-                  className="flex h-12 w-full min-w-0 items-center gap-3 rounded-xl border border-primary/25 bg-primary/[0.03] px-4 text-left text-base shadow-xs transition-colors outline-none hover:border-primary/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20"
+                  className={cn(
+                    "flex h-11 w-full min-w-0 items-center gap-3 rounded-xl border px-4 text-left text-base shadow-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20",
+                    fieldClass,
+                  )}
                 >
                   <Heart aria-hidden className="size-4 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1 truncate">
                     {selectedNeedTypes.length === 0
-                      ? "Любой тип помощи"
+                      ? "Любой тип"
                       : selectedNeedTypes.length === 1
                         ? needTypeName(selectedNeedTypes[0])
                         : `${needTypeName(selectedNeedTypes[0])} и ещё ${selectedNeedTypes.length - 1}`}
@@ -435,36 +472,77 @@ export function CasesList() {
               </DropdownMenuContent>
             </DropdownMenu>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="priority-filter">Приоритет</FieldLabel>
-            <Select
-              value={state.priority ?? ALL}
-              onValueChange={(value) =>
-                update({
-                  priority: value === ALL ? undefined : (value as NeedPriority),
-                })
-              }
-            >
-              <SelectTrigger id="priority-filter">
-                <CircleAlert aria-hidden className="text-primary" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={ALL}>Любой</SelectItem>
-                  {(["HIGH", "MEDIUM", "LOW"] as const).map((priority) => (
-                    <SelectItem key={priority} value={priority}>
-                      {needPriorityLabels[priority]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+          <Field className="gap-1.5">
+            <FieldLabel htmlFor="search-filter">Поиск</FieldLabel>
+            <div className="relative">
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                id="search-filter"
+                type="search"
+                placeholder="Название или описание"
+                maxLength={FEED_SEARCH_MAX}
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className={cn("h-11 pl-9", fieldClass)}
+              />
+            </div>
           </Field>
-          <Field>
-            <FieldLabel htmlFor="need-status-filter">
-              Статус потребности
-            </FieldLabel>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              chipClass,
+              nearVisible && "border-primary/40 bg-primary-soft text-primary",
+            )}
+            aria-expanded={nearVisible}
+            aria-controls="near-filter"
+            onClick={() => {
+              // Closing the panel also drops the point it set.
+              if (nearVisible && state.point) update({ point: undefined })
+              setNearOpen(!nearVisible)
+            }}
+          >
+            <LocateFixed aria-hidden />
+            Рядом со мной
+          </Button>
+          <Select
+            value={state.priority ?? ALL}
+            onValueChange={(value) =>
+              update({
+                priority: value === ALL ? undefined : (value as NeedPriority),
+              })
+            }
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Приоритет"
+              className={cn(
+                "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+                fieldClass,
+              )}
+            >
+              <CircleAlert aria-hidden className="text-primary" />
+              <span className="text-muted-foreground">Приоритет:</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={ALL}>любой</SelectItem>
+                {(["HIGH", "MEDIUM", "LOW"] as const).map((priority) => (
+                  <SelectItem key={priority} value={priority}>
+                    {needPriorityLabels[priority]}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          {moreVisible ? (
             <Select
               value={state.needStatus ?? ALL}
               onValueChange={(value) =>
@@ -473,13 +551,21 @@ export function CasesList() {
                 })
               }
             >
-              <SelectTrigger id="need-status-filter">
+              <SelectTrigger
+                size="sm"
+                aria-label="Статус потребности"
+                className={cn(
+                  "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+                  fieldClass,
+                )}
+              >
                 <ListFilter aria-hidden className="text-primary" />
+                <span className="text-muted-foreground">Статус:</span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value={ALL}>Любой статус</SelectItem>
+                  <SelectItem value={ALL}>любой</SelectItem>
                   {(["OPEN", "ASSIGNED", "CLOSED"] as const).map((status) => (
                     <SelectItem key={status} value={status}>
                       {needStatusLabels[status]}
@@ -488,24 +574,41 @@ export function CasesList() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-          </Field>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className={cn(chipClass, "text-foreground/80")}
+              onClick={() => setMoreOpen(true)}
+            >
+              <Plus aria-hidden />
+              Ещё фильтры
+            </Button>
+          )}
+          {(hasFeedFilters(state) || searchText) && (
+            <Button
+              type="button"
+              variant="ghost"
+              className={cn(chipClass, "ml-auto text-foreground/80")}
+              onClick={reset}
+            >
+              <RotateCcw aria-hidden />
+              Сбросить фильтры
+            </Button>
+          )}
         </div>
 
-        <div className="flex flex-col gap-4 rounded-xl border bg-background/60 p-3 sm:p-4 lg:flex-row lg:items-center">
-          <fieldset className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        {nearVisible && (
+          <fieldset
+            id="near-filter"
+            className="flex flex-col gap-3 rounded-xl bg-muted/60 p-3 sm:flex-row sm:flex-wrap sm:items-center"
+          >
             <legend className="sr-only">Рядом со мной</legend>
-            <p
-              aria-hidden
-              className="flex items-center gap-2 text-sm font-bold"
-            >
-              <MapPin className="size-4 text-primary" />
-              Рядом со мной
-            </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-full sm:h-9"
+                className={chipClass}
                 disabled={locating}
                 onClick={locate}
               >
@@ -515,7 +618,7 @@ export function CasesList() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-11 rounded-full sm:h-9"
+                className={chipClass}
                 onClick={() => setMapOpen(true)}
               >
                 <MapIcon aria-hidden />
@@ -525,14 +628,14 @@ export function CasesList() {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-11 rounded-full sm:h-9"
+                  className={chipClass}
                   onClick={() => update({ point: undefined })}
                 >
                   <X aria-hidden />
                   Убрать точку
                 </Button>
               ) : (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-sm text-foreground/75">
                   Укажите точку, чтобы искать рядом
                 </span>
               )}
@@ -541,13 +644,13 @@ export function CasesList() {
               <div className="flex items-baseline gap-3">
                 <label
                   htmlFor="radius-filter"
-                  className="text-xs text-muted-foreground"
+                  className="text-sm text-foreground/75"
                 >
                   Радиус
                 </label>
                 <span
                   className={cn(
-                    "text-xs font-semibold",
+                    "text-sm font-semibold",
                     !state.point && "text-muted-foreground",
                   )}
                 >
@@ -568,44 +671,7 @@ export function CasesList() {
               />
             </div>
           </fieldset>
-          <div className="flex items-center gap-3 border-t pt-3 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-4">
-            <ArrowUpDown aria-hidden className="size-4 shrink-0 text-primary" />
-            <div className="flex min-w-44 flex-1 flex-col gap-1">
-              <label
-                htmlFor="sort-filter"
-                className="text-xs text-muted-foreground"
-              >
-                Сортировка
-              </label>
-              <Select
-                value={state.orderBy}
-                onValueChange={(value) =>
-                  update({ orderBy: value as CaseFeedSort })
-                }
-              >
-                <SelectTrigger id="sort-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {(["NEWEST", "DISTANCE", "PRIORITY"] as const).map(
-                      (orderBy) => (
-                        <SelectItem
-                          key={orderBy}
-                          value={orderBy}
-                          // Ordering by distance needs a point (FEED_POINT_REQUIRED).
-                          disabled={orderBy === "DISTANCE" && !state.point}
-                        >
-                          {sortLabels[orderBy]}
-                        </SelectItem>
-                      ),
-                    )}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
+        )}
         <FormAlert message={pointHint} />
       </div>
 
@@ -635,8 +701,49 @@ export function CasesList() {
         </DialogContent>
       </Dialog>
 
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-xl font-bold sm:text-2xl">Объявления</h2>
+          {cases.data && (
+            <p role="status" className="text-sm text-foreground/75">
+              Найдено объявлений: {cases.data.totalElements}
+            </p>
+          )}
+        </div>
+        <Select
+          value={state.orderBy}
+          onValueChange={(value) => update({ orderBy: value as CaseFeedSort })}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Сортировка"
+            className={cn(
+              "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+              fieldClass,
+            )}
+          >
+            <ArrowUpDown aria-hidden className="text-primary" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectGroup>
+              {(["NEWEST", "DISTANCE", "PRIORITY"] as const).map((orderBy) => (
+                <SelectItem
+                  key={orderBy}
+                  value={orderBy}
+                  // Ordering by distance needs a point (FEED_POINT_REQUIRED).
+                  disabled={orderBy === "DISTANCE" && !state.point}
+                >
+                  {sortLabels[orderBy]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+
       {cases.isPending ? (
-        <CaseCardsSkeleton />
+        <CaseCardsSkeleton aspect="aspect-[16/10]" />
       ) : cases.isError ? (
         <EmptyState
           icon={CloudOff}
@@ -658,37 +765,53 @@ export function CasesList() {
           </Button>
         </EmptyState>
       ) : cases.data.content.length ? (
-        <>
-          <p role="status" className="-mb-1 text-sm text-muted-foreground">
-            Найдено объявлений: {cases.data.totalElements}
-          </p>
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {cases.data.content.map((item) => (
-              <Link
-                key={item.id}
-                href={ROUTES.CASE_DETAILS(item.id)}
-                className="group min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-              >
-                <Card className="h-full min-w-0 pt-0 transition-colors group-hover:border-primary/30">
-                  <CasePhoto src={item.photoUrl} alt={item.title} />
-                  <CardHeader className="gap-3">
-                    <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
-                      {item.title}
-                    </CardTitle>
-                    <div className="flex flex-wrap gap-2">
-                      <StatusBadge tone="primary" icon={PawPrint}>
-                        {item.animalType === "CAT" ? "Кошка" : "Собака"}
-                      </StatusBadge>
-                      <StatusBadge icon={MapPin}>
-                        {getCityName(cities.data, item.cityCode, locale)}
-                      </StatusBadge>
-                    </div>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {cases.data.content.map((item) => (
+            <Link
+              key={item.id}
+              href={ROUTES.CASE_DETAILS(item.id)}
+              className="group flex min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            >
+              <Card className="w-full min-w-0 gap-4 border-transparent pt-0 shadow-sm ring-1 ring-foreground/5 transition-shadow group-hover:shadow-md">
+                <div className="relative">
+                  <CasePhoto
+                    src={item.photoUrl}
+                    alt={item.title}
+                    aspect="aspect-[16/10]"
+                  />
+                  <StatusBadge
+                    tone="primary"
+                    icon={PawPrint}
+                    className="absolute top-3 left-3 shadow-sm ring-1 ring-card"
+                  >
+                    {item.animalType === "CAT" ? "Кошка" : "Собака"}
+                  </StatusBadge>
+                </div>
+                <CardHeader className="gap-2">
+                  <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
+                    {item.title}
+                  </CardTitle>
+                  <p className="flex items-center gap-1.5 text-sm text-foreground/75">
+                    <MapPin aria-hidden className="size-4 shrink-0" />
+                    {getCityName(cities.data, item.cityCode, locale)}
+                  </p>
+                </CardHeader>
+                <CardContent className="mt-auto flex items-center justify-between gap-3 border-t pt-4 text-sm">
+                  <time dateTime={item.createdAt} className="text-foreground/75">
+                    {formatPublished(item.createdAt)}
+                  </time>
+                  <span className="flex items-center gap-1 font-semibold text-primary">
+                    Подробнее
+                    <ArrowRight
+                      aria-hidden
+                      className="size-4 transition-transform group-hover:translate-x-0.5"
+                    />
+                  </span>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       ) : matching ? (
         <EmptyState
           icon={HandHeart}

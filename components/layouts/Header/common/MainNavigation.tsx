@@ -1,9 +1,16 @@
 "use client"
 
 import { usePathname } from "next/navigation"
-import { ClipboardList, Menu, Newspaper, Plus, Search } from "lucide-react"
+import {
+  ClipboardList,
+  Menu,
+  MessageCircle,
+  Newspaper,
+  Plus,
+  Search,
+} from "lucide-react"
 import { NavigationLink as Link } from "@/components/providers"
-import { useAuth } from "@/hooks"
+import { useAuth, useChatUnreadCount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import {
@@ -30,6 +37,12 @@ const allLinks = [
     icon: ClipboardList,
     private: true,
   },
+  {
+    href: ROUTES.CHATS,
+    label: "Сообщения",
+    icon: MessageCircle,
+    private: true,
+  },
 ]
 
 function isActive(pathname: string, href: string) {
@@ -38,7 +51,19 @@ function isActive(pathname: string, href: string) {
       pathname === href ||
       (pathname.startsWith(`${href}/`) && pathname !== ROUTES.CREATE_CASE)
     )
+  if (href === ROUTES.CHATS)
+    return pathname === href || pathname.startsWith(`${href}/`)
   return pathname === href
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  if (!count) return null
+  return (
+    <span className="ml-auto min-w-5 rounded-full bg-primary px-1.5 text-center text-[10px] font-bold leading-5 text-primary-foreground">
+      <span className="sr-only">, непрочитанных: </span>
+      {count > 99 ? "99+" : count}
+    </span>
+  )
 }
 
 /** Main site sections: inline links on wide screens, a menu button on phones. Personal ones only for signed-in users. */
@@ -47,6 +72,7 @@ export function MainNavigation() {
   const { user } = useAuth()
   // Personal sections are hidden from guests (and while the session loads).
   const links = user ? allLinks : allLinks.filter((link) => !link.private)
+  const unread = useChatUnreadCount(!!user).data?.count ?? 0
   return (
     <>
       <nav
@@ -65,6 +91,7 @@ export function MainNavigation() {
             >
               <Link href={href} aria-current={active ? "page" : undefined}>
                 {label}
+                {href === ROUTES.CHATS && <UnreadBadge count={unread} />}
               </Link>
             </Button>
           )
@@ -101,6 +128,7 @@ export function MainNavigation() {
                   <Link href={href} aria-current={active ? "page" : undefined}>
                     <Icon />
                     {label}
+                    {href === ROUTES.CHATS && <UnreadBadge count={unread} />}
                   </Link>
                 </DropdownMenuItem>
               )
