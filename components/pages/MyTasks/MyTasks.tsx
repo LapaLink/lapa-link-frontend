@@ -9,6 +9,7 @@ import { CloudOff, HeartHandshake } from "lucide-react"
 import {
   EmptyState,
   FormAlert,
+  LoadingButton,
   PageHeader,
   RequireAuth,
   StatusBadge,
@@ -27,7 +28,16 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldLabel,
   Skeleton,
+  Textarea,
 } from "@/components/ui"
 import { useAuth, useDictionaryLocale, useNeedTypes } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
@@ -51,6 +61,7 @@ type TaskCardItem = {
   statusLabel: string
   dateLabel: string
   summary: string
+  message?: string
   type: "response" | "assignment"
   needId: string
 }
@@ -122,6 +133,12 @@ export function MyTasks() {
   const [pendingActionError, setPendingActionError] = useState("")
   const [actionInFlight, setActionInFlight] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<TaskGroupKey | null>(null)
+  const [editingResponse, setEditingResponse] = useState<{
+    item: TaskCardItem
+    message: string
+  } | null>(null)
+  const [editError, setEditError] = useState("")
+  const [editInFlight, setEditInFlight] = useState(false)
 
   // Profile summary cards link to /my-tasks#<group>; open the matching tab.
   useEffect(() => {
@@ -180,6 +197,7 @@ export function MyTasks() {
           item.message && item.message.trim().length > 0
             ? item.message
             : "Сообщение без текста.",
+        message: item.message ?? "",
         type: "response" as const,
         needId: item.need.id,
       })),
@@ -302,6 +320,27 @@ export function MyTasks() {
     }
   }
 
+  const saveResponseMessage = async () => {
+    if (!editingResponse) return
+    const message = editingResponse.message.trim()
+    if (!message) {
+      setEditError("Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.")
+      return
+    }
+    setEditInFlight(true)
+    setEditError("")
+
+    try {
+      await casesApi.updateResponse(editingResponse.item.id, message)
+      await invalidateTaskData(client, editingResponse.item.caseId)
+      setEditingResponse(null)
+    } catch (error) {
+      setEditError(getErrorMessage(error, "Не удалось сохранить сообщение."))
+    } finally {
+      setEditInFlight(false)
+    }
+  }
+
   const taskActionForItem = (item: TaskCardItem) => {
     if (item.type === "response" && item.status === "PENDING") {
       return {
@@ -363,6 +402,61 @@ export function MyTasks() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <Dialog
+            open={!!editingResponse}
+            onOpenChange={(open) => {
+              if (!open && !editInFlight) {
+                setEditingResponse(null)
+                setEditError("")
+              }
+            }}
+          >
+            {editingResponse && (
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {getDictionaryName(needTypes.data, editingResponse.item.needType, locale)}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Автор объявления увидит обновлённое сообщение и получит уведомление.
+                  </DialogDescription>
+                </DialogHeader>
+                <FormAlert message={editError} />
+                <Field>
+                  <FieldLabel htmlFor="edit-response-message">Сообщение автору</FieldLabel>
+                  <Textarea
+                    id="edit-response-message"
+                    autoFocus
+                    className="min-h-28"
+                    maxLength={1000}
+                    value={editingResponse.message}
+                    onChange={(event) =>
+                      setEditingResponse((current) =>
+                        current ? { ...current, message: event.target.value } : current,
+                      )
+                    }
+                  />
+                </Field>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    disabled={editInFlight}
+                    onClick={() => setEditingResponse(null)}
+                  >
+                    Отмена
+                  </Button>
+                  <LoadingButton
+                    loading={editInFlight}
+                    loadingText="Сохраняем…"
+                    onClick={() => void saveResponseMessage()}
+                  >
+                    Сохранить
+                  </LoadingButton>
+                </DialogFooter>
+              </DialogContent>
+            )}
+          </Dialog>
 
           {isLoading ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -485,6 +579,19 @@ export function MyTasks() {
                                   onClick={() => setPendingTaskAction({ item, action: taskAction.action, prompt: taskAction.prompt })}
                                 >
                                   {taskAction.label}
+                                </Button>
+                              )}
+                              {item.type === "response" && item.status === "PENDING" && (
+                                <Button
+                                  className="h-11 rounded-full px-5 sm:h-10"
+                                  variant="outline"
+                                  disabled={actionInFlight || editInFlight}
+                                  onClick={() => {
+                                    setEditError("")
+                                    setEditingResponse({ item, message: item.message ?? "" })
+                                  }}
+                                >
+                                  Изменить сообщение
                                 </Button>
                               )}
                               <Button variant="ghost" className="h-11 rounded-full px-5 sm:h-10" asChild>

@@ -23,7 +23,6 @@ import type { CreateComplaintDto } from "@/types"
 
 const MESSAGE_MAX = 1000
 
-/** Lets a signed-in user who is not the author report a case to moderators. */
 export function ReportCaseButton({ caseId }: { caseId: string }) {
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState("")

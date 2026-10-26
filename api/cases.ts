@@ -182,6 +182,14 @@ export const casesApi = {
       `/responses/${encodeURIComponent(responseId)}/cancel`,
       { method: "POST" },
     ),
+  updateResponse: (responseId: string, message: string) =>
+    authorizedRequest<HelpApplication>(
+      `/responses/${encodeURIComponent(responseId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ message }),
+      },
+    ),
   assignResponse: (responseId: string) =>
     authorizedRequest<Assignment>(
       `/responses/${encodeURIComponent(responseId)}/assign`,

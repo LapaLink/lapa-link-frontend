@@ -133,3 +133,15 @@ test("my tasks grouping skips incomplete account records instead of crashing", (
   assert.equal(groups.active.length, 1)
   assert.equal(groups.active[0].needId, "need-2")
 })
+
+test("pending response message can be edited from my tasks", () => {
+  const apiFile = fs.readFileSync("api/cases.ts", "utf8")
+  const pageFile = fs.readFileSync("components/pages/MyTasks/MyTasks.tsx", "utf8")
+
+  assert.match(
+    apiFile,
+    /updateResponse:[\s\S]*?\/responses\/\$\{encodeURIComponent\(responseId\)\}`,[\s\S]*?method: "PATCH"/,
+  )
+  assert.match(pageFile, /casesApi\.updateResponse\(/)
+  assert.match(pageFile, /Изменить сообщение/)
+})

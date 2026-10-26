@@ -27,7 +27,6 @@ import type { Conversation } from "@/types"
 
 export type CaseConversations = ReturnType<typeof useCaseConversations>
 
-/** The author's conversations with the given helpers, plus a lookup by the helper's user id. */
 export function useCaseConversations(
   caseId: string,
   helperIds: string[],
