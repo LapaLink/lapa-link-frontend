@@ -15,6 +15,19 @@ const languages: Array<{ value: UserLocale; label: string }> = [
 ]
 
 export function LanguageCard({ user }: { user: CurrentUser }) {
+  return (
+    <SectionCard
+      icon={Globe}
+      title="Язык"
+      description="На этом языке приходят письма, сообщения об ошибках и названия городов."
+    >
+      <LanguagePicker user={user} />
+    </SectionCard>
+  )
+}
+
+/** Account language as two pill radios; a pick saves at once. */
+export function LanguagePicker({ user }: { user: CurrentUser }) {
   const update = useUpdateLocale()
   const [error, setError] = useState("")
   const current = resolveDictionaryLocale(user.locale)
@@ -30,11 +43,7 @@ export function LanguageCard({ user }: { user: CurrentUser }) {
   }
 
   return (
-    <SectionCard
-      icon={Globe}
-      title="Язык"
-      description="На этом языке приходят письма, сообщения об ошибках и названия городов."
-    >
+    <div className="flex flex-col gap-2">
       <div role="radiogroup" aria-label="Язык" className="flex flex-wrap gap-2">
         {languages.map(({ value, label }) => {
           const active = value === current
@@ -59,6 +68,6 @@ export function LanguageCard({ user }: { user: CurrentUser }) {
         })}
       </div>
       <FormAlert message={error} />
-    </SectionCard>
+    </div>
   )
 }

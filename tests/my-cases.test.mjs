@@ -85,6 +85,14 @@ function renderPage(
     useRequestChat: () => ({ isPending: false, mutate() {} }),
     useAcceptConversation: () => ({ isPending: false, mutate() {} }),
     useDeclineConversation: () => ({ isPending: false, mutate() {} }),
+    useRequestEmailChange: () => ({ isPending: false, mutateAsync: async () => {} }),
+    useConfirmEmailChange: () => ({ isPending: false, mutateAsync: async () => {} }),
+    useCountdown: () => 0,
+    useCooldown: () => [0, () => {}],
+    useUploadAvatar: () => ({ isPending: false, mutateAsync: async () => {} }),
+    useDeleteAvatar: () => ({ isPending: false, mutateAsync: async () => {} }),
+    useChangePassword: () => ({ isPending: false, mutateAsync: async () => {} }),
+    useDeleteAccount: () => ({ isPending: false, mutateAsync: async () => {} }),
   }
   const result = {
     data,
@@ -601,6 +609,25 @@ test("notification settings group channels by event and show email quiet hours",
   // Quiet hours belong to EMAIL only.
   assert.equal(html.split("Тихие часы").length - 1, 1)
   assert.ok(html.includes("22:00–08:00"))
+})
+
+test("account overview shows the section menu, summary, cards and account settings", () => {
+  const user = { ...owner, cityCode: "minsk", emailVerifiedAt: "2026-01-01T00:00:00Z" }
+  const html = renderPage("components/pages/Account/Account.tsx", "Account", {
+    user,
+    data: [],
+  })
+  for (const label of ["Обзор", "Личные данные", "Уведомления", "Моя помощь", "Безопасность"])
+    assert.ok(html.includes(`>${label}<`), label)
+  assert.match(html, /aria-current="page"[^>]*>.*?Обзор</)
+  assert.ok(html.includes('href="#personal"'))
+  assert.ok(html.includes("Профиль заполнен"))
+  assert.ok(html.includes("Спасибо, что помогаете!"))
+  assert.ok(html.includes("Что присылать"))
+  assert.ok(html.includes("Настройки аккаунта"))
+  assert.ok(html.includes("Сменить пароль"))
+  assert.ok(html.includes("Удалить аккаунт"))
+  assert.ok(html.includes("Назад к объявлениям"))
 })
 
 test("language card marks the account locale as selected", () => {

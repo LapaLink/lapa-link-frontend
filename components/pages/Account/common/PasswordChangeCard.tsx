@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { cn } from "cn"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ApiError } from "@/api"
@@ -26,6 +27,19 @@ import {
 import { passwordChangeSchema, type PasswordChangeValues } from "../schemas"
 
 export function PasswordChangeCard() {
+  return (
+    <SectionCard
+      icon={Lock}
+      title="Пароль"
+      description="Используется для входа в аккаунт."
+    >
+      <PasswordChangeAction />
+    </SectionCard>
+  )
+}
+
+/** "Сменить пароль" button with its dialog and the success notice. */
+export function PasswordChangeAction({ className }: { className?: string }) {
   const form = useForm<PasswordChangeValues>({
     resolver: zodResolver(passwordChangeSchema),
     defaultValues: { currentPassword: "", newPassword: "" },
@@ -62,11 +76,7 @@ export function PasswordChangeCard() {
   }
 
   return (
-    <SectionCard
-      icon={Lock}
-      title="Пароль"
-      description="Используется для входа в аккаунт."
-    >
+    <div className={cn("flex flex-col items-start gap-2", className)}>
       {notice && (
         <p role="status" className="text-sm text-success-foreground">
           {notice}
@@ -74,7 +84,7 @@ export function PasswordChangeCard() {
       )}
       <Button
         variant="outline"
-        className="h-11 self-start sm:h-10"
+        className="h-11 rounded-full px-4 sm:h-10"
         onClick={() => handleOpenChange(true)}
       >
         <Lock data-icon="inline-start" />
@@ -127,6 +137,6 @@ export function PasswordChangeCard() {
           </Form>
         </DialogContent>
       </Dialog>
-    </SectionCard>
+    </div>
   )
 }

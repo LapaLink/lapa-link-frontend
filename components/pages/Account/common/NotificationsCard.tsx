@@ -9,13 +9,14 @@ import {
   useUpdateNotificationChannel,
 } from "@/hooks"
 import { queryKeys } from "@/lib/queryKeys"
-import { Bell, Mail, MessageSquareText } from "lucide-react"
 import {
-  FormAlert,
-  IconCircle,
-  LoadingButton,
-  SectionCard,
-} from "@/components/common"
+  Bell,
+  ChevronDown,
+  Mail,
+  MessageSquareText,
+  type LucideIcon,
+} from "lucide-react"
+import { FormAlert, LoadingButton, SectionCard } from "@/components/common"
 import {
   Accordion,
   AccordionContent,
@@ -46,6 +47,16 @@ function groupByEvent(settings: readonly NotificationSetting[]) {
   return [...groups.values()]
 }
 
+// Short explanations under the channel names.
+const channelHints: Record<string, string> = {
+  EMAIL: "Письма на вашу почту. Ночью можно включить тихие часы.",
+  IN_APP: "Колокольчик на сайте и всплывающие подсказки.",
+}
+const channelIcons: Record<string, LucideIcon> = {
+  EMAIL: Mail,
+  IN_APP: MessageSquareText,
+}
+
 export function NotificationsCard({ user }: { user: CurrentUser }) {
   return (
     <SectionCard
@@ -54,13 +65,22 @@ export function NotificationsCard({ user }: { user: CurrentUser }) {
       description="Выберите, где и о чём хотите получать новости."
       fullWidthBody
     >
-      <NotificationSettings user={user} />
+      <NotificationSettings user={user} collapsibleEvents />
     </SectionCard>
   )
 }
 
-/** Channels with EMAIL quiet hours, then per-event switches. Every change saves at once. */
-export function NotificationSettings({ user }: { user: CurrentUser }) {
+/**
+ * Channels with EMAIL quiet hours, then a table of events by channel. Every
+ * change saves at once. `collapsibleEvents` folds the table (profile overview).
+ */
+export function NotificationSettings({
+  user,
+  collapsibleEvents = false,
+}: {
+  user: CurrentUser
+  collapsibleEvents?: boolean
+}) {
   const settings = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: ({ signal }) => accountApi.getNotifications(signal),
@@ -78,14 +98,125 @@ export function NotificationSettings({ user }: { user: CurrentUser }) {
     // The PUT replaces the setting, so quiet hours always travel along.
     updateChannel.mutate(setting, { onError })
   }
+  // Table columns: channels in their own order, then any only events know.
+  const columns = [
+    ...new Set([
+      ...(channels.data ?? []).map((item) => item.channel),
+      ...(settings.data ?? []).map((item) => item.channel),
+    ]),
+  ]
+
+  const events = settings.isPending ? (
+    <div
+      role="status"
+      aria-label="Загружаем уведомления"
+      className="flex flex-col gap-3 p-4"
+    >
+      <Skeleton className="h-6 w-full" />
+      <Skeleton className="h-6 w-2/3" />
+    </div>
+  ) : settings.isError ? (
+    <div className="flex flex-col items-start gap-3 p-4">
+      <FormAlert
+        message={getErrorMessage(
+          settings.error,
+          "Не удалось загрузить настройки уведомлений.",
+        )}
+      />
+      <Button variant="outline" onClick={() => void settings.refetch()}>
+        Попробовать ещё раз
+      </Button>
+    </div>
+  ) : settings.data.length ? (
+    <div role="table" aria-labelledby="notification-events" className="min-w-0">
+      <div
+        role="row"
+        className="flex items-center gap-2 border-b border-foreground/[0.06] px-4 py-2.5 text-xs font-semibold text-foreground/70"
+      >
+        <span role="columnheader" className="min-w-0 flex-1">
+          Событие
+        </span>
+        {columns.map((channel) => {
+          const Icon = channelIcons[channel] ?? Bell
+          return (
+            <span
+              key={channel}
+              role="columnheader"
+              className="flex w-16 shrink-0 flex-col items-center gap-1 text-center sm:w-24"
+            >
+              <Icon aria-hidden className="size-4" />
+              <span
+                id={`notification-column-${channel}`}
+                className="sr-only sm:not-sr-only"
+              >
+                {channelOf(channel)?.title ?? channel}
+              </span>
+            </span>
+          )
+        })}
+      </div>
+      {groupByEvent(settings.data).map((group) => (
+        <div
+          key={group[0].eventType}
+          role="row"
+          className="flex min-h-14 items-center gap-2 border-b border-foreground/[0.06] px-4 py-2 last:border-b-0"
+        >
+          <span
+            id={`notification-event-${group[0].eventType}`}
+            role="rowheader"
+            className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]"
+          >
+            {group[0].title}
+          </span>
+          {columns.map((channel) => {
+            const setting = group.find((item) => item.channel === channel)
+            const id = setting && `notification-${setting.eventType}-${channel}`
+            return (
+              <span
+                key={channel}
+                role="cell"
+                className="flex w-16 shrink-0 justify-center sm:w-24"
+              >
+                {setting ? (
+                  <Switch
+                    id={id}
+                    aria-labelledby={`notification-event-${setting.eventType} notification-column-${channel}`}
+                    checked={setting.enabled}
+                    disabled={
+                      update.isPending || channelOf(channel)?.enabled === false
+                    }
+                    onCheckedChange={(enabled) => {
+                      setError("")
+                      update.mutate({ ...setting, enabled }, { onError })
+                    }}
+                  />
+                ) : (
+                  <span aria-label="Недоступно" className="text-foreground/30">
+                    —
+                  </span>
+                )}
+              </span>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="p-4 text-sm text-muted-foreground">
+      Сейчас нет уведомлений, которые можно настроить.
+    </p>
+  )
 
   return (
     <>
       <section
         aria-labelledby="notification-channels"
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-1"
       >
-        <h3 id="notification-channels" className="font-bold">
+        <h3
+          id="notification-channels"
+          className="text-xs font-bold tracking-wide text-foreground/60 uppercase"
+        >
           Каналы
         </h3>
         {channels.isPending ? (
@@ -103,42 +234,55 @@ export function NotificationSettings({ user }: { user: CurrentUser }) {
             </Button>
           </div>
         ) : (
-          <div className="divide-y rounded-2xl border bg-background/60 px-3 sm:px-4">
-            {channels.data?.map((setting) => (
-              <div key={setting.channel}>
-                <div className="flex min-h-16 items-center gap-3 py-3">
-                  <IconCircle
-                    icon={
-                      setting.channel === "EMAIL" ? Mail : MessageSquareText
-                    }
-                    size="sm"
-                  />
-                  <label
-                    htmlFor={`channel-${setting.channel}`}
-                    className="min-w-0 flex-1 cursor-pointer text-sm font-semibold"
-                  >
-                    {setting.title}
-                  </label>
-                  <Switch
-                    id={`channel-${setting.channel}`}
-                    checked={setting.enabled}
-                    disabled={updateChannel.isPending}
-                    onCheckedChange={(enabled) =>
-                      saveChannel({ ...setting, enabled })
-                    }
-                  />
+          <div className="divide-y divide-foreground/[0.06]">
+            {channels.data?.map((setting) => {
+              const Icon = channelIcons[setting.channel] ?? Bell
+              return (
+                <div key={setting.channel} className="py-4">
+                  <div className="flex items-start gap-4">
+                    <span
+                      aria-hidden
+                      className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"
+                    >
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <label
+                        htmlFor={`channel-${setting.channel}`}
+                        className="cursor-pointer font-semibold"
+                      >
+                        {setting.title}
+                      </label>
+                      {channelHints[setting.channel] && (
+                        <p className="text-sm text-foreground/70">
+                          {channelHints[setting.channel]}
+                        </p>
+                      )}
+                    </div>
+                    <Switch
+                      id={`channel-${setting.channel}`}
+                      checked={setting.enabled}
+                      disabled={updateChannel.isPending}
+                      className="mt-1"
+                      onCheckedChange={(enabled) =>
+                        saveChannel({ ...setting, enabled })
+                      }
+                    />
+                  </div>
+                  {setting.channel === "EMAIL" && (
+                    <div className="pl-14">
+                      <QuietHours
+                        // Restart the draft whenever the saved hours change.
+                        key={`${setting.quietFrom}-${setting.quietTo}`}
+                        setting={setting}
+                        busy={updateChannel.isPending}
+                        onSave={saveChannel}
+                      />
+                    </div>
+                  )}
                 </div>
-                {setting.channel === "EMAIL" && (
-                  <QuietHours
-                    // Restart the draft whenever the saved hours change.
-                    key={`${setting.quietFrom}-${setting.quietTo}`}
-                    setting={setting}
-                    busy={updateChannel.isPending}
-                    onSave={saveChannel}
-                  />
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
         {user.emailVerifiedAt === null && (
@@ -151,76 +295,38 @@ export function NotificationSettings({ user }: { user: CurrentUser }) {
           </p>
         )}
       </section>
-      <section
-        aria-labelledby="notification-events"
-        className="flex flex-col gap-3"
-      >
-        <h3 id="notification-events" className="font-bold">
-          Что присылать
-        </h3>
-        {settings.isPending ? (
-          <div
-            role="status"
-            aria-label="Загружаем уведомления"
-            className="flex flex-col gap-3"
-          >
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-2/3" />
-          </div>
-        ) : settings.isError ? (
-          <div className="flex flex-col items-start gap-3">
-            <FormAlert
-              message={getErrorMessage(
-                settings.error,
-                "Не удалось загрузить настройки уведомлений.",
-              )}
+      {collapsibleEvents ? (
+        <details className="group/events overflow-hidden rounded-2xl border border-foreground/[0.07]">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 outline-none hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/40 [&::-webkit-details-marker]:hidden">
+            <ChevronDown
+              aria-hidden
+              className="size-4 shrink-0 text-foreground/60 transition-transform group-open/events:rotate-180"
             />
-            <Button variant="outline" onClick={() => void settings.refetch()}>
-              Попробовать ещё раз
-            </Button>
-          </div>
-        ) : settings.data.length ? (
-          <ul className="divide-y rounded-2xl border bg-background/60 px-3 sm:px-4">
-            {groupByEvent(settings.data).map((group) => (
-              <li key={group[0].eventType} className="flex flex-col gap-2 py-3">
-                <p className="text-sm font-semibold [overflow-wrap:anywhere]">
-                  {group[0].title}
-                </p>
-                <div className="flex flex-wrap gap-x-5 gap-y-1">
-                  {group.map((setting) => {
-                    const id = `notification-${setting.eventType}-${setting.channel}`
-                    const channel = channelOf(setting.channel)
-                    return (
-                      <label
-                        key={id}
-                        htmlFor={id}
-                        className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted-foreground"
-                      >
-                        <Switch
-                          id={id}
-                          checked={setting.enabled}
-                          disabled={
-                            update.isPending || channel?.enabled === false
-                          }
-                          onCheckedChange={(enabled) => {
-                            setError("")
-                            update.mutate({ ...setting, enabled }, { onError })
-                          }}
-                        />
-                        {channel?.title ?? setting.channel}
-                      </label>
-                    )
-                  })}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Сейчас нет уведомлений, которые можно настроить.
-          </p>
-        )}
-      </section>
+            <span className="flex min-w-0 flex-col">
+              <span id="notification-events" className="font-semibold">
+                Что присылать
+              </span>
+              <span className="text-xs text-foreground/70">
+                Приветствие, новые потребности рядом и другие события
+              </span>
+            </span>
+          </summary>
+          <div className="border-t border-foreground/[0.06]">{events}</div>
+        </details>
+      ) : (
+        <section
+          aria-labelledby="notification-events"
+          className="overflow-hidden rounded-2xl border border-foreground/[0.07] bg-card shadow-card"
+        >
+          <h3
+            id="notification-events"
+            className="border-b border-foreground/[0.06] px-4 py-4 text-lg font-bold"
+          >
+            Что присылать
+          </h3>
+          {events}
+        </section>
+      )}
       <FormAlert message={error} />
       <p className="text-xs text-muted-foreground">
         Уведомления по объявлениям настраиваются на странице объявления. Коды

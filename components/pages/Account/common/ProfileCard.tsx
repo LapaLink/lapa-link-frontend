@@ -69,7 +69,7 @@ export function setProfileSaveError(
 }
 
 /**
- * "Личная информация": name, city and bio in read mode, the edit form in
+ * "Личные данные": name, city and bio in read mode, the edit form in
  * place. Pass `editing` and `onEditingChange` to open the form from outside
  * (the profile summary card); without them the card keeps its own state.
  */
@@ -118,7 +118,7 @@ export function ProfileCard({
     <SectionCard
       className="min-w-0"
       icon={UserRound}
-      title="Личная информация"
+      title="Личные данные"
       description={editing ? "Обновите информацию о себе." : undefined}
       action={
         !editing && (
@@ -170,15 +170,23 @@ export function ProfileCard({
   )
 }
 
+/**
+ * Name, city and bio form. `layout="page"` puts name and city side by side
+ * with the buttons on the right, as on the "Личные данные" section; there
+ * "Отмена" drops unsaved edits.
+ */
 export function ProfileEditForm({
   user,
   onSaved,
   onCancel,
+  layout = "card",
 }: {
   user: CurrentUser
   onSaved: () => void
   onCancel: () => void
+  layout?: "card" | "page"
 }) {
+  const page = layout === "page"
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: valuesOf(user),
@@ -202,15 +210,17 @@ export function ProfileEditForm({
     <Form form={form} onSubmit={save} busy={mutation.isPending}>
       <fieldset disabled={mutation.isPending} className="min-w-0">
         <FieldGroup>
-          <FormField
-            name="displayName"
-            label="Имя"
-            placeholder="Как к вам обращаться"
-            maxLength={100}
-            autoComplete="name"
-            required
-          />
-          <CaseCityField locale={locale} optional />
+          <div className={cn("grid gap-5", page && "sm:grid-cols-2")}>
+            <FormField
+              name="displayName"
+              label="Имя"
+              placeholder="Как к вам обращаться"
+              maxLength={100}
+              autoComplete="name"
+              required
+            />
+            <CaseCityField locale={locale} optional />
+          </div>
           <Field data-invalid={!!form.formState.errors.bio}>
             <FieldLabel htmlFor="profile-bio">О себе</FieldLabel>
             <Textarea
@@ -233,23 +243,35 @@ export function ProfileEditForm({
         </FieldGroup>
       </fieldset>
       <FormAlert message={form.formState.errors.root?.message} />
-      <LoadingButton
-        type="submit"
-        loading={mutation.isPending}
-        loadingText="Сохраняем…"
-        disabled={!form.formState.isDirty}
-        className="w-full"
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          page &&
+            "border-t border-foreground/[0.06] pt-5 sm:flex-row-reverse sm:justify-start",
+        )}
       >
-        Сохранить изменения
-      </LoadingButton>
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={mutation.isPending}
-        onClick={onCancel}
-      >
-        Отмена
-      </Button>
+        <LoadingButton
+          type="submit"
+          loading={mutation.isPending}
+          loadingText="Сохраняем…"
+          disabled={!form.formState.isDirty}
+          className={cn("w-full", page && "h-11 sm:h-10 sm:w-auto sm:px-6")}
+        >
+          Сохранить изменения
+        </LoadingButton>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={mutation.isPending || (page && !form.formState.isDirty)}
+          className={cn(page && "h-11 sm:h-10")}
+          onClick={() => {
+            form.reset(valuesOf(user))
+            onCancel()
+          }}
+        >
+          Отмена
+        </Button>
+      </div>
     </Form>
   )
 }

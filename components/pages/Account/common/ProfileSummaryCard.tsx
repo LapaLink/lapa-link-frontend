@@ -86,10 +86,12 @@ export function ProfileSummaryCard({
     },
   ]
 
+  const completion = profileCompletion(user)
+
   return (
     <Card className="min-w-0">
-      <CardContent className="flex flex-col gap-5">
-        <div className="flex items-center gap-4 sm:gap-6">
+      <CardContent className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-0">
+        <div className="flex items-center gap-4 sm:gap-5 lg:pr-6">
           <div className="relative shrink-0">
             <UserAvatar user={user} size="profile" />
             <Link
@@ -100,35 +102,71 @@ export function ProfileSummaryCard({
               <Camera aria-hidden className="size-4" />
             </Link>
           </div>
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
             <p className="text-xl font-extrabold leading-tight [overflow-wrap:anywhere] sm:text-2xl">
               {user.displayName}
             </p>
-            <p className="flex items-center gap-1.5 text-sm">
+            <p className="flex items-center gap-1.5 text-sm text-foreground/75">
               <MapPin aria-hidden className="size-4 shrink-0 text-primary" />
               {user.cityCode
                 ? getCityName(cities.data, user.cityCode, locale)
                 : "Город не указан"}
             </p>
+            <Button
+              type="button"
+              variant="link"
+              onClick={onEdit}
+              className="h-auto min-h-11 p-0 text-sm font-semibold sm:min-h-0"
+            >
+              <Pencil data-icon="inline-start" />
+              Редактировать профиль
+            </Button>
           </div>
         </div>
-        <ul className="grid grid-cols-3 divide-x border-t pt-4">
+        <div className="flex min-w-0 flex-col gap-2 border-t pt-4 lg:w-64 lg:shrink-0 lg:border-t-0 lg:border-l lg:px-6 lg:pt-0">
+          <p
+            id="profile-completion"
+            className="flex items-baseline justify-between gap-2 text-sm font-semibold"
+          >
+            Профиль заполнен
+            <span className="text-primary">{completion.percent}%</span>
+          </p>
+          <div
+            role="progressbar"
+            aria-labelledby="profile-completion"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={completion.percent}
+            className="h-2 overflow-hidden rounded-full bg-muted"
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${completion.percent}%` }}
+            />
+          </div>
+          {completion.missing && (
+            <p className="text-xs text-foreground/70">
+              Осталось: {completion.missing}
+            </p>
+          )}
+        </div>
+        <ul className="grid min-w-0 flex-1 grid-cols-3 divide-x border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-2">
           {stats.map(({ href, icon: Icon, query, value, label }) => (
             <li key={href} className="min-w-0">
               <Link
                 href={href}
-                className="flex min-h-11 flex-col items-start gap-1 rounded-xl px-2 outline-none transition-colors hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/40 sm:flex-row sm:items-center sm:gap-3 sm:px-3"
+                className="flex min-h-11 flex-col items-start gap-1 rounded-xl px-2 py-1 outline-none transition-colors hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/40 sm:flex-row sm:items-center sm:gap-3 sm:px-4"
               >
                 <Icon aria-hidden className="size-6 shrink-0 text-primary" />
                 <span className="flex min-w-0 flex-col">
                   {query.isPending ? (
                     <Skeleton className="h-7 w-8" />
                   ) : (
-                    <span className="text-xl font-extrabold">
+                    <span className="text-2xl font-extrabold leading-tight">
                       {query.isError ? "—" : value}
                     </span>
                   )}
-                  <span className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                  <span className="text-xs text-foreground/70 [overflow-wrap:anywhere]">
                     {label}
                   </span>
                 </span>
@@ -136,17 +174,35 @@ export function ProfileSummaryCard({
             </li>
           ))}
         </ul>
-        <FormAlert message={error?.message} />
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onEdit}
-          className="h-11 w-full rounded-full bg-primary-soft font-semibold text-primary hover:bg-primary-soft/70 hover:text-primary-hover"
-        >
-          <Pencil data-icon="inline-start" />
-          Редактировать профиль
-        </Button>
       </CardContent>
+      {error && (
+        <div className="px-(--card-spacing)">
+          <FormAlert message={error.message} />
+        </div>
+      )}
     </Card>
   )
+}
+
+/**
+ * Share of filled profile parts (city, about, photo, confirmed email, home
+ * point; the name is always set) and the names of the missing ones.
+ */
+function profileCompletion(user: CurrentUser) {
+  const parts: Array<[boolean, string]> = [
+    [true, "имя"],
+    [!!user.cityCode, "город"],
+    [!!user.bio?.trim(), "о себе"],
+    [!!user.avatarUrl, "фото"],
+    [!!user.emailVerifiedAt, "подтвердить email"],
+    [user.homeLatitude != null && user.homeLongitude != null, "мой район"],
+  ]
+  const done = parts.filter(([filled]) => filled).length
+  return {
+    percent: Math.round((done / parts.length) * 100),
+    missing: parts
+      .filter(([filled]) => !filled)
+      .map(([, name]) => name)
+      .join(", "),
+  }
 }

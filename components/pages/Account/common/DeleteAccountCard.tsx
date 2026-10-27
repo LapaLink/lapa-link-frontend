@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { cn } from "cn"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
@@ -47,6 +48,21 @@ const activeTaskLinks = [
 ]
 
 export function DeleteAccountCard() {
+  return (
+    <SectionCard
+      className="border-destructive/30 bg-destructive/[0.02]"
+      tone="danger"
+      icon={Trash2}
+      title="Опасная зона"
+      description="Удаление аккаунта необратимо. Восстановить данные будет нельзя."
+    >
+      <DeleteAccountAction />
+    </SectionCard>
+  )
+}
+
+/** "Удалить аккаунт" button with the password confirmation dialog. */
+export function DeleteAccountAction({ className }: { className?: string }) {
   const form = useForm<AccountDeletionValues>({
     resolver: zodResolver(accountDeletionSchema),
     defaultValues: { password: "" },
@@ -101,16 +117,10 @@ export function DeleteAccountCard() {
   }
 
   return (
-    <SectionCard
-      className="border-destructive/30 bg-destructive/[0.02]"
-      tone="danger"
-      icon={Trash2}
-      title="Опасная зона"
-      description="Удаление аккаунта необратимо. Восстановить данные будет нельзя."
-    >
+    <>
       <Button
         variant="destructive"
-        className="h-11 self-start sm:h-10"
+        className={cn("h-11 rounded-full px-4 sm:h-10", className)}
         onClick={() => handleOpenChange(true)}
       >
         <Trash2 data-icon="inline-start" />
@@ -187,6 +197,6 @@ export function DeleteAccountCard() {
           </Form>
         </DialogContent>
       </Dialog>
-    </SectionCard>
+    </>
   )
 }
