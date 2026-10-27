@@ -2,6 +2,7 @@ import type {
   AnimalType,
   CaseFeedFilter,
   CaseFeedSort,
+  CaseMapFilter,
   NeedPriority,
   NeedStatus,
 } from "@/types"
@@ -31,7 +32,10 @@ export const FEED_SORTS: readonly CaseFeedSort[] = [
   "NEWEST",
   "DISTANCE",
   "PRIORITY",
+  "DEADLINE",
 ]
+/** Largest map area per axis the backend accepts (else 400 INVALID_BOUNDS). */
+export const MAP_MAX_SPAN = 2
 const ANIMAL_TYPES: readonly AnimalType[] = ["CAT", "DOG"]
 const PRIORITIES: readonly NeedPriority[] = ["LOW", "MEDIUM", "HIGH"]
 const NEED_STATUSES: readonly NeedStatus[] = ["OPEN", "ASSIGNED", "CLOSED"]
@@ -139,12 +143,14 @@ export function changeFeed(
  * API parameters for the state; `sort` is never sent, the order goes as
  * `orderBy`. Pass `activeNeedTypes` (codes of enabled types from the
  * dictionary) to drop unknown or disabled codes, e.g. from an old link: the
- * backend rejects them with 400 UNKNOWN_NEED_TYPE.
+ * backend rejects them with 400 UNKNOWN_NEED_TYPE. `cityCodes` does the same
+ * for the city (400 UNKNOWN_CITY).
  */
 export function toFeedFilter(
   state: FeedState,
   size: number,
   activeNeedTypes?: readonly string[],
+  cityCodes?: readonly string[],
 ): CaseFeedFilter {
   const { point } = normalize(state)
   const needTypes = activeNeedTypes
@@ -152,7 +158,10 @@ export function toFeedFilter(
     : state.needTypes
   return {
     animalType: state.animalType,
-    cityCode: state.cityCode,
+    cityCode:
+      state.cityCode && cityCodes && !cityCodes.includes(state.cityCode)
+        ? undefined
+        : state.cityCode,
     search: state.search || undefined,
     needType: needTypes.length ? needTypes : undefined,
     priority: state.priority,
@@ -169,4 +178,34 @@ export function toFeedFilter(
 /** True when any filter differs from the defaults (the mode is not a filter). */
 export function hasFeedFilters(state: FeedState) {
   return feedQueryString({ ...state, mode: "all", page: 0 }) !== ""
+}
+
+export type MapBounds = {
+  minLat: number
+  minLng: number
+  maxLat: number
+  maxLng: number
+}
+
+/** True when the area can be requested: min below max, at most MAP_MAX_SPAN° per axis. */
+export function isMapAreaAllowed(bounds: MapBounds) {
+  const lat = bounds.maxLat - bounds.minLat
+  const lng = bounds.maxLng - bounds.minLng
+  return lat > 0 && lng > 0 && lat <= MAP_MAX_SPAN && lng <= MAP_MAX_SPAN
+}
+
+/** Map query: the feed filter without paging, point, radius and order. */
+export function toMapFilter(
+  filter: CaseFeedFilter,
+  bounds: MapBounds,
+): CaseMapFilter {
+  return {
+    animalType: filter.animalType,
+    cityCode: filter.cityCode,
+    search: filter.search,
+    needType: filter.needType,
+    priority: filter.priority,
+    needStatus: filter.needStatus,
+    ...bounds,
+  }
 }

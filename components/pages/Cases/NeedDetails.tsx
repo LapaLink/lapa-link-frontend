@@ -7,10 +7,17 @@ import {
   CalendarClock,
   ChevronsUp,
   Equal,
+  House,
   TimerOff,
+  Truck,
 } from "lucide-react"
 import { formatNeedWindow, isNeedOverdue } from "@/lib/needs"
-import type { CaseNeed, NeedPriority } from "@/types"
+import type {
+  CaseNeed,
+  FosterDetails,
+  NeedPriority,
+  TransportDetails,
+} from "@/types"
 import { StatusBadge } from "@/components/common"
 import { needPriorityLabels } from "./schemas"
 
@@ -20,6 +27,14 @@ const priorityBadges = {
   MEDIUM: { tone: "primary", icon: Equal },
   HIGH: { tone: "danger", icon: ChevronsUp },
 } as const satisfies Record<NeedPriority, { tone: string; icon: unknown }>
+
+const days = new Intl.PluralRules("ru")
+const dayForms: Record<string, string> = {
+  one: "день",
+  few: "дня",
+  many: "дней",
+  other: "дня",
+}
 
 // Longer comments start collapsed behind "Показать полностью".
 const COLLAPSED_COMMENT_LENGTH = 180
@@ -80,6 +95,49 @@ export function NeedComment({ comment }: { comment: string }) {
           {expanded ? "Свернуть" : "Показать полностью"}
         </button>
       )}
+    </div>
+  )
+}
+
+/**
+ * Type-specific fields of a need: "Фрунзенский → Заводской" and the cargo for
+ * TRANSPORT, "Передержка на 14 дней" and the conditions for FOSTER. Nothing
+ * when none are filled.
+ */
+export function NeedExtraDetails({ need }: { need: CaseNeed }) {
+  let icon = Truck
+  let summary = ""
+  let note: string | undefined
+  if (need.type === "TRANSPORT") {
+    const { fromArea, toArea, cargo } = (need.details ?? {}) as TransportDetails
+    summary =
+      fromArea && toArea
+        ? `${fromArea} → ${toArea}`
+        : fromArea
+          ? `Откуда: ${fromArea}`
+          : toArea
+            ? `Куда: ${toArea}`
+            : ""
+    note = cargo
+  } else if (need.type === "FOSTER") {
+    const { periodDays, conditions } = (need.details ?? {}) as FosterDetails
+    icon = House
+    summary = periodDays
+      ? `Передержка на ${periodDays} ${dayForms[days.select(periodDays)]}`
+      : ""
+    note = conditions
+  }
+  if (!summary && !note) return null
+  const Icon = icon
+  return (
+    <div className="flex gap-3 rounded-xl bg-muted/60 p-3 text-sm">
+      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+      <div className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
+        {summary && <p className="font-semibold">{summary}</p>}
+        {note && (
+          <p className="whitespace-pre-wrap text-foreground/80">{note}</p>
+        )}
+      </div>
     </div>
   )
 }

@@ -99,6 +99,7 @@ import { filterValidTaskRecords } from "@/lib/tasks"
 import { CaseChat, useCaseConversations } from "./CaseChat"
 import {
   NeedComment,
+  NeedExtraDetails,
   NeedPriorityBadge,
   NeedTimeWindow,
 } from "./NeedDetails"
@@ -777,6 +778,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                     )}
                   </div>
                   <AccordionContent className="flex min-w-0 flex-col gap-4">
+                    <NeedExtraDetails need={need} />
                     {need.comment && <NeedComment comment={need.comment} />}
 
                     {!isAuthor && canAct && !user && need.status === "OPEN" && (

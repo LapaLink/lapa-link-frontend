@@ -26,6 +26,21 @@ export function notificationHref(value: string | null, needId?: string | null) {
     : value
 }
 
+/**
+ * Where a notification leads: its `actionUrl`, else the case it refers to
+ * (deadline reminders and expired needs carry only `caseId` and `needId`).
+ */
+export function inboxItemHref(item: {
+  actionUrl: string | null
+  caseId: string | null
+  needId: string | null
+}) {
+  return (
+    notificationHref(item.actionUrl, item.needId) ??
+    notificationHref(item.caseId && `/cases/${item.caseId}`, item.needId)
+  )
+}
+
 /** Parse incremental UTF-8 SSE, including fragmented CRLF and multiline data. */
 export async function consumeEvents(
   response: Response,

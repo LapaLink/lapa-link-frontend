@@ -18,6 +18,13 @@ const require = createRequire(import.meta.url)
 const plain = (value) => JSON.parse(JSON.stringify(value))
 const tokens = { accessToken: "access", refreshToken: "refresh" }
 const NOW = Date.parse("2026-10-15T09:00:00Z")
+const noDetails = {
+  fromArea: "",
+  toArea: "",
+  cargo: "",
+  periodDays: "",
+  conditions: "",
+}
 const need = {
   id: "need-1",
   caseId: "case-1",
@@ -166,6 +173,7 @@ test("need form validates the deadline, the window order and the comment length"
     startsAt: "",
     deadline: "",
     comment: "",
+    details: noDetails,
   }
   const issues = (values, target = schema) =>
     target.safeParse(values).error?.issues.map((issue) => [
@@ -223,6 +231,7 @@ test("need form prefills local values and sends only changed fields", () => {
     startsAt: "",
     deadline: "",
     comment: "",
+    details: noDetails,
   })
   const values = getNeedFormValues(need)
   assert.deepEqual(plain(values), {
@@ -231,6 +240,7 @@ test("need form prefills local values and sends only changed fields", () => {
     startsAt: "2026-10-20T09:00",
     deadline: "2026-10-20T18:00",
     comment: "Нужна переноска",
+    details: noDetails,
   })
   assert.deepEqual(
     plain(toCreateNeedDto({ ...values, startsAt: "", comment: "" })),
@@ -256,6 +266,63 @@ test("need form prefills local values and sends only changed fields", () => {
   // A bound that was not set and stays empty is not sent.
   const open = { ...need, startsAt: null }
   assert.deepEqual(plain(toUpdateNeedDto(getNeedFormValues(open), open)), {})
+})
+
+test("need details: type-specific fields are validated, sent only for their type and whole on edit", () => {
+  const { needFormSchema, getNeedFormValues, toCreateNeedDto, toUpdateNeedDto } =
+    load("components/pages/Cases/schemas.ts")
+  const schema = needFormSchema(undefined, () => NOW)
+  const values = (type, details) => ({
+    ...getNeedFormValues(),
+    type,
+    details: { ...noDetails, ...details },
+  })
+  const paths = (input) =>
+    schema.safeParse(input).error?.issues.map((issue) => issue.path.join(".")) ?? []
+  assert.deepEqual(paths(values("FOSTER", { periodDays: "14" })), [])
+  for (const periodDays of ["0", "366", "1.5", "abc"])
+    assert.deepEqual(paths(values("FOSTER", { periodDays })), ["details.periodDays"])
+  assert.deepEqual(paths(values("TRANSPORT", { fromArea: "я".repeat(101) })), [
+    "details.fromArea",
+  ])
+  assert.deepEqual(paths(values("TRANSPORT", { cargo: "я".repeat(301) })), [
+    "details.cargo",
+  ])
+  assert.deepEqual(paths(values("FOSTER", { conditions: "я".repeat(1001) })), [
+    "details.conditions",
+  ])
+
+  // Filled fields are trimmed, the number goes as a number, empty ones are dropped.
+  assert.deepEqual(
+    plain(toCreateNeedDto(values("FOSTER", { periodDays: " 14 ", conditions: "" }))).details,
+    { periodDays: 14 },
+  )
+  // Fields of another type and types without details send nothing.
+  assert.equal(
+    "details" in toCreateNeedDto(values("TRANSPORT", { periodDays: "14" })),
+    false,
+  )
+  assert.equal("details" in toCreateNeedDto(values("FOOD", { cargo: "корм" })), false)
+
+  // Saved details prefill the form; a change sends the whole object.
+  const transport = {
+    ...need,
+    details: { fromArea: "Фрунзенский", toArea: "Заводской", cargo: "кошка" },
+  }
+  const edit = getNeedFormValues(transport)
+  assert.equal(edit.details.fromArea, "Фрунзенский")
+  assert.deepEqual(plain(toUpdateNeedDto(edit, transport)), {})
+  assert.deepEqual(
+    plain(toUpdateNeedDto({ ...edit, details: { ...edit.details, cargo: "" } }, transport)),
+    { details: { fromArea: "Фрунзенский", toArea: "Заводской" } },
+  )
+  const foster = { ...need, type: "FOSTER", details: { periodDays: 7 } }
+  assert.equal(getNeedFormValues(foster).details.periodDays, "7")
+  // Clearing every field replaces the saved details with {}.
+  assert.deepEqual(
+    plain(toUpdateNeedDto({ ...getNeedFormValues(foster), details: noDetails }, foster)),
+    { details: {} },
+  )
 })
 
 test("needs API keeps the legacy calls and sends extended create and partial update", async () => {

@@ -6,6 +6,8 @@ import type {
   CaseFeedFilter,
   CaseGalleryPhoto,
   CaseListItem,
+  CaseMapFilter,
+  CaseMapResponse,
   CaseNeed,
   CaseNotificationSettings,
   CaseStatus,
@@ -27,8 +29,7 @@ function query(
     // Arrays go as a repeated parameter: needType=A&needType=B.
     if (Array.isArray(value))
       value.forEach((item) => item !== "" && search.append(key, item))
-    else if (value !== undefined && value !== "")
-      search.set(key, String(value))
+    else if (value !== undefined && value !== "") search.set(key, String(value))
   })
   const value = search.toString()
   return value ? `?${value}` : ""
@@ -51,6 +52,15 @@ export const casesApi = {
   matching: (params: CaseFeedFilter = {}, signal?: AbortSignal) =>
     authorizedRequest<PageResponse<CaseListItem>>(
       `/account/help-offers/matching-cases${query(params)}`,
+      { signal },
+    ),
+  /** Public map markers of the visible area with the feed filters. */
+  map: (params: CaseMapFilter, signal?: AbortSignal) =>
+    request<CaseMapResponse>(`/cases/map${query(params)}`, { signal }),
+  /** Map markers of the "Подходит мне" feed. */
+  matchingMap: (params: CaseMapFilter, signal?: AbortSignal) =>
+    authorizedRequest<CaseMapResponse>(
+      `/account/help-offers/matching-cases/map${query(params)}`,
       { signal },
     ),
   /**

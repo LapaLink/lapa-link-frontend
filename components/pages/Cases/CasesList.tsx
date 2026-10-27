@@ -4,10 +4,9 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
-  ArrowRight,
   ArrowUpDown,
   ChevronDown,
   CircleAlert,
@@ -37,13 +36,17 @@ import {
 import {
   FEED_DEFAULT_RADIUS_KM,
   FEED_SEARCH_MAX,
+  MAP_MAX_SPAN,
   changeFeed,
   feedQueryString,
   hasFeedFilters,
+  isMapAreaAllowed,
   parseFeedState,
   toFeedFilter,
+  toMapFilter,
   type FeedPoint,
   type FeedState,
+  type MapBounds,
 } from "@/lib/cases"
 import { ROUTES } from "@/lib/constants"
 import { getCityName, getDictionaryName } from "@/lib/dictionaries"
@@ -55,10 +58,6 @@ import type {
 } from "@/types"
 import {
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -85,13 +84,13 @@ import {
 import {
   EmptyState,
   FormAlert,
-  CasePhoto,
   CaseCardsSkeleton,
   ListPagination,
   PageHeader,
-  StatusBadge,
 } from "@/components/common"
 import { needStatusLabels } from "./statusLabels"
+import { CaseFeedCard } from "./CaseFeedCard"
+import { UrgentCases } from "./UrgentCases"
 import { needPriorityLabels } from "./schemas"
 
 const PAGE_SIZE = 6
@@ -102,32 +101,27 @@ const FeedMap = dynamic(() => import("../Account/common/HomeAreaMap"), {
   loading: () => <Skeleton className="h-64 w-full rounded-2xl sm:h-72" />,
 })
 
+const CasesMap = dynamic(() => import("./CasesMap"), {
+  ssr: false,
+  loading: () => <Skeleton className="size-full rounded-none" />,
+})
+
+// Without a city or a point the map opens over Minsk.
+const DEFAULT_VIEW = { latitude: 53.9023, longitude: 27.5619, zoom: 11 }
+
 const sortLabels: Record<CaseFeedSort, string> = {
   NEWEST: "Новые",
   DISTANCE: "Ближе ко мне",
   PRIORITY: "Срочные",
+  DEADLINE: "По сроку",
 }
 
-const publishedFormat = new Intl.DateTimeFormat("ru-RU", {
-  day: "numeric",
-  month: "long",
-})
-const publishedFormatWithYear = new Intl.DateTimeFormat("ru-RU", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-})
-
-/** "26 октября"; the year is added only for earlier years. */
-function formatPublished(iso: string) {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ""
-  return (
-    date.getFullYear() === new Date().getFullYear()
-      ? publishedFormat
-      : publishedFormatWithYear
-  ).format(date)
-}
+const mapLegend = [
+  ["fill-primary", "Высокий приоритет"],
+  ["fill-amber-500", "Средний"],
+  ["fill-slate-500", "Низкий"],
+  ["fill-slate-300", "Без открытых потребностей"],
+] as const
 
 const geolocationHint =
   "Не удалось определить местоположение. Разрешите доступ к геолокации в браузере или выберите точку на карте."
@@ -167,6 +161,7 @@ export function CasesList() {
   const [nearOpen, setNearOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
 
   const navigate = (next: FeedState) => {
     const query = feedQueryString(next)
@@ -229,18 +224,25 @@ export function CasesList() {
   const sortedNeedTypes = (needTypes.data ?? [])
     .filter((type) => type.active)
     .sort((a, b) => a.sortOrder - b.sortOrder)
+  const allCities = cities.data?.flatMap((group) => group.cities)
   // Unknown or disabled codes (e.g. from an old link) would get 400
-  // UNKNOWN_NEED_TYPE, so codes are checked against the dictionary first.
+  // UNKNOWN_NEED_TYPE or UNKNOWN_CITY, so they are checked against the
+  // dictionaries first.
   const filter = toFeedFilter(
     state,
     PAGE_SIZE,
     needTypes.data && sortedNeedTypes.map((type) => type.code),
+    allCities?.map((item) => item.code),
   )
   const needTypeName = (code: string) =>
     getDictionaryName(needTypes.data, code, locale)
   const selectedNeedTypes = state.needTypes.filter((code) =>
     sortedNeedTypes.some((type) => type.code === code),
   )
+  const feedReady =
+    (!matching || !authLoading) &&
+    (!state.needTypes.length || !!needTypes.data) &&
+    (!state.cityCode || !!cities.data)
   const cases = useQuery({
     queryKey: ["cases", "list", state.mode, filter],
     // The signal aborts the request once the filters move on.
@@ -250,14 +252,30 @@ export function CasesList() {
         : casesApi.list(filter, signal),
     // "Подходит мне" waits for the session check; without a session the
     // authorized request fails with the usual 401.
-    // Need type codes wait for the dictionary that validates them.
-    enabled:
-      (!matching || !authLoading) &&
-      (!state.needTypes.length || !!needTypes.data),
+    // Need type and city codes wait for the dictionaries that validate them.
+    enabled: feedReady,
   })
-  const city = cities.data
-    ?.flatMap((group) => group.cities)
-    .find((item) => item.code === state.cityCode)
+  const city = allCities?.find((item) => item.code === state.cityCode)
+  const mapView = state.point
+    ? { ...state.point, zoom: 12 }
+    : city
+      ? { latitude: city.latitude, longitude: city.longitude, zoom: 11 }
+      : DEFAULT_VIEW
+  // Areas over MAP_MAX_SPAN° are not requested (400 INVALID_BOUNDS).
+  const mapFilter =
+    mapBounds && isMapAreaAllowed(mapBounds)
+      ? toMapFilter(filter, mapBounds)
+      : null
+  const markers = useQuery({
+    queryKey: ["cases", "list", "map", state.mode, mapFilter],
+    queryFn: ({ signal }) =>
+      matching
+        ? casesApi.matchingMap(mapFilter!, signal)
+        : casesApi.map(mapFilter!, signal),
+    enabled: feedReady && !!mapFilter,
+    // Markers stay while the next area loads.
+    placeholderData: keepPreviousData,
+  })
 
   const nearVisible = nearOpen || !!state.point
   const moreVisible = moreOpen || !!state.needStatus
@@ -701,6 +719,59 @@ export function CasesList() {
         </DialogContent>
       </Dialog>
 
+      <div className="grid gap-5 lg:grid-cols-5">
+        <section
+          aria-label="Карта объявлений"
+          className="flex min-w-0 flex-col gap-2 lg:col-span-3"
+        >
+          {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
+          <div className="relative isolate h-80 overflow-hidden rounded-2xl shadow-sm ring-1 ring-foreground/5 sm:h-96">
+            <CasesMap
+              view={mapView}
+              point={state.point}
+              radiusKm={state.point ? radius : undefined}
+              items={(mapFilter && markers.data?.items) || []}
+              needTypeName={needTypeName}
+              onBoundsChange={setMapBounds}
+            />
+            {(mapBounds && !mapFilter) ||
+            markers.data?.truncated ||
+            markers.isError ? (
+              <p
+                role="status"
+                className="absolute inset-x-3 top-3 z-[1000] mx-auto w-fit max-w-[calc(100%-1.5rem)] rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
+              >
+                {mapBounds && !mapFilter
+                  ? `Приблизьте карту: показываем область не больше ${MAP_MAX_SPAN}° по стороне`
+                  : markers.isError
+                    ? getErrorMessage(
+                        markers.error,
+                        "Не удалось загрузить метки на карте.",
+                      )
+                    : "Показаны не все объявления — приблизьте карту"}
+              </p>
+            ) : null}
+          </div>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground/75">
+            {mapLegend.map(([fill, label]) => (
+              <li key={label} className="flex items-center gap-1.5">
+                <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
+                  <circle cx="5" cy="5" r="5" className={fill} />
+                </svg>
+                {label}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <div className="lg:col-span-2">
+          <UrgentCases
+            filter={filter}
+            enabled={feedReady}
+            needTypeName={needTypeName}
+          />
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-xl font-bold sm:text-2xl">Объявления</h2>
@@ -727,7 +798,8 @@ export function CasesList() {
           </SelectTrigger>
           <SelectContent align="end">
             <SelectGroup>
-              {(["NEWEST", "DISTANCE", "PRIORITY"] as const).map((orderBy) => (
+              {(["NEWEST", "DISTANCE", "PRIORITY", "DEADLINE"] as const).map(
+                (orderBy) => (
                 <SelectItem
                   key={orderBy}
                   value={orderBy}
@@ -736,7 +808,8 @@ export function CasesList() {
                 >
                   {sortLabels[orderBy]}
                 </SelectItem>
-              ))}
+                ),
+              )}
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -767,49 +840,12 @@ export function CasesList() {
       ) : cases.data.content.length ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {cases.data.content.map((item) => (
-            <Link
+            <CaseFeedCard
               key={item.id}
-              href={ROUTES.CASE_DETAILS(item.id)}
-              className="group flex min-w-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-            >
-              <Card className="w-full min-w-0 gap-4 border-transparent pt-0 shadow-sm ring-1 ring-foreground/5 transition-shadow group-hover:shadow-md">
-                <div className="relative">
-                  <CasePhoto
-                    src={item.photoUrl}
-                    alt={item.title}
-                    aspect="aspect-[16/10]"
-                  />
-                  <StatusBadge
-                    tone="primary"
-                    icon={PawPrint}
-                    className="absolute top-3 left-3 shadow-sm ring-1 ring-card"
-                  >
-                    {item.animalType === "CAT" ? "Кошка" : "Собака"}
-                  </StatusBadge>
-                </div>
-                <CardHeader className="gap-2">
-                  <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">
-                    {item.title}
-                  </CardTitle>
-                  <p className="flex items-center gap-1.5 text-sm text-foreground/75">
-                    <MapPin aria-hidden className="size-4 shrink-0" />
-                    {getCityName(cities.data, item.cityCode, locale)}
-                  </p>
-                </CardHeader>
-                <CardContent className="mt-auto flex items-center justify-between gap-3 border-t pt-4 text-sm">
-                  <time dateTime={item.createdAt} className="text-foreground/75">
-                    {formatPublished(item.createdAt)}
-                  </time>
-                  <span className="flex items-center gap-1 font-semibold text-primary">
-                    Подробнее
-                    <ArrowRight
-                      aria-hidden
-                      className="size-4 transition-transform group-hover:translate-x-0.5"
-                    />
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
+              item={item}
+              cityName={getCityName(cities.data, item.cityCode, locale)}
+              needTypeName={needTypeName}
+            />
           ))}
         </div>
       ) : matching ? (

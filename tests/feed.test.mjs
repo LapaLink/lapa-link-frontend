@@ -157,3 +157,30 @@ test("gallery: client checks keep the limit and skip unsupported files", async (
   assert.equal(ok.files.length, 2)
   assert.equal(ok.error, "")
 })
+
+test("feed: DEADLINE order is kept, an unknown city is not sent, the map takes only filters", () => {
+  assert.equal(parse("orderBy=DEADLINE").orderBy, "DEADLINE")
+  assert.equal(feed.toFeedFilter(parse("orderBy=DEADLINE"), 6).orderBy, "DEADLINE")
+
+  // UNKNOWN_CITY: codes are checked against /cities once it is loaded.
+  assert.equal(feed.toFeedFilter(parse("cityCode=old"), 6, undefined, ["minsk"]).cityCode, undefined)
+  assert.equal(feed.toFeedFilter(parse("cityCode=minsk"), 6, undefined, ["minsk"]).cityCode, "minsk")
+  assert.equal(feed.toFeedFilter(parse("cityCode=minsk"), 6).cityCode, "minsk")
+
+  const bounds = { minLat: 53.8, minLng: 27.4, maxLat: 54, maxLng: 27.7 }
+  const filter = feed.toFeedFilter(
+    parse("animalType=CAT&needType=FOOD&latitude=53.9&longitude=27.5&radiusKm=5&orderBy=DISTANCE&page=2"),
+    6,
+  )
+  assert.deepEqual(JSON.parse(JSON.stringify(feed.toMapFilter(filter, bounds))), {
+    animalType: "CAT",
+    needType: ["FOOD"],
+    ...bounds,
+  })
+
+  // INVALID_BOUNDS: min below max and at most 2° per axis.
+  assert.equal(feed.isMapAreaAllowed(bounds), true)
+  assert.equal(feed.isMapAreaAllowed({ ...bounds, maxLat: 55.8 }), true)
+  assert.equal(feed.isMapAreaAllowed({ ...bounds, maxLat: 55.81 }), false)
+  assert.equal(feed.isMapAreaAllowed({ ...bounds, maxLng: 27.4 }), false)
+})

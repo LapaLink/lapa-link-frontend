@@ -393,6 +393,44 @@ test("public cards link to details, use logo placeholder and paginate six items"
   assert.ok(!html.includes(">Открыть<"))
 })
 
+test("feed card shows the urgent need, its deadline, other needs, the description and distance", () => {
+  const names = { FOSTER: "Передержка", FOOD: "Корм", TRANSPORT: "Транспорт" }
+  const card = (patch) =>
+    renderPage("components/pages/Cases/CaseFeedCard.tsx", "CaseFeedCard", {
+      props: {
+        item: { ...item, ...patch },
+        cityName: "Минск",
+        needTypeName: (code) => names[code] ?? code,
+      },
+    })
+  const html = card({
+    distanceKm: 1.2,
+    shortDescription: "Ищем временный дом…",
+    topNeed: {
+      type: "FOSTER",
+      priority: "HIGH",
+      startsAt: null,
+      deadline: "2026-10-20T15:00:00Z",
+      comment: "Нужна передержка на 7 дней",
+    },
+    openNeedTypes: ["FOSTER", "FOOD", "TRANSPORT"],
+  })
+  assert.ok(html.includes("Срочно"))
+  assert.ok(html.includes("Минск · 1,2 км"))
+  assert.ok(html.includes("Ищем временный дом…"))
+  assert.ok(html.includes(">Передержка<"))
+  assert.ok(html.includes("Нужна передержка на 7 дней"))
+  assert.match(html, /до 20 окт/)
+  // The top need is not repeated among the other badges.
+  assert.ok(html.includes(">Корм<") && html.includes(">Транспорт<"))
+  assert.equal(html.match(/>Передержка</g).length, 1)
+
+  // Old cached items without the new fields still render.
+  const plain = card({})
+  assert.ok(!plain.includes("Срочно"))
+  assert.ok(plain.includes(">Минск<"))
+})
+
 test("feed: old title links fill search, guests see the matching mode locked, no point disables radius", () => {
   const file = "components/pages/Cases/CasesList.tsx"
   const guest = renderPage(file, "CasesList", {

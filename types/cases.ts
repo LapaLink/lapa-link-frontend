@@ -10,7 +10,10 @@ export type UpdateCaseDto = Partial<{
   longitude: number | null
 }>
 
-export type MyCaseListItem = Omit<CaseListItem, "cityCode"> & {
+export type MyCaseListItem = Pick<
+  CaseListItem,
+  "id" | "animalType" | "title" | "photoUrl" | "createdAt"
+> & {
   cityCode?: string | null
   status: CaseStatus
   openNeedsCount: number
@@ -22,8 +25,12 @@ export type CaseStatus = "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 
-/** Feed order; ties go newest first. DISTANCE needs a point. */
-export type CaseFeedSort = "NEWEST" | "DISTANCE" | "PRIORITY"
+/**
+ * Feed order; ties go newest first. DISTANCE needs a point. PRIORITY follows
+ * `topNeed` (priority, then the nearest deadline); DEADLINE puts the nearest
+ * deadline of a matching open need first, cases without one last.
+ */
+export type CaseFeedSort = "NEWEST" | "DISTANCE" | "PRIORITY" | "DEADLINE"
 
 /**
  * Feed query for GET /cases and /account/help-offers/matching-cases.
@@ -100,7 +107,34 @@ export type CaseNeed = {
   /** ISO-8601 UTC deadline. */
   deadline: string | null
   comment: string | null
+  /** Extra fields of the need type; `{}` for types without them. */
+  details: NeedDetails
 }
+
+/** Extra fields of a TRANSPORT need; all optional. */
+export type TransportDetails = {
+  /** Up to 100 characters. */
+  fromArea?: string
+  /** Up to 100 characters. */
+  toArea?: string
+  /** Up to 300 characters. */
+  cargo?: string
+}
+
+/** Extra fields of a FOSTER need; all optional. */
+export type FosterDetails = {
+  /** Integer 1..365. */
+  periodDays?: number
+  /** Up to 1000 characters. */
+  conditions?: string
+}
+
+/**
+ * Type-specific need fields. A field the type does not have, a wrong value
+ * type or a broken limit is rejected with 400 NEED_DETAILS_INVALID.
+ */
+export type NeedDetails =
+  TransportDetails | FosterDetails | Record<string, never>
 
 export type CreateNeedDto = {
   type: string
@@ -108,6 +142,8 @@ export type CreateNeedDto = {
   startsAt?: string
   deadline?: string
   comment?: string
+  /** Omitted means `{}`. */
+  details?: NeedDetails
 }
 
 /**
@@ -120,6 +156,8 @@ export type UpdateNeedDto = Partial<{
   startsAt: string
   deadline: string
   comment: string
+  /** Replaces the saved details as a whole. */
+  details: NeedDetails
 }>
 
 export type CaseAuthor = {
@@ -135,6 +173,61 @@ export type CaseListItem = {
   cityCode: string
   photoUrl?: string | null
   createdAt: string
+  /** Public coordinates rounded to 0.01° (~1 km), not the exact point. */
+  latitude: number | null
+  longitude: number | null
+  /** Km to the requested point, to 0.1 km; null without a point. */
+  distanceKm: number | null
+  /** Start of the description, up to 160 characters, "…" when cut. */
+  shortDescription: string | null
+  /**
+   * Most urgent OPEN need that is not overdue (and matches needType/priority
+   * filters): highest priority, then the nearest deadline; null if none.
+   */
+  topNeed: CaseTopNeed | null
+  /** Types of all open needs that are not overdue, without repeats. */
+  openNeedTypes: string[]
+}
+
+export type CaseTopNeed = {
+  /** Code from /need-types. */
+  type: string
+  priority: NeedPriority
+  startsAt: string | null
+  deadline: string | null
+  comment: string | null
+}
+
+/**
+ * Query for GET /cases/map and its matching variant: the visible area (min
+ * below max, at most 2° per axis, else 400 INVALID_BOUNDS) and the feed
+ * filters; no paging, point, radius or order.
+ */
+export type CaseMapFilter = Pick<
+  CaseFeedFilter,
+  "animalType" | "cityCode" | "search" | "needType" | "priority" | "needStatus"
+> & {
+  minLat: number
+  minLng: number
+  maxLat: number
+  maxLng: number
+}
+
+export type CaseMapItem = {
+  id: string
+  /** Public coordinates. */
+  latitude: number
+  longitude: number
+  animalType: AnimalType
+  title: string
+  topNeedType: string | null
+  topNeedPriority: NeedPriority | null
+}
+
+/** Map markers, most urgent first; `truncated` when the area had over 300. */
+export type CaseMapResponse = {
+  items: CaseMapItem[]
+  truncated: boolean
 }
 
 /** Photo of a case gallery; position 0 is the cover (`photoUrl`). */

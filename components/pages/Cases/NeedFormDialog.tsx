@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useEffect, useRef, useState } from "react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ApiError, casesApi } from "@/api"
@@ -33,7 +33,11 @@ import {
 } from "@/components/ui"
 import { getDictionaryName } from "@/lib/dictionaries"
 import {
+  FOSTER_DAYS_MAX,
+  NEED_AREA_MAX,
+  NEED_CARGO_MAX,
   NEED_COMMENT_MAX,
+  NEED_CONDITIONS_MAX,
   getNeedFormValues,
   needFormSchema,
   needPriorityLabels,
@@ -93,6 +97,14 @@ function NeedForm({
     resolver: zodResolver(schema),
     defaultValues: getNeedFormValues(need),
   })
+  const type = useWatch({ control: form.control, name: "type" })
+  // Fields of the type picked before would be rejected (NEED_DETAILS_INVALID).
+  const shownType = useRef(type)
+  useEffect(() => {
+    if (shownType.current === type) return
+    shownType.current = type
+    form.setValue("details", getNeedFormValues().details)
+  }, [form, type])
   const save = useMutation({
     mutationFn: async (values: NeedFormValues) => {
       if (!need) {
@@ -108,6 +120,12 @@ function NeedForm({
       await invalidateTaskData(client, caseId)
     },
     onError: (error) => {
+      // Shown inside the details block only, not above the form.
+      if (error instanceof ApiError && error.code === "NEED_DETAILS_INVALID")
+        return form.setError("details", {
+          type: "server",
+          message: error.message,
+        })
       setFormError(form, error)
       if (error instanceof ApiError) {
         if (error.code === "NEED_TIME_WINDOW_INVALID")
@@ -121,6 +139,7 @@ function NeedForm({
     },
   })
   const rootError = form.formState.errors.root?.message
+  const detailsError = form.formState.errors.details?.message
   const retryable =
     save.error instanceof ApiError && save.error.code === "OPERATION_IN_PROGRESS"
 
@@ -198,7 +217,59 @@ function NeedForm({
               min={minDeadline}
               description={need?.deadline ? undefined : "Необязательно"}
             />
+            <p className="text-sm text-muted-foreground sm:col-span-2">
+              Если до срока никто не будет выбран исполнителем, потребность
+              закроется автоматически.
+            </p>
           </div>
+          {type === "TRANSPORT" && (
+            <FieldSet>
+              <FieldLegend variant="label">Детали перевозки</FieldLegend>
+              <FormAlert message={detailsError} />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <FormField
+                  name="details.fromArea"
+                  label="Откуда (район)"
+                  placeholder="Например: Фрунзенский"
+                  maxLength={NEED_AREA_MAX}
+                />
+                <FormField
+                  name="details.toArea"
+                  label="Куда (район)"
+                  placeholder="Например: Заводской"
+                  maxLength={NEED_AREA_MAX}
+                />
+              </div>
+              <TextAreaField
+                name="details.cargo"
+                label="Что перевозим"
+                placeholder="Например: кошка в переноске"
+                maxLength={NEED_CARGO_MAX}
+              />
+            </FieldSet>
+          )}
+          {type === "FOSTER" && (
+            <FieldSet>
+              <FieldLegend variant="label">Детали передержки</FieldLegend>
+              <FormAlert message={detailsError} />
+              <FormField
+                name="details.periodDays"
+                label="Срок передержки, дней"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={FOSTER_DAYS_MAX}
+                step={1}
+                className="sm:max-w-40"
+              />
+              <TextAreaField
+                name="details.conditions"
+                label="Условия"
+                placeholder="Например: без других животных, нужна отдельная комната"
+                maxLength={NEED_CONDITIONS_MAX}
+              />
+            </FieldSet>
+          )}
           <TextAreaField
             name="comment"
             label="Комментарий"

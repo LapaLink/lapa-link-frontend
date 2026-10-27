@@ -11,7 +11,7 @@ import {
   getServerSessionSnapshot,
   subscribeSession,
 } from "@/lib/auth"
-import { notificationHref, prependNotification } from "@/lib/inbox"
+import { inboxItemHref, prependNotification } from "@/lib/inbox"
 import type { InboxNotification, PageResponse } from "@/types"
 import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
 
@@ -89,7 +89,7 @@ function Connection({ session }: { session: string }) {
         void client.invalidateQueries({ queryKey: ["account", "applications"] })
         void client.invalidateQueries({ queryKey: ["account", "assignments"] })
         if (item.eventType.startsWith("CHAT_")) void invalidateChatData(client)
-        const href = notificationHref(item.actionUrl, item.needId)
+        const href = inboxItemHref(item)
         toast(item.title, {
           id: item.id,
           description: item.message,

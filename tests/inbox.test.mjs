@@ -142,6 +142,17 @@ test("notifications validate payload and restrict navigation to case pages", () 
     events.notificationHref("/cases/2032112f-4957-43d7-99db-4ee94d178eff"),
     "/cases/2032112f-4957-43d7-99db-4ee94d178eff",
   )
+  // Deadline events without actionUrl lead to the case and its need.
+  const caseId = "2032112f-4957-43d7-99db-4ee94d178eff"
+  const needId = "8a6c2f8e-4f0e-4c1a-9d4e-2f7b9c3d1e5a"
+  assert.equal(
+    events.inboxItemHref({ actionUrl: null, caseId, needId }),
+    `/cases/${caseId}?need=${needId}`,
+  )
+  assert.equal(
+    events.inboxItemHref({ actionUrl: null, caseId: null, needId }),
+    null,
+  )
   // HELP_OFFER_MATCHED and other need events open the case at that need.
   assert.equal(
     events.notificationHref(

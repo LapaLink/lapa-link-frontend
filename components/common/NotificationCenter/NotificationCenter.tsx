@@ -2,10 +2,17 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, CheckCheck, ChevronRight } from "lucide-react"
+import {
+  AlarmClock,
+  Bell,
+  CheckCheck,
+  ChevronRight,
+  TimerOff,
+  type LucideIcon,
+} from "lucide-react"
 import { useInbox, useReadNotifications, useUnreadCount } from "@/hooks"
 import { getErrorMessage } from "@/api"
-import { notificationHref } from "@/lib/inbox"
+import { inboxItemHref } from "@/lib/inbox"
 import {
   Button,
   Dialog,
@@ -18,6 +25,12 @@ import {
 } from "@/components/ui"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { ListPagination } from "../ListPagination/ListPagination"
+
+// Need deadline events get an icon next to the title.
+const eventIcons: Record<string, LucideIcon> = {
+  NEED_DEADLINE_APPROACHING: AlarmClock,
+  NEED_EXPIRED: TimerOff,
+}
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
@@ -100,55 +113,64 @@ export function NotificationCenter() {
             </div>
           ) : inbox.data.content.length ? (
             <ul className="space-y-2">
-              {inbox.data.content.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    disabled={read.isPending}
-                    className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${item.read ? "border-border bg-card" : "border-primary/20 bg-primary-soft/60"}`}
-                    onClick={() => {
-                      const href = notificationHref(item.actionUrl, item.needId)
-                      const navigate = () => {
-                        if (href) {
-                          setOpen(false)
-                          router.push(href)
+              {inbox.data.content.map((item) => {
+                const href = inboxItemHref(item)
+                const EventIcon = eventIcons[item.eventType]
+                return (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      disabled={read.isPending}
+                      className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${item.read ? "border-border bg-card" : "border-primary/20 bg-primary-soft/60"}`}
+                      onClick={() => {
+                        const navigate = () => {
+                          if (href) {
+                            setOpen(false)
+                            router.push(href)
+                          }
                         }
-                      }
-                      if (item.read) navigate()
-                      else read.mutate(item.id, { onSuccess: navigate })
-                    }}
-                  >
-                    <span
-                      className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-primary"}`}
-                    />
-                    <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                      <span className="block text-sm font-bold">
-                        {item.title}
+                        if (item.read) navigate()
+                        else read.mutate(item.id, { onSuccess: navigate })
+                      }}
+                    >
+                      <span
+                        className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-primary"}`}
+                      />
+                      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                        <span className="flex items-start gap-1.5 text-sm font-bold">
+                          {EventIcon && (
+                            <EventIcon
+                              aria-hidden
+                              className="mt-0.5 size-4 shrink-0 text-primary"
+                            />
+                          )}
+                          {item.title}
+                        </span>
+                        <span className="mt-1 block whitespace-pre-wrap text-sm text-muted-foreground">
+                          {item.message}
+                        </span>
+                        <time
+                          dateTime={item.createdAt}
+                          className="mt-2 block text-xs text-muted-foreground"
+                        >
+                          {new Intl.DateTimeFormat("ru", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }).format(new Date(item.createdAt))}
+                        </time>
+                        {!item.read && (
+                          <span className="sr-only">Не прочитано</span>
+                        )}
                       </span>
-                      <span className="mt-1 block whitespace-pre-wrap text-sm text-muted-foreground">
-                        {item.message}
-                      </span>
-                      <time
-                        dateTime={item.createdAt}
-                        className="mt-2 block text-xs text-muted-foreground"
-                      >
-                        {new Intl.DateTimeFormat("ru", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(item.createdAt))}
-                      </time>
-                      {!item.read && (
-                        <span className="sr-only">Не прочитано</span>
+                      {href && (
+                        <ChevronRight className="mt-1 size-4 shrink-0 text-primary" />
                       )}
-                    </span>
-                    {notificationHref(item.actionUrl) && (
-                      <ChevronRight className="mt-1 size-4 shrink-0 text-primary" />
-                    )}
-                  </button>
-                </li>
-              ))}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           ) : (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
