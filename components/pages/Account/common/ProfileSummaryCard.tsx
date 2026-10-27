@@ -90,67 +90,70 @@ export function ProfileSummaryCard({
 
   return (
     <Card className="min-w-0">
-      <CardContent className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-0">
-        <div className="flex items-center gap-4 sm:gap-5 lg:pr-6">
-          <div className="relative shrink-0">
-            <UserAvatar user={user} size="profile" />
-            <Link
-              href="#photo"
-              aria-label="Сменить фото"
-              className="absolute right-0 bottom-0 flex size-9 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground outline-none transition-colors hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring/40"
-            >
-              <Camera aria-hidden className="size-4" />
-            </Link>
+      <CardContent className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <UserAvatar user={user} size="profile" />
+              {/* Plain anchor: the profile switches sections on hashchange. */}
+              <a
+                href="#photo"
+                aria-label="Сменить фото"
+                className="absolute right-0 bottom-0 flex size-9 items-center justify-center rounded-full border-2 border-card bg-primary text-primary-foreground outline-none transition-colors hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-ring/40"
+              >
+                <Camera aria-hidden className="size-4" />
+              </a>
+            </div>
+            <div className="flex min-w-0 flex-col items-start gap-1.5">
+              <p className="text-xl font-extrabold leading-tight [overflow-wrap:anywhere] sm:text-2xl">
+                {user.displayName}
+              </p>
+              <p className="flex items-center gap-1.5 text-sm text-foreground/75">
+                <MapPin aria-hidden className="size-4 shrink-0 text-primary" />
+                {user.cityCode
+                  ? getCityName(cities.data, user.cityCode, locale)
+                  : "Город не указан"}
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                onClick={onEdit}
+                className="h-auto min-h-11 p-0 text-sm font-semibold sm:min-h-0"
+              >
+                <Pencil data-icon="inline-start" />
+                Редактировать профиль
+              </Button>
+            </div>
           </div>
-          <div className="flex min-w-0 flex-col items-start gap-1.5">
-            <p className="text-xl font-extrabold leading-tight [overflow-wrap:anywhere] sm:text-2xl">
-              {user.displayName}
-            </p>
-            <p className="flex items-center gap-1.5 text-sm text-foreground/75">
-              <MapPin aria-hidden className="size-4 shrink-0 text-primary" />
-              {user.cityCode
-                ? getCityName(cities.data, user.cityCode, locale)
-                : "Город не указан"}
-            </p>
-            <Button
-              type="button"
-              variant="link"
-              onClick={onEdit}
-              className="h-auto min-h-11 p-0 text-sm font-semibold sm:min-h-0"
+          <div className="flex min-w-0 flex-col gap-2 border-t pt-4 md:w-64 md:shrink-0 md:border-t-0 md:border-l md:pt-0 md:pl-6">
+            <p
+              id="profile-completion"
+              className="flex items-baseline justify-between gap-2 text-sm font-semibold"
             >
-              <Pencil data-icon="inline-start" />
-              Редактировать профиль
-            </Button>
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-col gap-2 border-t pt-4 lg:w-64 lg:shrink-0 lg:border-t-0 lg:border-l lg:px-6 lg:pt-0">
-          <p
-            id="profile-completion"
-            className="flex items-baseline justify-between gap-2 text-sm font-semibold"
-          >
-            Профиль заполнен
-            <span className="text-primary">{completion.percent}%</span>
-          </p>
-          <div
-            role="progressbar"
-            aria-labelledby="profile-completion"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={completion.percent}
-            className="h-2 overflow-hidden rounded-full bg-muted"
-          >
+              Профиль заполнен
+              <span className="text-primary">{completion.percent}%</span>
+            </p>
             <div
-              className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${completion.percent}%` }}
-            />
+              role="progressbar"
+              aria-labelledby="profile-completion"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={completion.percent}
+              className="h-2 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width]"
+                style={{ width: `${completion.percent}%` }}
+              />
+            </div>
+            {completion.missing && (
+              <p className="text-xs text-foreground/70">
+                Осталось: {completion.missing}
+              </p>
+            )}
           </div>
-          {completion.missing && (
-            <p className="text-xs text-foreground/70">
-              Осталось: {completion.missing}
-            </p>
-          )}
         </div>
-        <ul className="grid min-w-0 flex-1 grid-cols-3 divide-x border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-2">
+        <ul className="grid min-w-0 grid-cols-3 divide-x border-t pt-4">
           {stats.map(({ href, icon: Icon, query, value, label }) => (
             <li key={href} className="min-w-0">
               <Link

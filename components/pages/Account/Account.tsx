@@ -260,7 +260,9 @@ function AccountMenu({
               const active = id === current
               return (
                 <li key={id} className="shrink-0">
-                  <Link
+                  {/* A plain anchor: next/link changes the hash with pushState,
+                      which fires no hashchange, so the section would not switch. */}
+                  <a
                     href={`#${id}`}
                     aria-current={active ? "page" : undefined}
                     className={cn(
@@ -272,7 +274,7 @@ function AccountMenu({
                   >
                     <Icon aria-hidden className="size-4 shrink-0" />
                     {label}
-                  </Link>
+                  </a>
                 </li>
               )
             })}
@@ -300,7 +302,7 @@ function OverviewSection({
   return (
     <>
       <ProfileSummaryCard user={user} onEdit={() => onOpen("personal")} />
-      <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2">
         {/* Editing happens on "Личные данные"; here the card only reads. */}
         <ProfileCard
           user={user}
@@ -315,7 +317,7 @@ function OverviewSection({
               : !!user.emailVerifiedAt
           }
         />
-        <div className="md:col-span-2 xl:col-span-1">
+        <div className="md:col-span-2">
           <AvatarCard user={user} />
         </div>
       </div>
@@ -334,7 +336,7 @@ function OverviewSection({
 function PersonalSection({ user }: { user: CurrentUser }) {
   const [notice, setNotice] = useTransientNotice()
   return (
-    <div className="grid items-start gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid items-start gap-5 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Card className="min-w-0 py-0">
         <CardContent className="flex flex-col gap-0 p-0">
           <h2 className="border-b border-foreground/[0.06] px-5 py-4 text-lg font-bold sm:px-6">
@@ -442,12 +444,12 @@ function SecuritySection({ user }: { user: CurrentUser }) {
             </span>
           }
         >
-          <Link
+          <a
             href="#personal"
             className="inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-10"
           >
             Изменить
-          </Link>
+          </a>
         </SettingRow>
         <AccountSettingRows user={user} />
       </div>

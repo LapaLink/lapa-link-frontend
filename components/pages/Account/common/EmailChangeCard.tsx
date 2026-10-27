@@ -30,7 +30,7 @@ export function EmailChangeCard({
       description="Укажите, как с вами связаться."
       fullWidthBody
     >
-      <p className="flex min-w-0 items-center gap-3">
+      <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         <span
           aria-hidden
           className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70"
@@ -38,9 +38,14 @@ export function EmailChangeCard({
           <Mail className="size-4" />
         </span>
         <span className="sr-only">Электронная почта: </span>
-        <span className="min-w-0 text-sm font-medium break-all">{email}</span>
+        <span className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+          {email}
+        </span>
         {verified !== undefined && (
-          <StatusBadge tone={verified ? "success" : "muted"}>
+          <StatusBadge
+            tone={verified ? "success" : "muted"}
+            className="whitespace-nowrap"
+          >
             {verified ? "Подтверждён" : "Не подтверждён"}
           </StatusBadge>
         )}
