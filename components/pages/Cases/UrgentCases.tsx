@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronRight, Siren } from "lucide-react"
+import { CircleCheck, Clock, Siren } from "lucide-react"
 import { casesApi, getErrorMessage } from "@/api"
 import { ROUTES } from "@/lib/constants"
 import { formatNeedWindow } from "@/lib/needs"
@@ -44,15 +44,24 @@ export function UrgentCases({
   return (
     <section
       aria-labelledby="urgent-cases-title"
-      className="flex min-w-0 flex-col gap-3"
+      className="flex h-full min-w-0 flex-col gap-4 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5"
     >
-      <h2
-        id="urgent-cases-title"
-        className="flex items-center gap-2 text-xl font-bold"
-      >
-        <Siren aria-hidden className="size-5 text-primary" />
-        Срочные запросы
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="urgent-cases-title"
+          className="flex items-center gap-2.5 text-lg font-bold"
+        >
+          <span className="flex size-8 items-center justify-center rounded-full bg-primary-soft text-primary">
+            <Siren aria-hidden className="size-4" />
+          </span>
+          Срочные запросы
+        </h2>
+        {items.length > 0 && (
+          <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-primary-foreground">
+            {items.length}
+          </span>
+        )}
+      </div>
       {urgent.isPending ? (
         <div
           role="status"
@@ -60,7 +69,7 @@ export function UrgentCases({
           className="flex flex-col gap-3"
         >
           {[0, 1, 2].map((key) => (
-            <Skeleton key={key} className="h-24 rounded-2xl" />
+            <Skeleton key={key} className="h-20 rounded-xl" />
           ))}
         </div>
       ) : urgent.isError ? (
@@ -71,7 +80,7 @@ export function UrgentCases({
           )}
         />
       ) : items.length ? (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2.5">
           {items.map((item) => {
             const need = item.topNeed!
             const meta = [
@@ -82,39 +91,44 @@ export function UrgentCases({
               <li key={item.id}>
                 <Link
                   href={ROUTES.CASE_DETAILS(item.id)}
-                  className="group flex items-center gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-foreground/5 outline-none transition-shadow hover:shadow-md focus-visible:ring-3 focus-visible:ring-ring/40"
+                  className="group relative flex flex-col gap-1.5 rounded-xl border border-foreground/[0.07] py-3 pr-3 pl-4 outline-none transition-colors before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-primary hover:border-primary/25 hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/40"
                 >
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex items-start justify-between gap-2">
                     <span className="line-clamp-1 font-bold [overflow-wrap:anywhere]">
                       {item.title}
                     </span>
-                    {(need.comment || item.shortDescription) && (
-                      <span className="line-clamp-1 text-sm text-foreground/75 [overflow-wrap:anywhere]">
-                        {need.comment || item.shortDescription}
-                      </span>
-                    )}
-                    <span className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs text-foreground/75">
-                        {meta.join(" · ")}
-                      </span>
-                      <StatusBadge tone="primary">
-                        {needTypeName(need.type)}
-                      </StatusBadge>
-                    </span>
+                    <StatusBadge tone="primary" className="shrink-0">
+                      {needTypeName(need.type)}
+                    </StatusBadge>
                   </span>
-                  <ChevronRight
-                    aria-hidden
-                    className="size-4 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"
-                  />
+                  {(need.comment || item.shortDescription) && (
+                    <span className="line-clamp-1 text-sm text-foreground/75 [overflow-wrap:anywhere]">
+                      {need.comment || item.shortDescription}
+                    </span>
+                  )}
+                  {meta.length > 0 && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                      <Clock aria-hidden className="size-3.5 shrink-0" />
+                      {meta.join(" · ")}
+                    </span>
+                  )}
                 </Link>
               </li>
             )
           })}
         </ul>
       ) : (
-        <p className="rounded-2xl bg-muted/60 p-4 text-sm text-foreground/75">
-          Сейчас нет срочных запросов по выбранным фильтрам.
-        </p>
+        <div className="flex flex-1 items-center gap-3 rounded-xl bg-success/60 p-4 lg:flex-col lg:justify-center lg:text-center">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card text-success-foreground shadow-xs">
+            <CircleCheck aria-hidden className="size-5" />
+          </span>
+          <span className="flex flex-col gap-0.5">
+            <span className="font-semibold">Срочных запросов нет</span>
+            <span className="text-sm text-foreground/75">
+              По выбранным фильтрам сейчас нет объявлений с высоким приоритетом.
+            </span>
+          </span>
+        </div>
       )}
     </section>
   )

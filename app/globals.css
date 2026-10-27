@@ -50,6 +50,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Soft lift for page surfaces (cards, panels); -hover for linked cards. */
+  --shadow-card: 0 1px 2px rgb(23 36 59 / 0.04), 0 4px 16px -8px rgb(23 36 59 / 0.12);
+  --shadow-card-hover: 0 2px 4px rgb(23 36 59 / 0.04), 0 16px 32px -12px rgb(23 36 59 / 0.22);
 }
 
 :root {

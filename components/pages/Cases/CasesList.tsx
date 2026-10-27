@@ -84,12 +84,11 @@ import {
 import {
   EmptyState,
   FormAlert,
-  CaseCardsSkeleton,
   ListPagination,
   PageHeader,
 } from "@/components/common"
 import { needStatusLabels } from "./statusLabels"
-import { CaseFeedCard } from "./CaseFeedCard"
+import { CaseFeedCard, CaseFeedSkeleton } from "./CaseFeedCard"
 import { UrgentCases } from "./UrgentCases"
 import { needPriorityLabels } from "./schemas"
 
@@ -117,10 +116,10 @@ const sortLabels: Record<CaseFeedSort, string> = {
 }
 
 const mapLegend = [
-  ["fill-primary", "Высокий приоритет"],
+  ["fill-primary", "Высокий"],
   ["fill-amber-500", "Средний"],
   ["fill-slate-500", "Низкий"],
-  ["fill-slate-300", "Без открытых потребностей"],
+  ["fill-slate-300", "Без потребностей"],
 ] as const
 
 const geolocationHint =
@@ -279,9 +278,10 @@ export function CasesList() {
 
   const nearVisible = nearOpen || !!state.point
   const moreVisible = moreOpen || !!state.needStatus
-  // Neutral fields: the burgundy accent is kept for actions.
+  // Neutral fields: the burgundy accent is kept for actions. The value sits
+  // next to the icon instead of the trigger's center.
   const fieldClass =
-    "border-input bg-background hover:border-foreground/25 focus-visible:bg-background"
+    "border-input bg-background hover:border-foreground/25 focus-visible:bg-background *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:text-left"
   const chipClass = "h-11 rounded-full sm:h-9"
 
   return (
@@ -297,7 +297,10 @@ export function CasesList() {
                 <Link href={ROUTES.MY_CASES}>Мои объявления</Link>
               </Button>
             )}
-            <Button asChild className="h-11 sm:h-10">
+            <Button
+              asChild
+              className="h-11 px-5 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
+            >
               <Link href={ROUTES.CREATE_CASE}>
                 <Plus aria-hidden />
                 Создать объявление
@@ -310,7 +313,7 @@ export function CasesList() {
         <div
           role="group"
           aria-label="Какие объявления показать"
-          className="flex w-full gap-1 rounded-full bg-muted p-1 sm:w-fit"
+          className="flex w-full gap-1 rounded-full border border-foreground/[0.07] bg-card p-1 shadow-card sm:w-fit"
         >
           {(
             [
@@ -328,8 +331,8 @@ export function CasesList() {
               className={cn(
                 "h-11 flex-1 rounded-full px-5 sm:h-10 sm:flex-none",
                 state.mode === mode
-                  ? "bg-primary text-primary-foreground hover:bg-primary-hover hover:text-primary-foreground"
-                  : "text-foreground",
+                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover hover:text-primary-foreground"
+                  : "text-foreground/80 hover:bg-muted hover:text-foreground",
               )}
               onClick={() => update({ mode })}
             >
@@ -364,7 +367,7 @@ export function CasesList() {
         role="search"
         aria-label="Фильтры объявлений"
         className={cn(
-          "flex-col gap-3 rounded-2xl bg-card p-4 shadow-sm ring-1 ring-foreground/5 sm:flex sm:p-5",
+          "flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:flex sm:p-5",
           filtersOpen ? "flex" : "hidden",
         )}
       >
@@ -722,10 +725,10 @@ export function CasesList() {
       <div className="grid gap-5 lg:grid-cols-5">
         <section
           aria-label="Карта объявлений"
-          className="flex min-w-0 flex-col gap-2 lg:col-span-3"
+          className="relative flex min-w-0 flex-col gap-2 lg:col-span-3"
         >
           {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
-          <div className="relative isolate h-80 overflow-hidden rounded-2xl shadow-sm ring-1 ring-foreground/5 sm:h-96">
+          <div className="relative isolate h-72 overflow-hidden rounded-2xl border border-foreground/[0.07] shadow-card sm:h-96">
             <CasesMap
               view={mapView}
               point={state.point}
@@ -752,7 +755,11 @@ export function CasesList() {
               </p>
             ) : null}
           </div>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-foreground/75">
+          {/* Over the map's corner from sm up; under it on phones. */}
+          <ul
+            aria-label="Цвет метки — приоритет"
+            className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-foreground/75 sm:absolute sm:bottom-3 sm:left-3 sm:z-[1000] sm:max-w-[calc(100%-15rem)] sm:rounded-lg sm:bg-card/95 sm:px-2.5 sm:py-1.5 sm:shadow-sm sm:backdrop-blur"
+          >
             {mapLegend.map(([fill, label]) => (
               <li key={label} className="flex items-center gap-1.5">
                 <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
@@ -773,8 +780,10 @@ export function CasesList() {
       </div>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <h2 className="text-xl font-bold sm:text-2xl">Объявления</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+            Объявления
+          </h2>
           {cases.data && (
             <p role="status" className="text-sm text-foreground/75">
               Найдено объявлений: {cases.data.totalElements}
@@ -816,7 +825,7 @@ export function CasesList() {
       </div>
 
       {cases.isPending ? (
-        <CaseCardsSkeleton aspect="aspect-[16/10]" />
+        <CaseFeedSkeleton />
       ) : cases.isError ? (
         <EmptyState
           icon={CloudOff}

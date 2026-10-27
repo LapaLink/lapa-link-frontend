@@ -393,7 +393,7 @@ test("public cards link to details, use logo placeholder and paginate six items"
   assert.ok(!html.includes(">Открыть<"))
 })
 
-test("feed card shows the urgent need, its deadline, other needs, the description and distance", () => {
+test("feed card shows the urgent need, its priority and deadline, other needs, the description and distance", () => {
   const names = { FOSTER: "Передержка", FOOD: "Корм", TRANSPORT: "Транспорт" }
   const card = (patch) =>
     renderPage("components/pages/Cases/CaseFeedCard.tsx", "CaseFeedCard", {
@@ -419,7 +419,9 @@ test("feed card shows the urgent need, its deadline, other needs, the descriptio
   assert.ok(html.includes("Минск · 1,2 км"))
   assert.ok(html.includes("Ищем временный дом…"))
   assert.ok(html.includes(">Передержка<"))
-  assert.ok(html.includes("Нужна передержка на 7 дней"))
+  assert.ok(html.includes("Высокий приоритет"))
+  // The need comment stays on the case page and in "Срочные запросы".
+  assert.ok(!html.includes("Нужна передержка на 7 дней"))
   assert.match(html, /до 20 окт/)
   // The top need is not repeated among the other badges.
   assert.ok(html.includes(">Корм<") && html.includes(">Транспорт<"))
