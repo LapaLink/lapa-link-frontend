@@ -87,7 +87,11 @@ export function MainNavigation() {
               variant="ghost"
               size="sm"
               asChild
-              className={cn(active && "bg-secondary text-primary")}
+              className={cn(
+                "relative",
+                active &&
+                  "text-primary after:absolute after:inset-x-3 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-primary hover:text-primary",
+              )}
             >
               <Link href={href} aria-current={active ? "page" : undefined}>
                 {label}

@@ -119,7 +119,8 @@ const mapLegend = [
   ["fill-primary", "Высокий"],
   ["fill-amber-500", "Средний"],
   ["fill-slate-500", "Низкий"],
-  ["fill-slate-300", "Без потребностей"],
+  ["fill-slate-400", "Без потребностей"],
+  ["fill-sky-500", "Вы здесь"],
 ] as const
 
 const geolocationHint =
@@ -347,29 +348,10 @@ export function CasesList() {
           </p>
         )}
       </div>
-      {/* On phones the filters fold behind a button to leave room for cases. */}
-      <Button
-        type="button"
-        variant="outline"
-        className="h-11 sm:hidden"
-        aria-expanded={filtersOpen}
-        aria-controls="feed-filters"
-        onClick={() => setFiltersOpen((open) => !open)}
-      >
-        <SlidersHorizontal aria-hidden />
-        {filtersOpen ? "Скрыть фильтры" : "Фильтры"}
-        {hasFeedFilters(state) && (
-          <span aria-hidden className="size-2 rounded-full bg-primary" />
-        )}
-      </Button>
       <div
-        id="feed-filters"
         role="search"
         aria-label="Фильтры объявлений"
-        className={cn(
-          "flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:flex sm:p-5",
-          filtersOpen ? "flex" : "hidden",
-        )}
+        className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5"
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field className="gap-1.5">
@@ -519,6 +501,7 @@ export function CasesList() {
             variant="outline"
             className={cn(
               chipClass,
+              "flex-1 sm:flex-none",
               nearVisible && "border-primary/40 bg-primary-soft text-primary",
             )}
             aria-expanded={nearVisible}
@@ -532,6 +515,32 @@ export function CasesList() {
             <LocateFixed aria-hidden />
             Рядом со мной
           </Button>
+          {/* On phones the rest folds behind "Фильтры" to leave room for cases. */}
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(
+              chipClass,
+              "flex-1 sm:hidden",
+              filtersOpen && "border-primary/40 bg-primary-soft text-primary",
+            )}
+            aria-expanded={filtersOpen}
+            aria-controls="feed-more-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <SlidersHorizontal aria-hidden />
+            Фильтры
+            {(state.priority || state.needStatus) && (
+              <span aria-hidden className="size-2 rounded-full bg-primary" />
+            )}
+          </Button>
+          <div
+            id="feed-more-filters"
+            className={cn(
+              "w-full flex-wrap items-center gap-2 sm:contents",
+              filtersOpen ? "flex" : "hidden",
+            )}
+          >
           <Select
             value={state.priority ?? ALL}
             onValueChange={(value) =>
@@ -617,6 +626,7 @@ export function CasesList() {
               Сбросить фильтры
             </Button>
           )}
+          </div>
         </div>
 
         {nearVisible && (
@@ -774,6 +784,7 @@ export function CasesList() {
           <UrgentCases
             filter={filter}
             enabled={feedReady}
+            cityName={(code) => getCityName(cities.data, code, locale)}
             needTypeName={needTypeName}
           />
         </div>

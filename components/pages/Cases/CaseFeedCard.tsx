@@ -1,6 +1,5 @@
 import Link from "next/link"
 import {
-  ArrowRight,
   CalendarDays,
   ChevronsUp,
   Clock,
@@ -39,10 +38,18 @@ const publishedFormatWithYear = new Intl.DateTimeFormat("ru-RU", {
 })
 const kmFormat = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 })
 
-/** "26 октября"; the year is added only for earlier years. */
-function formatPublished(iso: string) {
+const DAY_MS = 86_400_000
+
+/** "Сегодня", "Вчера", else "26 октября"; the year only for earlier years. */
+function formatPublished(iso: string, now = new Date()) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ""
+  const days = Math.round(
+    (new Date(now).setHours(0, 0, 0, 0) - new Date(date).setHours(0, 0, 0, 0)) /
+      DAY_MS,
+  )
+  if (days === 0) return "Сегодня"
+  if (days === 1) return "Вчера"
   return (
     date.getFullYear() === new Date().getFullYear()
       ? publishedFormat
@@ -143,29 +150,15 @@ export function CaseFeedCard({
                 </StatusBadge>
               )}
             </div>
-            {topNeed && (
-              <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-foreground/70">
-                <span className="flex items-center gap-1.5 font-semibold text-foreground/80">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-2 rounded-full",
-                      priorityAppearance[topNeed.priority].dot,
-                    )}
-                  />
-                  {priorityAppearance[topNeed.priority].label}
-                </span>
-                {deadline && (
-                  <span
-                    className={cn(
-                      "flex items-center gap-1",
-                      urgent && "font-semibold text-primary",
-                    )}
-                  >
-                    <Clock aria-hidden className="size-3.5 shrink-0" />
-                    {deadline}
-                  </span>
+            {deadline && (
+              <p
+                className={cn(
+                  "flex items-center gap-1 text-xs text-foreground/70",
+                  urgent && "font-semibold text-primary",
                 )}
+              >
+                <Clock aria-hidden className="size-3.5 shrink-0" />
+                {deadline}
               </p>
             )}
           </div>
@@ -180,13 +173,18 @@ export function CaseFeedCard({
             {formatPublished(item.createdAt)}
           </time>
         </span>
-        <span className="flex items-center gap-1 font-semibold text-primary">
-          Подробнее
-          <ArrowRight
-            aria-hidden
-            className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5"
-          />
-        </span>
+        {topNeed && (
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground/80">
+            <span
+              aria-hidden
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                priorityAppearance[topNeed.priority].dot,
+              )}
+            />
+            {priorityAppearance[topNeed.priority].label}
+          </span>
+        )}
       </div>
     </Link>
   )

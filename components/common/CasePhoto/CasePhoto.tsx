@@ -10,12 +10,15 @@ export function CasePhoto({
   alt,
   priority = false,
   aspect = "aspect-video",
+  compact = false,
 }: {
   src?: string | null
   alt: string
   priority?: boolean
   /** Tailwind aspect-ratio class of the photo and its placeholder. */
   aspect?: string
+  /** Thumbnail: a smaller image request and a placeholder without the caption. */
+  compact?: boolean
 }) {
   const source = normalizeRemoteImageUrl(src)
   const [failedSource, setFailedSource] = useState<string | null>(null)
@@ -28,12 +31,26 @@ export function CasePhoto({
       <Image
         src={source}
         alt={alt}
-        width={960}
-        height={540}
+        width={compact ? 160 : 960}
+        height={compact ? 160 : 540}
         priority={priority}
         onLoad={() => setLoadedSource(source)}
         onError={() => setFailedSource(source)}
         className={`${aspect} w-full object-cover`}
+      />
+    </div>
+  ) : compact ? (
+    <div
+      role="img"
+      aria-label="Фото животного пока нет"
+      className={`flex ${aspect} items-center justify-center bg-primary-soft`}
+    >
+      <Image
+        src="/icon.svg"
+        alt=""
+        width={32}
+        height={32}
+        className="h-auto w-1/2 opacity-80"
       />
     </div>
   ) : (

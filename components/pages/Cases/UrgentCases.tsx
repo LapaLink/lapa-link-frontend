@@ -2,13 +2,13 @@
 
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { CircleCheck, Clock, Siren } from "lucide-react"
+import { ChevronRight, CircleCheck, Clock, Siren } from "lucide-react"
 import { casesApi, getErrorMessage } from "@/api"
 import { ROUTES } from "@/lib/constants"
 import { formatNeedWindow } from "@/lib/needs"
 import type { CaseFeedFilter } from "@/types"
 import { Skeleton } from "@/components/ui"
-import { FormAlert, StatusBadge } from "@/components/common"
+import { CasePhoto, FormAlert, StatusBadge } from "@/components/common"
 import { formatDistance } from "./CaseFeedCard"
 
 const URGENT_SIZE = 4
@@ -21,10 +21,12 @@ const URGENT_SIZE = 4
 export function UrgentCases({
   filter,
   enabled,
+  cityName,
   needTypeName,
 }: {
   filter: CaseFeedFilter
   enabled: boolean
+  cityName: (code: string) => string
   needTypeName: (code: string) => string
 }) {
   const urgentFilter: CaseFeedFilter = {
@@ -69,7 +71,7 @@ export function UrgentCases({
           className="flex flex-col gap-3"
         >
           {[0, 1, 2].map((key) => (
-            <Skeleton key={key} className="h-20 rounded-xl" />
+            <Skeleton key={key} className="h-[4.75rem] rounded-xl" />
           ))}
         </div>
       ) : urgent.isError ? (
@@ -91,27 +93,40 @@ export function UrgentCases({
               <li key={item.id}>
                 <Link
                   href={ROUTES.CASE_DETAILS(item.id)}
-                  className="group relative flex flex-col gap-1.5 rounded-xl border border-foreground/[0.07] py-3 pr-3 pl-4 outline-none transition-colors before:absolute before:inset-y-3 before:left-0 before:w-1 before:rounded-r-full before:bg-primary hover:border-primary/25 hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/40"
+                  className="group relative flex items-center gap-3 rounded-xl border border-foreground/[0.07] py-2.5 pr-2 pl-4 outline-none transition-colors before:absolute before:inset-y-2.5 before:left-0 before:w-1 before:rounded-r-full before:bg-primary hover:border-primary/25 hover:bg-primary-soft/40 focus-visible:ring-3 focus-visible:ring-ring/40"
                 >
-                  <span className="flex items-start justify-between gap-2">
-                    <span className="line-clamp-1 font-bold [overflow-wrap:anywhere]">
-                      {item.title}
-                    </span>
-                    <StatusBadge tone="primary" className="shrink-0">
-                      {needTypeName(need.type)}
-                    </StatusBadge>
+                  <span className="size-14 shrink-0 overflow-hidden rounded-lg">
+                    <CasePhoto
+                      src={item.photoUrl}
+                      alt=""
+                      aspect="aspect-square"
+                      compact
+                    />
                   </span>
-                  {(need.comment || item.shortDescription) && (
-                    <span className="line-clamp-1 text-sm text-foreground/75 [overflow-wrap:anywhere]">
-                      {need.comment || item.shortDescription}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="line-clamp-1 font-bold [overflow-wrap:anywhere]">
+                        {item.title}
+                      </span>
+                      <StatusBadge tone="primary" className="shrink-0">
+                        {needTypeName(need.type)}
+                      </StatusBadge>
                     </span>
-                  )}
-                  {meta.length > 0 && (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-primary">
-                      <Clock aria-hidden className="size-3.5 shrink-0" />
-                      {meta.join(" · ")}
+                    <span className="line-clamp-1 text-xs text-foreground/70">
+                      {item.animalType === "CAT" ? "Кошка" : "Собака"} ·{" "}
+                      {cityName(item.cityCode)}
                     </span>
-                  )}
+                    {meta.length > 0 && (
+                      <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                        <Clock aria-hidden className="size-3.5 shrink-0" />
+                        {meta.join(" · ")}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronRight
+                    aria-hidden
+                    className="size-4 shrink-0 text-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
+                  />
                 </Link>
               </li>
             )

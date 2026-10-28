@@ -1,10 +1,12 @@
 import type { ReactNode } from "react"
 import { Header } from "../Header/Header"
 import { Footer } from "../Footer/Footer"
+import { BottomNav } from "../BottomNav/BottomNav"
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    // The bottom padding keeps the footer clear of the phone tab bar.
+    <div className="flex min-h-screen flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0">
       <Header />
       <main
         id="main-content"
@@ -13,6 +15,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <Footer />
+      <BottomNav />
     </div>
   )
 }
