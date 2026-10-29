@@ -11,6 +11,7 @@ import { cn } from "cn"
 import {
   ArrowLeft,
   Bell,
+  Flag,
   Globe,
   HeartHandshake,
   KeyRound,
@@ -55,9 +56,11 @@ import {
   ProfileEditForm,
   ProfileSummaryCard,
 } from "./common"
+import { MyComplaints } from "./common/MyComplaints"
 import { SettingRow } from "./common/SettingRow"
 
-type SectionId = "overview" | "personal" | "notifications" | "help" | "security"
+type SectionId =
+  "overview" | "personal" | "notifications" | "help" | "complaints" | "security"
 
 const sections: Array<{
   id: SectionId
@@ -94,6 +97,14 @@ const sections: Array<{
     title: "Моя помощь",
     description:
       "Чем и где вы готовы помочь — по этим настройкам подбираем объявления в «Подходит мне».",
+  },
+  {
+    id: "complaints",
+    label: "Мои жалобы",
+    icon: Flag,
+    title: "Мои жалобы",
+    description:
+      "Жалобы на объявления, пользователей и переписку и что решил модератор.",
   },
   {
     id: "security",
@@ -221,6 +232,7 @@ function AccountContent() {
             </div>
           </>
         )}
+        {current === "complaints" && <MyComplaints />}
         {current === "security" && <SecuritySection user={user} />}
       </div>
     </div>

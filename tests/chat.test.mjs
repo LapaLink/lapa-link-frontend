@@ -843,3 +843,20 @@ test("chat socket URL comes from NEXT_PUBLIC_CHAT_WS_URL or falls back to same-o
   )
   assert.equal(socketHarness().client.brokerURL, "wss://lapa.test/ws")
 })
+
+test("a conversation closed by someone outside it is closed by a moderator", () => {
+  const participants = [
+    { userId, displayName: "Автор", role: "OWNER", lastReadAt: null },
+    { userId: uuid(600), displayName: "Помощник", role: "INITIATOR", lastReadAt: null },
+  ]
+  const closed = (closedBy) =>
+    conversation(1, { status: "CLOSED", writable: false, closedAt: "2026-10-14T12:00:00Z", closedBy, participants })
+  assert.equal(state.isClosedByModerator(closed(uuid(900))), true)
+  // Closed by a participant or automatically: not the moderator.
+  assert.equal(state.isClosedByModerator(closed(userId)), false)
+  assert.equal(state.isClosedByModerator(closed(null)), false)
+  assert.equal(state.isClosedByModerator({ ...closed(uuid(900)), status: "ACTIVE" }), false)
+  // The same shape arrives over the socket.
+  const pushed = events.parseFrame(events.conversationSchema, JSON.stringify(closed(uuid(900))))
+  assert.equal(state.isClosedByModerator(pushed), true)
+})

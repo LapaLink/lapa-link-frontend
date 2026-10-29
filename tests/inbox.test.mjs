@@ -146,11 +146,20 @@ test("notifications validate payload and restrict navigation to case pages", () 
   const caseId = "2032112f-4957-43d7-99db-4ee94d178eff"
   const needId = "8a6c2f8e-4f0e-4c1a-9d4e-2f7b9c3d1e5a"
   assert.equal(
-    events.inboxItemHref({ actionUrl: null, caseId, needId }),
+    events.inboxItemHref({ eventType: "NEED_EXPIRED", actionUrl: null, caseId, needId }),
     `/cases/${caseId}?need=${needId}`,
   )
   assert.equal(
-    events.inboxItemHref({ actionUrl: null, caseId: null, needId }),
+    events.inboxItemHref({ eventType: "NEED_EXPIRED", actionUrl: null, caseId: null, needId }),
+    null,
+  )
+  // A moderator warning about a chat leads to its case; without actionUrl nowhere.
+  assert.equal(
+    events.inboxItemHref({ eventType: "MODERATION_WARNING", actionUrl: `/cases/${caseId}`, caseId, needId: null }),
+    `/cases/${caseId}`,
+  )
+  assert.equal(
+    events.inboxItemHref({ eventType: "MODERATION_WARNING", actionUrl: null, caseId, needId: null }),
     null,
   )
   // HELP_OFFER_MATCHED and other need events open the case at that need.

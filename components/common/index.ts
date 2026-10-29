@@ -23,3 +23,7 @@ export { StatusBadge } from "./StatusBadge/StatusBadge"
 export { PageHeader } from "./PageHeader/PageHeader"
 export { EmptyState } from "./EmptyState/EmptyState"
 export { TextAreaField } from "./TextAreaField/TextAreaField"
+export {
+  COMPLAINT_MESSAGE_MAX,
+  ComplaintDialog,
+} from "./ComplaintDialog/ComplaintDialog"

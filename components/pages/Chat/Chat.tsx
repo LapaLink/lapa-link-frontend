@@ -17,7 +17,9 @@ import {
   Ellipsis,
   EllipsisVertical,
   CloudOff,
+  Flag,
   Lock,
+  ShieldAlert,
   MessageCircle,
   MessageSquareOff,
   Pencil,
@@ -43,6 +45,7 @@ import {
   CLOSED_CONVERSATION_TTL_DAYS,
   chatErrorMessage,
   conversationDeletionDate,
+  isClosedByModerator,
   conversationTargetHref,
   counterpart,
   flattenHistory,
@@ -52,6 +55,7 @@ import {
 } from "@/lib/chat"
 import { ROUTES } from "@/lib/constants"
 import {
+  ComplaintDialog,
   ConversationRequestActions,
   EmptyState,
   FormAlert,
@@ -576,12 +580,16 @@ function ChatView({ conversation }: { conversation: Conversation }) {
   )
 }
 
-/** Close (active only) and hide/unhide actions for the conversation. */
+/**
+ * Close (active only), hide/unhide and report actions for the conversation.
+ * Reporting works in any status: people often close a chat first.
+ */
 function ConversationMenu({ conversation }: { conversation: Conversation }) {
   const close = useCloseConversation()
   const hide = useHideConversation()
   const unhide = useUnhideConversation()
   const [confirming, setConfirming] = useState(false)
+  const [reporting, setReporting] = useState(false)
   const busy = close.isPending || hide.isPending || unhide.isPending
   const onError = (fallback: string) => (error: unknown) =>
     toast.error(chatErrorMessage(error, fallback))
@@ -633,8 +641,22 @@ function ConversationMenu({ conversation }: { conversation: Conversation }) {
               Скрыть чат
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem onSelect={() => setReporting(true)}>
+            <Flag aria-hidden />
+            Пожаловаться
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ComplaintDialog
+        open={reporting}
+        onOpenChange={setReporting}
+        targetType="CONVERSATION"
+        targetId={conversation.id}
+        title="Пожаловаться на переписку"
+        description="Модератор увидит последние 200 сообщений такими, какие они сейчас. Собеседник не узнает, кто отправил жалобу."
+        placeholder="Например: оскорбления в переписке."
+        emptyMessage="Опишите, что не так в переписке."
+      />
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -678,14 +700,26 @@ function ClosedNotice({
   const reopen = useReopenConversation()
   const deletion = conversationDeletionDate(conversation)
   const automatic = conversation.closedBy === null
+  const byModerator = isClosedByModerator(conversation)
   const byMe = !automatic && conversation.closedBy === userId
   return (
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:p-4">
       <div className="flex items-start gap-3">
-        <IconCircle icon={Lock} tone="muted" size="sm" />
+        <IconCircle
+          icon={byModerator ? ShieldAlert : Lock}
+          tone={byModerator ? "danger" : "muted"}
+          size="sm"
+        />
         <div className="flex flex-col gap-1">
+          {byModerator && (
+            <p className="font-semibold text-foreground">
+              Чат закрыт модератором
+            </p>
+          )}
           <p>
-            {automatic
+            {byModerator
+              ? "Писать сюда больше нельзя, открыть чат снова не получится."
+              : automatic
               ? "Диалог закрыт: чат выключен, объявление закрыто или отклик отменён. Он откроется снова, когда условия вернутся."
               : byMe
                 ? "Вы закрыли диалог."

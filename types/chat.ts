@@ -37,7 +37,9 @@ export type Conversation = {
   closedAt: string | null
   /**
    * Who closed it by hand. Null on a CLOSED conversation means it was closed
-   * automatically (chat off, case closed, response cancelled) and reopens by itself.
+   * automatically (chat off, case closed, response cancelled) and reopens by
+   * itself. A participant's id: only they can reopen it. Anyone else: a
+   * moderator closed it for good.
    */
   closedBy: string | null
   /** Hidden by the current user. */

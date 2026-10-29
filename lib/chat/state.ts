@@ -107,6 +107,22 @@ export function isConversationOwner(
   )
 }
 
+/**
+ * True for a conversation a moderator closed: closedBy is not a participant.
+ * It cannot be reopened (409 CONVERSATION_NOT_REOPENABLE).
+ */
+export function isClosedByModerator(
+  conversation: Pick<Conversation, "status" | "closedBy" | "participants">,
+) {
+  return (
+    conversation.status === "CLOSED" &&
+    conversation.closedBy != null &&
+    !conversation.participants.some(
+      (participant) => participant.userId === conversation.closedBy,
+    )
+  )
+}
+
 /** Link to the object the conversation is about. */
 export function conversationTargetHref(
   conversation: Pick<Conversation, "targetType" | "targetId">,

@@ -27,17 +27,21 @@ export function notificationHref(value: string | null, needId?: string | null) {
 }
 
 /**
- * Where a notification leads: its `actionUrl`, else the case it refers to
- * (deadline reminders and expired needs carry only `caseId` and `needId`).
+ * Where a notification leads: its `actionUrl`. Deadline reminders and expired
+ * needs (NEED_*) fall back to their case; anything else without `actionUrl`
+ * (e.g. a MODERATION_WARNING about a user) leads nowhere.
  */
 export function inboxItemHref(item: {
+  eventType: string
   actionUrl: string | null
   caseId: string | null
   needId: string | null
 }) {
   return (
     notificationHref(item.actionUrl, item.needId) ??
-    notificationHref(item.caseId && `/cases/${item.caseId}`, item.needId)
+    (item.eventType.startsWith("NEED_")
+      ? notificationHref(item.caseId && `/cases/${item.caseId}`, item.needId)
+      : null)
   )
 }
 

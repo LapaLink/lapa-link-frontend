@@ -109,3 +109,26 @@ test("a complaint about a case is sent with the session token", async () => {
     },
   ])
 })
+
+test("a chat complaint goes to the same endpoint and my complaints are paged", async () => {
+  const { calls, fetch } = recorder({ content: [], totalPages: 0 })
+  const api = load("api/complaints.ts", fetch)
+  api.saveTokens({ accessToken: "access", refreshToken: "refresh" })
+  await api.complaintsApi.create({
+    targetType: "CONVERSATION",
+    targetId: "c1",
+    message: "Оскорбления в переписке",
+  })
+  await api.complaintsApi.my(1, 20)
+  assert.deepEqual(
+    calls.map(({ url, method, body }) => ({ url, method, body })),
+    [
+      {
+        url: "/api/v1/complaints",
+        method: "POST",
+        body: { targetType: "CONVERSATION", targetId: "c1", message: "Оскорбления в переписке" },
+      },
+      { url: "/api/v1/complaints/my?page=1&size=20", method: "GET", body: undefined },
+    ],
+  )
+})

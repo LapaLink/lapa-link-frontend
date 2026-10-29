@@ -8,6 +8,7 @@ import {
   CheckCheck,
   ChevronRight,
   TimerOff,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react"
 import { useInbox, useReadNotifications, useUnreadCount } from "@/hooks"
@@ -30,6 +31,7 @@ import { ListPagination } from "../ListPagination/ListPagination"
 const eventIcons: Record<string, LucideIcon> = {
   NEED_DEADLINE_APPROACHING: AlarmClock,
   NEED_EXPIRED: TimerOff,
+  MODERATION_WARNING: TriangleAlert,
 }
 
 export function NotificationCenter() {
@@ -116,58 +118,83 @@ export function NotificationCenter() {
               {inbox.data.content.map((item) => {
                 const href = inboxItemHref(item)
                 const EventIcon = eventIcons[item.eventType]
+                const content = (
+                  <>
+                    <span
+                      className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-primary"}`}
+                    />
+                    <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                      <span className="flex items-start gap-1.5 text-sm font-bold">
+                        {EventIcon && (
+                          <EventIcon
+                            aria-hidden
+                            className="mt-0.5 size-4 shrink-0 text-primary"
+                          />
+                        )}
+                        {item.title}
+                      </span>
+                      <span className="mt-1 block whitespace-pre-wrap text-sm text-muted-foreground">
+                        {item.message}
+                      </span>
+                      <time
+                        dateTime={item.createdAt}
+                        className="mt-2 block text-xs text-muted-foreground"
+                      >
+                        {new Intl.DateTimeFormat("ru", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }).format(new Date(item.createdAt))}
+                      </time>
+                      {!item.read && (
+                        <span className="sr-only">Не прочитано</span>
+                      )}
+                    </span>
+                  </>
+                )
+                const tone = item.read
+                  ? "border-border bg-card"
+                  : "border-primary/20 bg-primary-soft/60"
                 return (
                   <li key={item.id}>
-                    <button
-                      type="button"
-                      disabled={read.isPending}
-                      className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${item.read ? "border-border bg-card" : "border-primary/20 bg-primary-soft/60"}`}
-                      onClick={() => {
-                        const navigate = () => {
-                          if (href) {
+                    {href ? (
+                      <button
+                        type="button"
+                        disabled={read.isPending}
+                        className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${tone}`}
+                        onClick={() => {
+                          const navigate = () => {
                             setOpen(false)
                             router.push(href)
                           }
-                        }
-                        if (item.read) navigate()
-                        else read.mutate(item.id, { onSuccess: navigate })
-                      }}
-                    >
-                      <span
-                        className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-primary"}`}
-                      />
-                      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                        <span className="flex items-start gap-1.5 text-sm font-bold">
-                          {EventIcon && (
-                            <EventIcon
-                              aria-hidden
-                              className="mt-0.5 size-4 shrink-0 text-primary"
-                            />
-                          )}
-                          {item.title}
-                        </span>
-                        <span className="mt-1 block whitespace-pre-wrap text-sm text-muted-foreground">
-                          {item.message}
-                        </span>
-                        <time
-                          dateTime={item.createdAt}
-                          className="mt-2 block text-xs text-muted-foreground"
-                        >
-                          {new Intl.DateTimeFormat("ru", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }).format(new Date(item.createdAt))}
-                        </time>
-                        {!item.read && (
-                          <span className="sr-only">Не прочитано</span>
-                        )}
-                      </span>
-                      {href && (
+                          if (item.read) navigate()
+                          else read.mutate(item.id, { onSuccess: navigate })
+                        }}
+                      >
+                        {content}
                         <ChevronRight className="mt-1 size-4 shrink-0 text-primary" />
-                      )}
-                    </button>
+                      </button>
+                    ) : (
+                      // Nothing to open: not a link, only marking it read.
+                      <div
+                        className={`flex w-full items-start gap-3 rounded-2xl border p-4 ${tone}`}
+                      >
+                        {content}
+                        {!item.read && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0"
+                            disabled={read.isPending}
+                            onClick={() => read.mutate(item.id)}
+                          >
+                            Прочитано
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 )
               })}

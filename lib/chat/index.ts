@@ -26,6 +26,7 @@ export {
   conversationTargetHref,
   counterpart,
   initiator,
+  isClosedByModerator,
   isConversationOwner,
   isReadBy,
 } from "./state"
