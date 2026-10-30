@@ -83,6 +83,9 @@ function Connection({ session }: { session: string }) {
           void client.invalidateQueries({
             queryKey: queryKeys.caseResponses(item.caseId),
           })
+          void client.invalidateQueries({
+            queryKey: queryKeys.caseHistory(item.caseId),
+          })
           void client.invalidateQueries({ queryKey: ["account", "cases"] })
           void client.invalidateQueries({ queryKey: queryKeys.casesList })
         }

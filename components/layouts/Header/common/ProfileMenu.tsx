@@ -2,7 +2,13 @@
 
 import { NavigationLink as Link } from "@/components/providers"
 import { useRouter } from "next/navigation"
-import { LogOut, MessageCircle, UserRound, ChevronDown } from "lucide-react"
+import {
+  CircleHelp,
+  LogOut,
+  MessageCircle,
+  UserRound,
+  ChevronDown,
+} from "lucide-react"
 import { useChatUnreadCount, useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 import { Loader, UserAvatar } from "@/components/common"
@@ -84,6 +90,12 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={ROUTES.FAQ}>
+              <CircleHelp />
+              Частые вопросы
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

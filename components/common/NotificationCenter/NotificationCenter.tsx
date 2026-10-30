@@ -6,6 +6,8 @@ import {
   AlarmClock,
   Bell,
   CheckCheck,
+  Eye,
+  EyeOff,
   ChevronRight,
   TimerOff,
   TriangleAlert,
@@ -37,6 +39,8 @@ const eventIcons: Record<string, LucideIcon> = {
   // The helper dropped the need / the author took it back.
   CASE_ASSIGNMENT_DECLINED: UserX,
   CASE_ASSIGNMENT_CANCELLED: UserMinus,
+  CASE_HIDDEN: EyeOff,
+  CASE_RESTORED: Eye,
 }
 
 export function NotificationCenter() {

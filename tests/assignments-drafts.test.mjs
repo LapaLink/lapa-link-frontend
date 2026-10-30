@@ -115,6 +115,27 @@ test("a cancelled assignment says who cancelled it and why", () => {
 test("an unknown case status shows its raw value instead of breaking", () => {
   const { caseStatusBadge } = load("components/pages/Cases/statusLabels.ts")
   assert.equal(caseStatusBadge("DRAFT").label, "Черновик")
-  assert.equal(caseStatusBadge("HIDDEN").label, "HIDDEN")
-  assert.equal(caseStatusBadge("HIDDEN").tone, "muted")
+  assert.equal(caseStatusBadge("ARCHIVED").label, "ARCHIVED")
+  assert.equal(caseStatusBadge("ARCHIVED").tone, "muted")
+})
+
+test("hidden cases: history texts, status badge and the public FAQ request", async () => {
+  const { describeHistoryEvent } = load("lib/cases/history.ts")
+  const event = (fromStatus, toStatus) => ({ targetType: "CASE", fromStatus, toStatus, actorId: "m" })
+  assert.equal(describeHistoryEvent(event("OPEN", "HIDDEN"), ""), "Скрыто модератором")
+  assert.equal(describeHistoryEvent(event("HIDDEN", "OPEN"), ""), "Восстановлено модератором")
+  const { caseStatusBadge } = load("components/pages/Cases/statusLabels.ts")
+  assert.equal(caseStatusBadge("HIDDEN").label, "Скрыто модератором")
+  assert.equal(caseStatusBadge("HIDDEN").tone, "danger")
+
+  const calls = []
+  const [faq] = load(["api/faq.ts"], {
+    fetch: async (url, options) => {
+      calls.push([url, options.headers.get("Authorization")])
+      return response(200, [])
+    },
+  })
+  await faq.faqApi.list()
+  // Public: no token is needed or sent.
+  assert.deepEqual(calls, [["/api/v1/faq", null]])
 })

@@ -17,5 +17,6 @@ export const ROUTES = {
   CASE_DETAILS: (caseId: string) => `/cases/${caseId}`,
   CREATE_CASE: "/cases/create",
   CHATS: "/chats",
+  FAQ: "/faq",
   CHAT: (conversationId: string) => `/chats/${conversationId}`,
 } as const

@@ -1,3 +1,6 @@
+import Link from "next/link"
+import { ROUTES } from "@/lib/constants"
+
 export function Footer() {
   return (
     <footer className="border-t bg-background pb-[env(safe-area-inset-bottom)]">
@@ -9,6 +12,12 @@ export function Footer() {
           </span>
           Добрые дела рядом
         </p>
+        <Link
+          href={ROUTES.FAQ}
+          className="font-medium text-foreground/80 hover:text-primary hover:underline"
+        >
+          Частые вопросы
+        </Link>
       </div>
     </footer>
   )

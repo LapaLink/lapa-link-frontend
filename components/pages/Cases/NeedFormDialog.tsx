@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { ApiError, casesApi } from "@/api"
 import { useDictionaryLocale, useNeedTypes } from "@/hooks"
 import { setFormError } from "@/lib/forms"
@@ -120,6 +121,13 @@ function NeedForm({
       await invalidateTaskData(client, caseId)
     },
     onError: (error) => {
+      // Hidden by a moderator meanwhile: say why and show the actual state.
+      if (error instanceof ApiError && error.code === "CASE_HIDDEN") {
+        toast.error(error.message)
+        onDone()
+        void invalidateTaskData(client, caseId)
+        return
+      }
       // Shown inside the details block only, not above the form.
       if (error instanceof ApiError && error.code === "NEED_DETAILS_INVALID")
         return form.setError("details", {

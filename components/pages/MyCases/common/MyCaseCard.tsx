@@ -22,6 +22,7 @@ const statusLabels: Record<CaseStatus, string> = {
   OPEN: "Активно",
   REJECTED: "Отклонено",
   CLOSED: "Закрыто",
+  HIDDEN: "Скрыто модератором",
 }
 
 export function MyCaseCard({
@@ -34,7 +35,9 @@ export function MyCaseCard({
   const status = caseStatusBadge(item.status)
   const isOpen = item.status === "OPEN"
   const draft = item.status === "DRAFT"
-  const editable = isOpen || item.status === "PENDING_REVIEW" || draft
+  const hidden = item.status === "HIDDEN"
+  const editable =
+    isOpen || item.status === "PENDING_REVIEW" || draft || hidden
   const hasApplications = item.applicationsCount > 0
   return (
     <Card className="relative min-w-0 overflow-hidden pt-0 transition-colors hover:border-primary/30">
@@ -81,6 +84,12 @@ export function MyCaseCard({
             </span>
           </p>
         </div>
+        {hidden && (
+          <p className="rounded-xl bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            Скрыто модератором. Откройте объявление, чтобы увидеть причину и
+            исправить его.
+          </p>
+        )}
         {draft && (
           <p className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
             Черновик виден только вам. Откройте его, чтобы опубликовать.

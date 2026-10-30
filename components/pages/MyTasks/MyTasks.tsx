@@ -1,10 +1,11 @@
 "use client"
 
 import Image from "next/image"
+import { toast } from "sonner"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { accountApi, casesApi, getErrorMessage } from "@/api"
+import { ApiError, accountApi, casesApi, getErrorMessage } from "@/api"
 import { CloudOff, HeartHandshake } from "lucide-react"
 import {
   EmptyState,
@@ -316,6 +317,12 @@ export function MyTasks() {
       await invalidateTaskData(client, pendingTaskAction.item.caseId)
       setPendingTaskAction(null)
     } catch (error) {
+      // Hidden case: the buttons stay, they work again once it is restored.
+      if (error instanceof ApiError && error.code === "CASE_HIDDEN") {
+        toast.error(error.message)
+        setPendingTaskAction(null)
+        return
+      }
       setPendingActionError(getErrorMessage(error, "Не удалось выполнить действие."))
     } finally {
       setActionInFlight(false)

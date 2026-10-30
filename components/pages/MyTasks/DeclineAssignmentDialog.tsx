@@ -25,6 +25,8 @@ export const DECLINE_REASON_MAX = 500
 
 // The assignment is gone or no longer active: refresh the lists.
 const STALE = ["ASSIGNMENT_NOT_FOUND", "ASSIGNMENT_NOT_ACTIVE"]
+// Toast and close; the assignment itself stays as it is.
+const TOAST_ONLY = ["NOT_ASSIGNEE", "CASE_HIDDEN"]
 
 /**
  * The helper drops an active assignment with a required reason: the need
@@ -77,10 +79,10 @@ export function DeclineAssignmentDialog({
         setFieldError(
           (cause instanceof ApiError && cause.fields.reason) || message,
         )
-      else if (code === "NOT_ASSIGNEE" || STALE.includes(code ?? "")) {
+      else if (TOAST_ONLY.includes(code ?? "") || STALE.includes(code ?? "")) {
         toast.error(message)
         onClose()
-        if (code !== "NOT_ASSIGNEE")
+        if (STALE.includes(code ?? ""))
           void invalidateTaskData(client, assignment.caseId)
       } else setError(message)
     } finally {

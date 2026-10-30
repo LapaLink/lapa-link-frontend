@@ -6,6 +6,7 @@ export { ApiError, authorizedRequest, getErrorMessage } from "./instance"
 export { inboxApi } from "./inbox"
 export { chatApi } from "./chat"
 export { complaintsApi } from "./complaints"
+export { faqApi } from "./faq"
 export {
   getPreferredLocale,
   refresh as refreshTokens,

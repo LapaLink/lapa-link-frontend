@@ -23,6 +23,8 @@ export function describeHistoryEvent(item: Event, needName: string) {
       return "Опубликовано"
     if (from === "PENDING_REVIEW" && to === "REJECTED")
       return "Отклонено модератором"
+    if (from === "OPEN" && to === "HIDDEN") return "Скрыто модератором"
+    if (from === "HIDDEN" && to === "OPEN") return "Восстановлено модератором"
     if (to === "CLOSED") return "Объявление закрыто"
   }
   if (targetType === "NEED") {

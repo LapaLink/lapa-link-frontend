@@ -3,6 +3,7 @@ import {
   CircleCheck,
   CircleHelp,
   Clock,
+  EyeOff,
   FilePen,
   Lock,
   type LucideIcon,
@@ -20,6 +21,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
   OPEN: "Открыто",
   REJECTED: "Отклонено",
   CLOSED: "Закрыто",
+  HIDDEN: "Скрыто модератором",
 }
 
 export const caseStatusAppearance = {
@@ -28,6 +30,7 @@ export const caseStatusAppearance = {
   OPEN: { tone: "success", icon: CircleCheck },
   REJECTED: { tone: "danger", icon: Ban },
   CLOSED: { tone: "muted", icon: Lock },
+  HIDDEN: { tone: "danger", icon: EyeOff },
 } as const satisfies Record<
   CaseStatus,
   { tone: "primary" | "success" | "danger" | "muted"; icon: LucideIcon }

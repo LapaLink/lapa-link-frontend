@@ -13,6 +13,7 @@ import {
   CircleX,
   Clock,
   Ellipsis,
+  EyeOff,
   HandHeart,
   HeartHandshake,
   HeartPulse,
@@ -25,6 +26,7 @@ import {
   Plus,
   Venus,
 } from "lucide-react"
+import { toast } from "sonner"
 import { ApiError, accountApi, casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
@@ -203,6 +205,14 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const refreshCase = () => {
     void invalidateTaskData(client, caseId)
   }
+  /** 409 CASE_HIDDEN: a moderator hid the case meanwhile; show why and reload. */
+  const handledCaseHidden = (error: unknown) => {
+    if (!(error instanceof ApiError && error.code === "CASE_HIDDEN"))
+      return false
+    toast.error(error.message)
+    refreshCase()
+    return true
+  }
 
   const createResponse = useMutation({
     mutationFn: ({ needId, message }: { needId: string; message: string }) =>
@@ -265,6 +275,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     try {
       await createResponse.mutateAsync({ needId: need.id, message })
     } catch (error) {
+      if (handledCaseHidden(error)) return setOfferNeed(null)
       setOfferError(getErrorMessage(error, "Не удалось отправить предложение помощи."))
     }
   }
@@ -274,6 +285,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     try {
       await assignResponse.mutateAsync(application.id)
     } catch (error) {
+      if (handledCaseHidden(error)) return
       setError(getErrorMessage(error, "Не удалось выбрать помощника."))
     } finally {
       setPendingAssignment(null)
@@ -299,6 +311,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       })
       setNeedReason("")
     } catch (error) {
+      if (handledCaseHidden(error)) return
       setError(getErrorMessage(error, "Не удалось изменить статус."))
     } finally {
       setPendingNeedAction(null)
@@ -362,6 +375,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         activeAssignments: closeAssignments || undefined,
       })
     } catch (error) {
+      if (handledCaseHidden(error)) return
       setError(getErrorMessage(error, "Не удалось закрыть объявление."))
       // The data was stale: reload it so the choice about helpers shows up.
       if (
@@ -446,10 +460,14 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const hasPhoto = !!animalCase.photoUrl
   const gallery = galleryOf(animalCase)
   const draft = animalCase.status === "DRAFT"
+  // Hidden by a moderator: the author may fix fields and photos, but needs,
+  // helpers and closing answer 409 CASE_HIDDEN until it is restored.
+  const hidden = animalCase.status === "HIDDEN"
   const editable =
     animalCase.status === "OPEN" ||
     animalCase.status === "PENDING_REVIEW" ||
-    draft
+    draft ||
+    hidden
   const canEdit = isAuthor && editable
   const facts = [
     {
@@ -573,6 +591,23 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       </header>
 
       {isAuthor && draft && <DraftActions caseId={caseId} />}
+
+      {isAuthor && hidden && (
+        <SectionCard
+          icon={EyeOff}
+          tone="danger"
+          className="border-destructive/30 bg-destructive/[0.03]"
+          title="Объявление скрыто модератором"
+          description="Его не видят другие пользователи. Исправьте объявление — после проверки модератор сможет его восстановить. Пока оно скрыто, нельзя менять потребности, выбирать помощников и закрывать объявление."
+        >
+          {animalCase.hideReason && (
+            <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">
+              <span className="text-muted-foreground">Причина: </span>
+              {animalCase.hideReason}
+            </p>
+          )}
+        </SectionCard>
+      )}
 
       {isAuthor && animalCase.status === "PENDING_REVIEW" && (
         <SectionCard
@@ -764,7 +799,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
               : "Выберите, с чем можете помочь, и напишите автору. Укажите в сообщении, как с вами связаться — автор увидит его, когда будет выбирать помощника."
           }
         >
-          {canEdit && (
+          {canEdit && !hidden && (
             <Button
               variant="outline"
               className="h-11 w-full sm:h-10 sm:w-fit"
@@ -848,7 +883,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                             <Pencil aria-hidden />
                             Изменить
                           </DropdownMenuItem>
-                          {need.status === "OPEN" && (
+                          {need.status === "OPEN" && !hidden && (
                             <DropdownMenuItem
                               variant="destructive"
                               className="min-h-10"
@@ -946,7 +981,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                         need={need}
                         assignBusy={assignResponse.isPending}
                         statusBusy={updateNeedStatus.isPending}
-                        canManage={canManageNeed}
+                        canManage={canManageNeed && !hidden}
                         chats={caseChats.byUser}
                         onPick={() => setPickerNeed(need)}
                         onStatusChange={(next) =>
@@ -1086,7 +1121,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         )}
       </Dialog>
 
-      {canEdit && !draft && (
+      {canEdit && !draft && !hidden && (
         <SectionCard
           icon={Lock}
           title="Закрыть объявление"

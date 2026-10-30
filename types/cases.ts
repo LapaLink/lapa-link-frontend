@@ -24,9 +24,16 @@ export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
  * PENDING_REVIEW and REJECTED exist only with premoderation; such cases are
  * visible to the author and moderators only. DRAFT is seen by the author
  * alone: no feed, map, matching or notifications until it is published.
+ * HIDDEN: a moderator hid an open case; only the author sees it (others get
+ * 404) and actions on it answer 409 CASE_HIDDEN until it is restored.
  */
 export type CaseStatus =
-  "DRAFT" | "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED"
+  | "DRAFT"
+  | "PENDING_REVIEW"
+  | "OPEN"
+  | "REJECTED"
+  | "CLOSED"
+  | "HIDDEN"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 
@@ -252,6 +259,8 @@ export type CaseDetails = Omit<AnimalCase, "authorId"> & {
   closedAt?: string | null
   /** Moderator's reason, only for REJECTED. */
   rejectionReason?: string | null
+  /** Moderator's reason while the case is HIDDEN; null otherwise. */
+  hideReason?: string | null
   author: CaseAuthor
   needs: CaseNeed[]
   /** Current user's email notifications for this case; null when not a participant or anonymous. */

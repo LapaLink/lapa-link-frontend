@@ -88,3 +88,4 @@ export type {
   ChatError,
   ChatTyping,
 } from "./chat"
+export type { FaqItem } from "./faq"

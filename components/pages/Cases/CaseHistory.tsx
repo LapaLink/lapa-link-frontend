@@ -22,7 +22,7 @@ const timeFormat = new Intl.DateTimeFormat("ru-RU", {
 /**
  * "История" of a case for its author and users with an active response. The
  * server filters what each of them sees; without access (401/403) the block
- * is hidden quietly.
+ * (or 404 for a hidden case) is hidden quietly.
  */
 export function CaseHistory({
   caseId,
@@ -41,7 +41,7 @@ export function CaseHistory({
     queryKey: queryKeys.caseHistory(caseId),
     queryFn: ({ signal }) => casesApi.history(caseId, signal),
     retry: (count, error) =>
-      !(error instanceof ApiError && [401, 403].includes(error.status)) &&
+      !(error instanceof ApiError && [401, 403, 404].includes(error.status)) &&
       count < 2,
   })
 
