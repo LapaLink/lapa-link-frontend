@@ -31,6 +31,9 @@ export type {
   Applicant,
   HelpApplication,
   Assignment,
+  AssignmentCancellation,
+  CloseActiveAssignments,
+  StatusHistoryItem,
 } from "./cases"
 export type {
   ComplaintTargetType,

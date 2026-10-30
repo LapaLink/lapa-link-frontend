@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { CloudOff, ListChecks, Megaphone, Plus } from "lucide-react"
 import { accountApi, getErrorMessage } from "@/api"
@@ -18,6 +18,7 @@ import {
   RequireAuth,
 } from "@/components/common"
 import { Button, Card, CardContent } from "@/components/ui"
+import { cn } from "@/lib/utils"
 import { MyCaseCard } from "./common/MyCaseCard"
 import { MyCasesSkeleton } from "./common/MyCasesSkeleton"
 
@@ -26,6 +27,14 @@ const steps = [
   "Вы открываете объявление и выбираете помощника.",
   "Когда помощь получена — отмечаете это в объявлении.",
 ]
+
+// "#drafts" opens the drafts tab, e.g. after saving a draft.
+const DRAFTS_HASH = "drafts"
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange)
+  return () => window.removeEventListener("hashchange", onChange)
+}
 
 export function MyCases() {
   return (
@@ -42,10 +51,18 @@ function MyCasesContent() {
   const [page, setPage] = useState(0)
   const cities = useCities()
   const locale = useDictionaryLocale()
+  const drafts =
+    useSyncExternalStore(
+      subscribeHash,
+      () => window.location.hash.slice(1),
+      () => "",
+    ) === DRAFTS_HASH
+  const status = drafts ? "DRAFT" : undefined
   const cases = useQuery({
-    queryKey: queryKeys.myCases(page, 6),
-    queryFn: ({ signal }) => accountApi.getCases(page, 6, signal),
+    queryKey: queryKeys.myCases(page, 6, status),
+    queryFn: ({ signal }) => accountApi.getCases(page, 6, signal, status),
   })
+
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-5 sm:gap-6">
       <PageHeader
@@ -76,6 +93,35 @@ function MyCasesContent() {
           </ol>
         </CardContent>
       </Card>
+      <div
+        role="tablist"
+        aria-label="Какие объявления показать"
+        className="flex w-fit gap-1 rounded-full border bg-card p-1"
+      >
+        {(
+          [
+            [false, "Все", "all"],
+            [true, "Черновики", DRAFTS_HASH],
+          ] as const
+        ).map(([value, label, hash]) => (
+          // Plain anchors: next/link changes the hash without hashchange.
+          <a
+            key={label}
+            href={`#${hash}`}
+            role="tab"
+            aria-selected={drafts === value}
+            onClick={() => setPage(0)}
+            className={cn(
+              "flex h-10 items-center rounded-full px-5 text-sm font-medium outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/40",
+              drafts === value
+                ? "bg-primary text-primary-foreground hover:bg-primary-hover"
+                : "hover:bg-muted",
+            )}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
       {cases.isPending ? (
         <MyCasesSkeleton />
       ) : cases.isError ? (
@@ -94,6 +140,12 @@ function MyCasesContent() {
             Попробовать ещё раз
           </Button>
         </EmptyState>
+      ) : !cases.data.content.length && drafts ? (
+        <EmptyState
+          icon={Megaphone}
+          title="Черновиков нет."
+          description="Сохраните объявление черновиком, если хотите дописать его позже: его увидите только вы."
+        />
       ) : !cases.data.content.length ? (
         <EmptyState
           icon={Megaphone}

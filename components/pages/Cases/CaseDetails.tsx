@@ -25,7 +25,7 @@ import {
   Plus,
   Venus,
 } from "lucide-react"
-import { accountApi, casesApi, getErrorMessage } from "@/api"
+import { ApiError, accountApi, casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
   useCaseCloseReasons,
@@ -39,6 +39,7 @@ import { ROUTES } from "@/lib/constants"
 import type {
   CaseDetails as CaseDetailsData,
   CaseNeed,
+  CloseActiveAssignments,
   Conversation,
   HelpApplication,
   HelpApplicationStatus,
@@ -87,10 +88,12 @@ import {
   Textarea,
   Skeleton,
   Switch,
+  FieldDescription,
+  FieldLegend,
+  FieldSet,
 } from "@/components/ui"
 import {
-  caseStatusAppearance,
-  caseStatusLabels,
+  caseStatusBadge,
   needStatusLabels,
   responseStatusLabels,
 } from "./statusLabels"
@@ -105,7 +108,19 @@ import {
 } from "./NeedDetails"
 import { CaseGallery, galleryOf } from "./CaseGallery"
 import { NeedFormDialog } from "./NeedFormDialog"
+import { CaseHistory } from "./CaseHistory"
+import { DraftActions } from "./DraftActions"
 import { ReportCaseButton } from "./ReportCaseButton"
+
+const NEED_REOPEN_REASON_MAX = 500
+
+const closeAssignmentOptions: Array<{
+  value: CloseActiveAssignments
+  label: string
+}> = [
+  { value: "COMPLETE", label: "Помощь оказана — завершить назначения" },
+  { value: "CANCEL", label: "Помощь не понадобилась — отменить назначения" },
+]
 
 const needStatusTones = {
   OPEN: "primary",
@@ -141,6 +156,12 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const [offerError, setOfferError] = useState("")
   const [closeReason, setCloseReason] = useState("")
   const [closeComment, setCloseComment] = useState("")
+  // What closing does with ACTIVE assignments; required when there are any.
+  const [closeAssignments, setCloseAssignments] = useState<
+    CloseActiveAssignments | ""
+  >("")
+  // Optional note for the helper when the author takes an ASSIGNED need back.
+  const [needReason, setNeedReason] = useState("")
   const [pendingNeedAction, setPendingNeedAction] = useState<{
     need: CaseNeed
     nextStatus: NeedStatus
@@ -159,6 +180,9 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     refetchOnMount: "always",
   })
   const isAuthor = !!user && user.id === details.data?.author?.id
+  const hasActiveAssignments = !!details.data?.needs?.some(
+    (need) => need.status === "ASSIGNED",
+  )
   const responses = useQuery({
     queryKey: queryKeys.caseResponses(caseId),
     queryFn: () => casesApi.getResponses(caseId),
@@ -196,17 +220,32 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   })
 
   const updateNeedStatus = useMutation({
-    mutationFn: ({ needId, status }: { needId: string; status: NeedStatus }) =>
-      casesApi.updateNeedStatus(caseId, needId, status),
+    mutationFn: ({
+      needId,
+      status,
+      reason,
+    }: {
+      needId: string
+      status: NeedStatus
+      reason?: string
+    }) => casesApi.updateNeedStatus(caseId, needId, status, reason),
     onSuccess: refreshCase,
   })
 
   const closeCaseMutation = useMutation({
-    mutationFn: ({ reason, comment }: { reason: string; comment?: string }) =>
-      casesApi.close(caseId, reason, comment),
+    mutationFn: ({
+      reason,
+      comment,
+      activeAssignments,
+    }: {
+      reason: string
+      comment?: string
+      activeAssignments?: CloseActiveAssignments
+    }) => casesApi.close(caseId, reason, comment, activeAssignments),
     onSuccess: () => {
       setCloseReason("")
       setCloseComment("")
+      setCloseAssignments("")
       refreshCase()
     },
   })
@@ -249,13 +288,16 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   async function commitNeedStatusChange(
     need: CaseNeed,
     nextStatus: NeedStatus,
+    reason?: string,
   ) {
     setError("")
     try {
       await updateNeedStatus.mutateAsync({
         needId: need.id,
         status: nextStatus,
+        reason: reason?.trim() || undefined,
       })
+      setNeedReason("")
     } catch (error) {
       setError(getErrorMessage(error, "Не удалось изменить статус."))
     } finally {
@@ -284,7 +326,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       transition === "OPEN->CLOSED"
         ? `Отметить, что эта помощь больше не нужна? Все предложения помощи, которые ждут ответа (${countPending}), будут отменены. Вернуть эту просьбу будет нельзя.`
         : transition === "ASSIGNED->OPEN"
-          ? `Отменить выбор помощника ${acceptedRequest?.user.displayName || ""}? Просьба снова станет открытой, и вы сможете выбрать другого из тех, кто предложил помощь.`
+          ? `Назначение исполнителя ${acceptedRequest?.user.displayName || ""} будет отменено. Просьба снова станет открытой, и вы сможете выбрать другого из тех, кто предложил помощь.`
           : transition === "ASSIGNED->CLOSED"
             ? `Подтвердить, что ${acceptedRequest?.user.displayName || "помощник"} помог(ла)? Просьба будет закрыта, остальные предложения помощи (${countPending}) отменятся.`
             : undefined
@@ -308,14 +350,25 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       setError("Для этой причины нужно указать комментарий.")
       return
     }
+    if (hasActiveAssignments && !closeAssignments) {
+      setError("Выберите, что сделать с выбранными помощниками.")
+      return
+    }
 
     try {
       await closeCaseMutation.mutateAsync({
         reason: closeReason,
         comment: closeComment.trim() || undefined,
+        activeAssignments: closeAssignments || undefined,
       })
     } catch (error) {
       setError(getErrorMessage(error, "Не удалось закрыть объявление."))
+      // The data was stale: reload it so the choice about helpers shows up.
+      if (
+        error instanceof ApiError &&
+        error.code === "CASE_HAS_ACTIVE_ASSIGNMENTS"
+      )
+        void details.refetch()
     }
   }
 
@@ -387,10 +440,16 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     filterValidTaskRecords(myCaseApplications.data?.content ?? []).filter(
       (item) => item.need.id === needId,
     )
+  const reopeningAssigned =
+    pendingNeedAction?.need.status === "ASSIGNED" &&
+    pendingNeedAction.nextStatus === "OPEN"
   const hasPhoto = !!animalCase.photoUrl
   const gallery = galleryOf(animalCase)
+  const draft = animalCase.status === "DRAFT"
   const editable =
-    animalCase.status === "OPEN" || animalCase.status === "PENDING_REVIEW"
+    animalCase.status === "OPEN" ||
+    animalCase.status === "PENDING_REVIEW" ||
+    draft
   const canEdit = isAuthor && editable
   const facts = [
     {
@@ -454,11 +513,11 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           ·
         </span>
         <StatusBadge
-          tone={caseStatusAppearance[animalCase.status].tone}
-          icon={caseStatusAppearance[animalCase.status].icon}
+          tone={caseStatusBadge(animalCase.status).tone}
+          icon={caseStatusBadge(animalCase.status).icon}
           className="ml-1"
         >
-          {caseStatusLabels[animalCase.status]}
+          {caseStatusBadge(animalCase.status).label}
         </StatusBadge>
       </nav>
 
@@ -513,6 +572,8 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         )}
       </header>
 
+      {isAuthor && draft && <DraftActions caseId={caseId} />}
+
       {isAuthor && animalCase.status === "PENDING_REVIEW" && (
         <SectionCard
           icon={Clock}
@@ -545,7 +606,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             isAuthor={isAuthor}
           />
         )}
-      {user && (
+      {user && !draft && (
         <CaseChat
           caseId={caseId}
           caseOpen={animalCase.status === "OPEN"}
@@ -608,16 +669,41 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       <AlertDialog
         open={!!pendingNeedAction}
         onOpenChange={(open) => {
-          if (!open) setPendingNeedAction(null)
+          if (!open) {
+            setPendingNeedAction(null)
+            setNeedReason("")
+          }
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {reopeningAssigned
+                ? "Назначение исполнителя будет отменено"
+                : "Вы уверены?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingNeedAction?.prompt}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {reopeningAssigned && (
+            <Field>
+              <FieldLabel htmlFor="need-reopen-reason">
+                Причина для исполнителя (необязательно)
+              </FieldLabel>
+              <Textarea
+                id="need-reopen-reason"
+                className="min-h-20"
+                maxLength={NEED_REOPEN_REASON_MAX}
+                value={needReason}
+                placeholder="Например: исполнитель не выходит на связь"
+                onChange={(event) => setNeedReason(event.target.value)}
+              />
+              <FieldDescription className="text-right">
+                {needReason.length} / {NEED_REOPEN_REASON_MAX}
+              </FieldDescription>
+            </Field>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction
@@ -626,6 +712,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                 void commitNeedStatusChange(
                   pendingNeedAction.need,
                   pendingNeedAction.nextStatus,
+                  reopeningAssigned ? needReason : undefined,
                 )
               }}
             >
@@ -875,6 +962,20 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         </SectionCard>
       )}
 
+      {user && (isAuthor || hasActiveResponse) && (
+        <CaseHistory
+          caseId={caseId}
+          authorId={animalCase.author.id}
+          userId={user.id}
+          needName={(needId) => {
+            const need = animalCase.needs.find((item) => item.id === needId)
+            return need
+              ? getDictionaryName(needTypes.data, need.type, locale)
+              : "Потребность"
+          }}
+        />
+      )}
+
       <Dialog
         open={!!pickerNeed}
         onOpenChange={(open) => {
@@ -985,7 +1086,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         )}
       </Dialog>
 
-      {canEdit && (
+      {canEdit && !draft && (
         <SectionCard
           icon={Lock}
           title="Закрыть объявление"
@@ -1021,12 +1122,39 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             </Field>
           )}
 
+          {hasActiveAssignments && (
+            <FieldSet>
+              <FieldLegend variant="label">
+                У объявления есть выбранные помощники. Что с ними сделать?
+              </FieldLegend>
+              <div className="flex flex-col gap-2">
+                {closeAssignmentOptions.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors has-[:checked]:border-primary/40 has-[:checked]:bg-primary-soft has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40"
+                  >
+                    <input
+                      type="radio"
+                      name="close-assignments"
+                      value={value}
+                      checked={closeAssignments === value}
+                      onChange={() => setCloseAssignments(value)}
+                      className="size-4 accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </FieldSet>
+          )}
+
           <LoadingButton
             loading={closeCaseMutation.isPending}
             loadingText="Закрываем…"
             disabled={
               !closeReason ||
-              (!!selectedReason?.requiresComment && !closeComment.trim())
+              (!!selectedReason?.requiresComment && !closeComment.trim()) ||
+              (hasActiveAssignments && !closeAssignments)
             }
             className="h-11 w-full px-6 sm:h-10 sm:w-fit"
             onClick={() => void handleCloseCase()}

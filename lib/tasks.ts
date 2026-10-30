@@ -135,3 +135,21 @@ export function buildMyTaskGroups(
     cancelled: items.filter((item) => item.status === "CANCELLED"),
   }
 }
+
+/**
+ * Why a cancelled assignment ended: the helper declined, the author took it
+ * back (with a reason if given), or the case was closed (no one, no reason).
+ */
+export function cancellationSummary(
+  assignment: { cancelledBy?: string | null; cancelReason?: string | null },
+  userId: string | undefined,
+) {
+  const reason = assignment.cancelReason?.trim()
+  if (assignment.cancelledBy && assignment.cancelledBy === userId)
+    return reason ? `Вы отказались: ${reason}` : "Вы отказались от помощи."
+  if (assignment.cancelledBy)
+    return reason
+      ? `Автор отменил назначение. Причина: ${reason}`
+      : "Автор отменил назначение."
+  return "Автор выбрал другого помощника или закрыл объявление."
+}

@@ -1,4 +1,12 @@
-import { Ban, CircleCheck, Clock, Lock, type LucideIcon } from "lucide-react"
+import {
+  Ban,
+  CircleCheck,
+  CircleHelp,
+  Clock,
+  FilePen,
+  Lock,
+  type LucideIcon,
+} from "lucide-react"
 import type {
   AssignmentStatus,
   CaseStatus,
@@ -7,6 +15,7 @@ import type {
 } from "@/types"
 
 export const caseStatusLabels: Record<CaseStatus, string> = {
+  DRAFT: "Черновик",
   PENDING_REVIEW: "На проверке",
   OPEN: "Открыто",
   REJECTED: "Отклонено",
@@ -14,6 +23,7 @@ export const caseStatusLabels: Record<CaseStatus, string> = {
 }
 
 export const caseStatusAppearance = {
+  DRAFT: { tone: "muted", icon: FilePen },
   PENDING_REVIEW: { tone: "primary", icon: Clock },
   OPEN: { tone: "success", icon: CircleCheck },
   REJECTED: { tone: "danger", icon: Ban },
@@ -22,6 +32,20 @@ export const caseStatusAppearance = {
   CaseStatus,
   { tone: "primary" | "success" | "danger" | "muted"; icon: LucideIcon }
 >
+
+/**
+ * Badge of a case status; a status the app does not know yet shows its raw
+ * value in a neutral badge instead of breaking the page.
+ */
+export function caseStatusBadge(status: string) {
+  const known = status in caseStatusLabels
+  return {
+    label: known ? caseStatusLabels[status as CaseStatus] : status,
+    ...(known
+      ? caseStatusAppearance[status as CaseStatus]
+      : { tone: "muted" as const, icon: CircleHelp }),
+  }
+}
 
 export const needStatusLabels: Record<NeedStatus, string> = {
   OPEN: "Ищем помощника",

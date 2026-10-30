@@ -20,8 +20,13 @@ export type MyCaseListItem = Pick<
   applicationsCount: number
 }
 export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
-/** PENDING_REVIEW and REJECTED exist only with premoderation; such cases are visible to the author and moderators only. */
-export type CaseStatus = "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED"
+/**
+ * PENDING_REVIEW and REJECTED exist only with premoderation; such cases are
+ * visible to the author and moderators only. DRAFT is seen by the author
+ * alone: no feed, map, matching or notifications until it is published.
+ */
+export type CaseStatus =
+  "DRAFT" | "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 
@@ -84,6 +89,8 @@ export type CreateCaseDto = {
   sex?: AnimalSex
   approximateAge?: string
   condition?: string
+  /** true: saved as DRAFT, seen only by the author until published. */
+  draft?: boolean
 }
 
 export type AnimalCase = CreateCaseDto & {
@@ -270,10 +277,40 @@ export type HelpApplication = {
   createdAt: string
 }
 
-export type Assignment = {
+export type Assignment = AssignmentCancellation & {
   id: string
   status: AssignmentStatus
   need: CaseNeed
   application: HelpApplication
+  createdAt: string
+}
+
+/**
+ * Why and by whom an assignment was cancelled. A declining helper is
+ * `cancelledBy` themself; closing the case cancels with a null reason.
+ */
+export type AssignmentCancellation = {
+  cancelReason?: string | null
+  cancelledBy?: string | null
+  cancelledAt?: string | null
+}
+
+/** What closing a case does with its ACTIVE assignments. */
+export type CloseActiveAssignments = "COMPLETE" | "CANCEL"
+
+/** One status change of a case or what belongs to it, oldest first. */
+export type StatusHistoryItem = {
+  id: number
+  /** CASE, NEED, ASSIGNMENT, HELP_APPLICATION; unknown values are shown raw. */
+  targetType: string
+  targetId: string
+  /** The need the event belongs to; null for CASE. */
+  needId: string | null
+  /** Null: the entity was created by this event. */
+  fromStatus: string | null
+  toStatus: string
+  /** Null: done by the system (e.g. a deadline passed). */
+  actorId: string | null
+  reason: string | null
   createdAt: string
 }

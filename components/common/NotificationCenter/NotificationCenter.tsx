@@ -9,6 +9,8 @@ import {
   ChevronRight,
   TimerOff,
   TriangleAlert,
+  UserMinus,
+  UserX,
   type LucideIcon,
 } from "lucide-react"
 import { useInbox, useReadNotifications, useUnreadCount } from "@/hooks"
@@ -27,11 +29,14 @@ import {
 import { FormAlert } from "../FormAlert/FormAlert"
 import { ListPagination } from "../ListPagination/ListPagination"
 
-// Need deadline events get an icon next to the title.
+// Events that get an icon next to the title.
 const eventIcons: Record<string, LucideIcon> = {
   NEED_DEADLINE_APPROACHING: AlarmClock,
   NEED_EXPIRED: TimerOff,
   MODERATION_WARNING: TriangleAlert,
+  // The helper dropped the need / the author took it back.
+  CASE_ASSIGNMENT_DECLINED: UserX,
+  CASE_ASSIGNMENT_CANCELLED: UserMinus,
 }
 
 export function NotificationCenter() {

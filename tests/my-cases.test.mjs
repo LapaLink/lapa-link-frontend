@@ -344,6 +344,37 @@ test("case details displays animal attributes and author-only edit action", () =
   assert.ok(!stranger.includes('href="/cases/case-1/edit"'))
 })
 
+test("a draft shows publish and delete to its author, without closing or chat", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const html = renderPage(file, "CaseDetails", {
+    data: { ...item, status: "DRAFT" },
+    props: { caseId: item.id },
+  })
+  assert.ok(html.includes("Черновик — виден только вам"))
+  assert.ok(html.includes("Опубликовать"))
+  assert.ok(html.includes("Удалить черновик"))
+  assert.ok(html.includes('href="/cases/case-1/edit"'))
+  assert.ok(!html.includes("Закрыть объявление"))
+  assert.ok(!html.includes("Разрешить чат"))
+})
+
+test("closing with a chosen helper asks what to do with the assignment first", () => {
+  const file = "components/pages/Cases/CaseDetails.tsx"
+  const assigned = { id: "need-1", caseId: item.id, type: "FOSTER", status: "ASSIGNED", priority: "HIGH", startsAt: null, deadline: null, comment: null, details: {} }
+  const html = renderPage(file, "CaseDetails", {
+    data: { ...item, needs: [assigned] },
+    props: { caseId: item.id },
+  })
+  assert.ok(html.includes("Что с ними сделать?"))
+  assert.ok(html.includes("Помощь оказана — завершить назначения"))
+  assert.ok(html.includes("Помощь не понадобилась — отменить назначения"))
+  // Nothing is preselected and closing waits for the choice.
+  assert.ok(!/name="close-assignments"[^>]*checked/.test(html))
+  assert.match(html, /<button[^>]*disabled[^>]*>Закрыть объявление<\/button>/)
+  const free = renderPage(file, "CaseDetails", { data: item, props: { caseId: item.id } })
+  assert.ok(!free.includes("Что с ними сделать?"))
+})
+
 test("needs are an accordion: summary with an author menu, the first one expanded", () => {
   const file = "components/pages/Cases/CaseDetails.tsx"
   const needs = [

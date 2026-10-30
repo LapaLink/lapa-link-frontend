@@ -10,13 +10,14 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui"
-import { caseStatusAppearance } from "../../Cases/statusLabels"
+import { caseStatusBadge } from "../../Cases/statusLabels"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 import type { CaseStatus, MyCaseListItem } from "@/types"
 
 const statusLabels: Record<CaseStatus, string> = {
+  DRAFT: "Черновик",
   PENDING_REVIEW: "На проверке",
   OPEN: "Активно",
   REJECTED: "Отклонено",
@@ -30,19 +31,21 @@ export function MyCaseCard({
   item: MyCaseListItem
   city: string
 }) {
+  const status = caseStatusBadge(item.status)
   const isOpen = item.status === "OPEN"
-  const editable = isOpen || item.status === "PENDING_REVIEW"
+  const draft = item.status === "DRAFT"
+  const editable = isOpen || item.status === "PENDING_REVIEW" || draft
   const hasApplications = item.applicationsCount > 0
   return (
     <Card className="relative min-w-0 overflow-hidden pt-0 transition-colors hover:border-primary/30">
       <div className="relative">
         <CasePhoto src={item.photoUrl} alt={item.title} />
         <StatusBadge
-          tone={caseStatusAppearance[item.status].tone}
-          icon={caseStatusAppearance[item.status].icon}
+          tone={status.tone}
+          icon={status.icon}
           className="absolute left-3 top-3 shadow-sm ring-1 ring-card"
         >
-          {statusLabels[item.status]}
+          {statusLabels[item.status] ?? status.label}
         </StatusBadge>
       </div>
       <CardHeader>
@@ -78,6 +81,11 @@ export function MyCaseCard({
             </span>
           </p>
         </div>
+        {draft && (
+          <p className="rounded-xl bg-muted px-3 py-2 text-sm font-medium">
+            Черновик виден только вам. Откройте его, чтобы опубликовать.
+          </p>
+        )}
         {item.status === "PENDING_REVIEW" && (
           <p className="rounded-xl bg-primary-soft px-3 py-2 text-sm font-medium text-primary">
             Объявление проверяет модератор. После одобрения оно появится в
@@ -108,7 +116,11 @@ export function MyCaseCard({
           <>
             <Button asChild className="relative z-10 h-11 w-full sm:h-10">
               <Link href={ROUTES.CASE_DETAILS(item.id)}>
-                {hasApplications ? "Посмотреть предложения" : "Открыть"}
+                {draft
+                  ? "Открыть черновик"
+                  : hasApplications
+                    ? "Посмотреть предложения"
+                    : "Открыть"}
               </Link>
             </Button>
             <Button

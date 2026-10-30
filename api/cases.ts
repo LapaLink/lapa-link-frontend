@@ -11,6 +11,8 @@ import type {
   CaseNeed,
   CaseNotificationSettings,
   CaseStatus,
+  CloseActiveAssignments,
+  StatusHistoryItem,
   CreateCaseDto,
   CreateNeedDto,
   HelpApplication,
@@ -157,21 +159,63 @@ export const casesApi = {
         body: JSON.stringify(data),
       },
     ),
-  updateNeedStatus: (caseId: string, needId: string, status: NeedStatus) =>
+  /**
+   * `reason` counts only for ASSIGNED → OPEN: it cancels the assignment and
+   * goes to the helper (up to 500 characters).
+   */
+  updateNeedStatus: (
+    caseId: string,
+    needId: string,
+    status: NeedStatus,
+    reason?: string,
+  ) =>
     authorizedRequest<CaseNeed>(
       `/cases/${encodeURIComponent(caseId)}/needs/${encodeURIComponent(needId)}`,
       {
         method: "PATCH",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, reason: reason || undefined }),
       },
     ),
-  close: (caseId: string, reason: string, comment?: string) =>
+  /**
+   * With ACTIVE assignments `activeAssignments` is required (else 409
+   * CASE_HAS_ACTIVE_ASSIGNMENTS); without them it is ignored.
+   */
+  close: (
+    caseId: string,
+    reason: string,
+    comment?: string,
+    activeAssignments?: CloseActiveAssignments,
+  ) =>
     authorizedRequest<AnimalCase & { status: CaseStatus }>(
       `/cases/${encodeURIComponent(caseId)}/close`,
       {
         method: "POST",
-        body: JSON.stringify({ reason, comment: comment || undefined }),
+        body: JSON.stringify({
+          reason,
+          comment: comment || undefined,
+          activeAssignments,
+        }),
       },
+    ),
+  /** DRAFT → OPEN, or PENDING_REVIEW with premoderation; else 409 CASE_NOT_DRAFT. */
+  publish: (caseId: string) =>
+    authorizedRequest<AnimalCase>(
+      `/cases/${encodeURIComponent(caseId)}/publish`,
+      { method: "POST" },
+    ),
+  /** Deletes a draft with its photos and needs; published cases get 409 CASE_NOT_DRAFT. */
+  deleteDraft: (caseId: string) =>
+    authorizedRequest<void>(`/cases/${encodeURIComponent(caseId)}`, {
+      method: "DELETE",
+    }),
+  /**
+   * Status changes, oldest first: all to the author, CASE and NEED ones to
+   * users with a PENDING/ACCEPTED response, 403 NOT_CASE_PARTICIPANT to others.
+   */
+  history: (caseId: string, signal?: AbortSignal) =>
+    authorizedRequest<StatusHistoryItem[]>(
+      `/cases/${encodeURIComponent(caseId)}/history`,
+      { signal },
     ),
   closeCase: (caseId: string, reason: string, comment?: string) =>
     casesApi.close(caseId, reason, comment),
@@ -209,5 +253,14 @@ export const casesApi = {
     authorizedRequest<Assignment>(
       `/assignments/${encodeURIComponent(assignmentId)}/complete`,
       { method: "POST" },
+    ),
+  /**
+   * The helper drops an ACTIVE assignment: the need opens again and the author
+   * gets the reason (1..500 characters).
+   */
+  declineAssignment: (assignmentId: string, reason: string) =>
+    authorizedRequest<Assignment>(
+      `/assignments/${encodeURIComponent(assignmentId)}/decline`,
+      { method: "POST", body: JSON.stringify({ reason }) },
     ),
 }

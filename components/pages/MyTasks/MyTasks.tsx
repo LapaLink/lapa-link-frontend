@@ -44,10 +44,11 @@ import { ROUTES } from "@/lib/constants"
 import { getDictionaryName } from "@/lib/dictionaries"
 import { normalizeRemoteImageUrl } from "@/lib/images"
 import { invalidateTaskData, queryKeys } from "@/lib/queryKeys"
-import { filterValidTaskRecords } from "@/lib/tasks"
+import { cancellationSummary, filterValidTaskRecords } from "@/lib/tasks"
 import { cn } from "@/lib/utils"
 import type { AssignmentStatus, HelpApplicationStatus } from "@/types"
 import { assignmentStatusLabels, responseStatusLabels } from "../Cases/statusLabels"
+import { DeclineAssignmentDialog } from "./DeclineAssignmentDialog"
 
 type TaskGroupKey = "pending" | "active" | "completed" | "cancelled"
 
@@ -139,6 +140,7 @@ export function MyTasks() {
   } | null>(null)
   const [editError, setEditError] = useState("")
   const [editInFlight, setEditInFlight] = useState(false)
+  const [declining, setDeclining] = useState<TaskCardItem | null>(null)
 
   // Profile summary cards link to /my-tasks#<group>; open the matching tab.
   useEffect(() => {
@@ -249,7 +251,7 @@ export function MyTasks() {
         status: item.status,
         statusLabel: assignmentStatusLabels[item.status],
         dateLabel: formatDate(item.updatedAt ?? item.createdAt),
-        summary: "Автор выбрал другого помощника или закрыл объявление.",
+        summary: cancellationSummary(item, user?.id),
         type: "assignment" as const,
         needId: item.need.id,
       })),
@@ -264,7 +266,7 @@ export function MyTasks() {
         return item.status === "CANCELLED"
       }),
     }))
-  }, [activeAssignments.data, cancelledAssignments.data, cancelledResponses.data, completedAssignments.data, pendingResponses.data])
+  }, [activeAssignments.data, cancelledAssignments.data, cancelledResponses.data, completedAssignments.data, pendingResponses.data, user?.id])
 
   const isLoading =
     pendingResponses.isLoading ||
@@ -402,6 +404,11 @@ export function MyTasks() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <DeclineAssignmentDialog
+            assignment={declining}
+            onClose={() => setDeclining(null)}
+          />
 
           <Dialog
             open={!!editingResponse}
@@ -579,6 +586,16 @@ export function MyTasks() {
                                   onClick={() => setPendingTaskAction({ item, action: taskAction.action, prompt: taskAction.prompt })}
                                 >
                                   {taskAction.label}
+                                </Button>
+                              )}
+                              {item.type === "assignment" && item.status === "ACTIVE" && (
+                                <Button
+                                  className="h-11 rounded-full px-5 sm:h-10"
+                                  variant="outline"
+                                  disabled={actionInFlight}
+                                  onClick={() => setDeclining(item)}
+                                >
+                                  Отказаться
                                 </Button>
                               )}
                               {item.type === "response" && item.status === "PENDING" && (

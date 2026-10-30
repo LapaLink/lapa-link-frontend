@@ -1,8 +1,11 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Camera, ClipboardList, HandHeart, MapPin, PawPrint } from "lucide-react"
 import { useAuth, useCities, useNeedTypes } from "@/hooks"
+import { ROUTES } from "@/lib/constants"
 import { resolveDictionaryLocale } from "@/lib/dictionaries"
 import {
   Form,
@@ -46,6 +49,15 @@ function CreateCaseContent() {
   const stepHeading = useRef<HTMLHeadingElement>(null)
   const current = CREATE_CASE_STEPS[step]
   const lastStep = step === CREATE_CASE_STEPS.length - 1
+  const router = useRouter()
+  const draftSaved = publication.savedAsDraft && publication.finished
+
+  // A saved draft is found in "Мои объявления → Черновики".
+  useEffect(() => {
+    if (!draftSaved) return
+    toast.success("Черновик сохранён. Его видите только вы.")
+    router.replace(`${ROUTES.MY_CASES}#drafts`)
+  }, [draftSaved, router])
 
   function goTo(index: number) {
     setStep(index)
@@ -65,7 +77,7 @@ function CreateCaseContent() {
 
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-5 sm:gap-6">
-      {publication.created ? (
+      {draftSaved ? null : publication.created ? (
         <PublicationResult
           animalCase={publication.created}
           cities={cities.data}
@@ -156,7 +168,7 @@ function CreateCaseContent() {
                 </CardContent>
               </Card>
               <FormAlert message={form.formState.errors.root?.message} />
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 {step > 0 && (
                   <Button
                     type="button"
@@ -166,6 +178,24 @@ function CreateCaseContent() {
                     onClick={() => goTo(step - 1)}
                   >
                     Назад
+                  </Button>
+                )}
+                {lastStep && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    // Its own row on phones, between the two on wider screens.
+                    className="order-last w-full sm:order-none sm:w-auto sm:flex-1"
+                    disabled={busy || !!form.formState.errors.photos}
+                    onClick={() =>
+                      void form.handleSubmit(async (values) => {
+                        await publication.submit(values, { draft: true })
+                        showFirstError()
+                      }, showFirstError)()
+                    }
+                  >
+                    Сохранить черновик
                   </Button>
                 )}
                 {lastStep ? (

@@ -10,6 +10,7 @@ import type {
   PasswordChangeDto,
   UserLocale,
   AssignmentStatus,
+  CaseStatus,
   CreateHelpOfferDto,
   HelpApplicationStatus,
   HelpOffer,
@@ -38,9 +39,15 @@ export const accountApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  getCases: (page = 0, size = 20, signal?: AbortSignal) =>
+  /** Own cases, drafts included; `status` narrows the list (e.g. DRAFT). */
+  getCases: (
+    page = 0,
+    size = 20,
+    signal?: AbortSignal,
+    status?: CaseStatus,
+  ) =>
     authorizedRequest<PageResponse<MyCaseListItem>>(
-      `/account/cases${query({ page, size })}`,
+      `/account/cases${query({ status, page, size })}`,
       { signal },
     ),
   getMe: async (signal?: AbortSignal) => {

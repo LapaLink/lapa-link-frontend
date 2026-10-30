@@ -15,3 +15,4 @@ export {
   type FeedState,
   type MapBounds,
 } from "./feed"
+export { describeHistoryEvent, historyActor } from "./history"

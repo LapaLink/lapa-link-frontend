@@ -1,6 +1,7 @@
 import type {
   AssignmentStatus,
   CaseListItem,
+  AssignmentCancellation,
   CaseNeed,
   HelpApplicationStatus,
 } from "./cases"
@@ -70,7 +71,7 @@ export type MyHelpApplication = {
   createdAt: string
 }
 
-export type MyAssignment = {
+export type MyAssignment = AssignmentCancellation & {
   id: string
   status: AssignmentStatus
   need: CaseNeed

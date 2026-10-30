@@ -38,6 +38,9 @@ export function useCreateCase() {
   const [publicationError, setPublicationError] = useState("")
   const [finished, setFinished] = useState(false)
   const [revision, setRevision] = useState<number | null>(null)
+  // Set by submit for the first request: the case is created as DRAFT.
+  const asDraft = useRef(false)
+  const [savedAsDraft, setSavedAsDraft] = useState(false)
   const publishing = useMutation({
     gcTime: 0,
     mutationFn: async (values: CreateCaseValues | null) => {
@@ -51,9 +54,13 @@ export function useCreateCase() {
       if (!animalCase) {
         if (!values) return
         animalCase = await casesApi.create(
-          toCreateCaseDto(values),
+          {
+            ...toCreateCaseDto(values),
+            ...(asDraft.current && { draft: true }),
+          },
           values.photos,
         )
+        setSavedAsDraft(asDraft.current)
         ensureSession()
         savedCase.current = animalCase
         setCreated(animalCase)
@@ -96,8 +103,13 @@ export function useCreateCase() {
     },
   })
 
-  async function submit(values: CreateCaseValues | null) {
+  /** `draft` saves the new case as DRAFT, seen only by the author. */
+  async function submit(
+    values: CreateCaseValues | null,
+    { draft = false }: { draft?: boolean } = {},
+  ) {
     if (publishing.isPending) return
+    if (values) asDraft.current = draft
     setPublicationError("")
     form.clearErrors()
     try {
@@ -124,6 +136,8 @@ export function useCreateCase() {
 
   function startAgain() {
     savedCase.current = null
+    asDraft.current = false
+    setSavedAsDraft(false)
     setCreated(null)
     setPendingTypes([])
     setPublicationError("")
@@ -146,6 +160,7 @@ export function useCreateCase() {
     pendingTypes,
     publicationError,
     finished,
+    savedAsDraft,
     busy: publishing.isPending || form.formState.isSubmitting,
     submit,
     startAgain,
