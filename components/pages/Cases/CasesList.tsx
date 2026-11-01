@@ -25,7 +25,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react"
-import { casesApi, getErrorMessage } from "@/api"
+import { ApiError, casesApi, getErrorMessage } from "@/api"
 import {
   useAuth,
   useCities,
@@ -128,7 +128,13 @@ const geolocationHint =
 
 
 function useDebouncedCommit<T>(initial: T, commit: (value: T) => void) {
-  const [draft, setDraft] = useState(initial)
+  const [input, setInput] = useState({ source: initial, value: initial })
+  // Browser history and links can replace URL filters without remounting
+  // this component. Keep the editor in sync without committing an old draft.
+  if (!Object.is(input.source, initial))
+    setInput({ source: initial, value: initial })
+  const draft = input.value
+  const setDraft = (value: T) => setInput({ source: initial, value })
   const debounced = useDebouncedValue(draft)
   const applied = useRef(debounced)
   const commitRef = useRef(commit)
@@ -276,6 +282,33 @@ export function CasesList() {
     // Markers stay while the next area loads.
     placeholderData: keepPreviousData,
   })
+
+  // A dictionary can become stale while the feed is open. Its fresh data
+  // changes the filter/query key, so recovery does not retry invalid codes.
+  const filterError = [cases.error, markers.error].find(
+    (error) => error instanceof ApiError && error.code === "UNKNOWN_NEED_TYPE",
+  )
+  const refreshNeedTypes = needTypes.refetch
+  useEffect(() => {
+    if (
+      filterError instanceof ApiError &&
+      filterError.code === "UNKNOWN_NEED_TYPE"
+    )
+      void refreshNeedTypes()
+  }, [filterError, refreshNeedTypes])
+  const requestedCodes = state.needTypes.join(",")
+  const availableCodes = selectedNeedTypes.join(",")
+  const cleanedQuery = feedQueryString(
+    changeFeed(state, { needTypes: selectedNeedTypes }),
+  )
+  const dictionaryReady = !!needTypes.data
+  useEffect(() => {
+    if (dictionaryReady && requestedCodes !== availableCodes)
+      router.replace(
+        cleanedQuery ? `${ROUTES.CASES}?${cleanedQuery}` : ROUTES.CASES,
+        { scroll: false },
+      )
+  }, [dictionaryReady, requestedCodes, availableCodes, cleanedQuery, router])
 
   const nearVisible = nearOpen || !!state.point
   const moreVisible = moreOpen || !!state.needStatus

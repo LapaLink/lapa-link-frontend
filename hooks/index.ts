@@ -52,3 +52,5 @@ export {
 } from "./useChat"
 export { startChatSocket } from "./model/chatSocket"
 export type { ChatSocketStatus } from "./model/chatSocket"
+export { useDeleteNotifications } from "./useInbox"
+export { useModerationAction } from "./useModeration"

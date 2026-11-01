@@ -43,7 +43,10 @@ export function PublicationResult({
     <Card>
       <CardContent className="flex flex-col gap-5">
         <div className="flex flex-col items-center gap-3 text-center">
-          <IconCircle icon={CheckCircle2} tone={finished ? "success" : "primary"} />
+          <IconCircle
+            icon={CheckCircle2}
+            tone={finished ? "success" : "primary"}
+          />
           <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
             {!finished
               ? "Объявление создано"
@@ -114,7 +117,19 @@ export function PublicationResult({
         )}
         <div className="flex flex-col gap-3 sm:flex-row">
           {finished && (
-            <Button size="lg" className="sm:flex-1" onClick={onCreateAnother}>
+            <Button asChild size="lg" className="sm:flex-1">
+              <Link href={ROUTES.CASE_DETAILS(animalCase.id)}>
+                Открыть объявление
+              </Link>
+            </Button>
+          )}
+          {finished && (
+            <Button
+              variant="outline"
+              size="lg"
+              className="sm:flex-1"
+              onClick={onCreateAnother}
+            >
               Создать ещё объявление
             </Button>
           )}

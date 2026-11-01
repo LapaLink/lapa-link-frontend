@@ -34,6 +34,7 @@ export function useCreateCase() {
   })
   const [created, setCreated] = useState<AnimalCase | null>(null)
   const savedCase = useRef<AnimalCase | null>(null)
+  const submitting = useRef(false)
   const [pendingTypes, setPendingTypes] = useState<string[]>([])
   const [publicationError, setPublicationError] = useState("")
   const [finished, setFinished] = useState(false)
@@ -108,7 +109,8 @@ export function useCreateCase() {
     values: CreateCaseValues | null,
     { draft = false }: { draft?: boolean } = {},
   ) {
-    if (publishing.isPending) return
+    if (submitting.current || publishing.isPending) return
+    submitting.current = true
     if (values) asDraft.current = draft
     setPublicationError("")
     form.clearErrors()
@@ -130,6 +132,7 @@ export function useCreateCase() {
         } else setFormError(form, error)
       }
     } finally {
+      submitting.current = false
       publishing.reset()
     }
   }

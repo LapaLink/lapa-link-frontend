@@ -15,11 +15,15 @@ export function TextAreaField({
   label,
   placeholder,
   maxLength,
+  disabled,
+  required,
 }: {
   name: string
   label: string
   placeholder?: string
   maxLength: number
+  disabled?: boolean
+  required?: boolean
 }) {
   const { register, control, getFieldState, formState } = useFormContext()
   const value: string = useWatch({ control, name }) ?? ""
@@ -33,6 +37,8 @@ export function TextAreaField({
         rows={3}
         placeholder={placeholder}
         maxLength={maxLength}
+        disabled={disabled}
+        required={required}
         aria-invalid={!!error}
         aria-describedby={`${name}-error ${name}-counter`}
       />

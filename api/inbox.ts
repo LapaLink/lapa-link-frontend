@@ -3,7 +3,7 @@ import type {
   NotificationChannelSetting,
   PageResponse,
 } from "@/types"
-import { authorizedRequest } from "./instance"
+import { ApiError, authorizedRequest } from "./instance"
 
 /** Quiet hours may come as "22:00" or "22:00:00"; the UI works with "HH:mm". */
 const withShortTimes = (
@@ -15,6 +15,17 @@ const withShortTimes = (
 })
 
 export const inboxApi = {
+  delete: (ids: readonly string[]) => {
+    const unique = [...new Set(ids)]
+    if (!unique.length || unique.length > 100)
+      return Promise.reject(
+        new ApiError("Выберите от 1 до 100 уведомлений.", 400),
+      )
+    return authorizedRequest<void>("/account/inbox", {
+      method: "DELETE",
+      body: JSON.stringify({ ids: unique }),
+    })
+  },
   list: (page = 0, size = 10, signal?: AbortSignal) =>
     authorizedRequest<PageResponse<InboxNotification>>(
       `/account/inbox?page=${page}&size=${size}`,

@@ -50,6 +50,7 @@ test("notification center escapes backend text, exposes unread count and read co
     "components/common/NotificationCenter/NotificationCenter.tsx",
     {
       "@/hooks": {
+        useDeleteNotifications: () => ({ isPending: false, isError: false, mutate() {} }),
         useUnreadCount: () => ({ data: { count: 120 } }),
         useReadNotifications: () => ({
           isPending: false,
@@ -87,6 +88,15 @@ test("notification center escapes backend text, exposes unread count and read co
         DialogTitle: container,
         DialogDescription: container,
         Skeleton: container,
+        Checkbox: () => null,
+        AlertDialog: ({ open, children }) => open ? children : null,
+        AlertDialogContent: container,
+        AlertDialogHeader: container,
+        AlertDialogTitle: container,
+        AlertDialogDescription: container,
+        AlertDialogFooter: container,
+        AlertDialogCancel: container,
+        AlertDialogAction: container,
       },
       "../FormAlert/FormAlert": { FormAlert: () => null },
       "../ListPagination/ListPagination": { ListPagination: () => null },

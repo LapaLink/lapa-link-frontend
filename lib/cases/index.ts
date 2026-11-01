@@ -16,3 +16,4 @@ export {
   type MapBounds,
 } from "./feed"
 export { describeHistoryEvent, historyActor } from "./history"
+export { caseStatusLabels, caseStatusLabel } from "./status"

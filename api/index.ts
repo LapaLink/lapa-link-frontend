@@ -12,3 +12,4 @@ export {
   refresh as refreshTokens,
   waitForRefresh,
 } from "./instance"
+export { moderationApi } from "./moderation"

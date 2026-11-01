@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Nunito_Sans } from "next/font/google"
 import "./globals.css"
 import {
@@ -18,6 +18,13 @@ export const metadata: Metadata = {
   title: { default: "LapaLink — добрые дела рядом", template: "%s · LapaLink" },
   description:
     "Помогаем найденным и бездомным кошкам и собакам найти заботу и дом.",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
