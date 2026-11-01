@@ -8,6 +8,7 @@ import {
   MessageCircle,
   UserRound,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react"
 import { useChatUnreadCount, useLogout } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
@@ -23,6 +24,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui"
 import type { CurrentUser } from "@/types"
+import { canModerate } from "@/lib/moderation"
 
 export function ProfileMenu({ user }: { user: CurrentUser }) {
   const logout = useLogout()
@@ -80,6 +82,7 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
               Мой профиль
             </Link>
           </DropdownMenuItem>
+          {canModerate(user) && <DropdownMenuItem asChild className="min-h-11"><Link href={ROUTES.MODERATION_REPORTS}><ShieldCheck />Модерация жалоб</Link></DropdownMenuItem>}
           <DropdownMenuItem asChild className="min-h-11">
             <Link href={ROUTES.CHATS}>
               <MessageCircle />

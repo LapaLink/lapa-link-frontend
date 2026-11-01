@@ -583,9 +583,9 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             </Button>
           </div>
         )}
-        {user && !isAuthor && animalCase.status === "OPEN" && (
+          {user && !isAuthor && (animalCase.status === "OPEN" || animalCase.status === "CLOSED") && (
           <div className={cn("col-span-2", hasPhoto && "sm:col-span-1 sm:col-start-2")}>
-            <ReportCaseButton caseId={caseId} />
+            <ReportCaseButton caseId={caseId} authorId={animalCase.author?.id} />
           </div>
         )}
       </header>

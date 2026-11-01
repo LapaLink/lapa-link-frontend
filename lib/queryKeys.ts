@@ -7,6 +7,11 @@ import type {
 } from "@/types"
 
 export const queryKeys = {
+  moderation: ["moderation"] as const,
+  moderationReports: (filter: import("@/types").ModerationFilter) =>
+    ["moderation", "reports", filter] as const,
+  moderationReport: (id: string) => ["moderation", "report", id] as const,
+  moderationTarget: (id: string) => ["moderation", "target", id] as const,
   inbox: ["account", "inbox"] as const,
   inboxPage: (page = 0) => ["account", "inbox", "list", page] as const,
   unreadCount: ["account", "inbox", "unread-count"] as const,

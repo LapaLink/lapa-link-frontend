@@ -141,7 +141,7 @@ export function CaseGalleryEditor({
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 p-1">
+                <div className="flex flex-wrap items-center gap-1 p-1">
                   {index > 0 && (
                     <Button
                       type="button"

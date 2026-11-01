@@ -1,7 +1,7 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { inboxApi } from "@/api"
+import { ApiError, inboxApi } from "@/api"
 import { getSessionRevision, readTokens } from "@/lib/auth"
 import { queryKeys } from "@/lib/queryKeys"
 import type { NotificationChannelSetting } from "@/types"
@@ -21,6 +21,25 @@ export function useInbox(page: number, enabled: boolean) {
     queryFn: ({ signal }) => inboxApi.list(page, 10, signal),
     enabled,
     refetchInterval: enabled ? 30_000 : false,
+  })
+}
+
+/** Refetch rather than restoring snapshots: a simultaneous SSE item must survive. */
+export function useDeleteNotifications() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (ids: readonly string[]) => {
+      if (!ids.length) return
+      const revision = getSessionRevision()
+      try {
+        await inboxApi.delete(ids)
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 404)) throw error
+      } finally {
+        if (revision === getSessionRevision() && readTokens())
+          await client.invalidateQueries({ queryKey: queryKeys.inbox })
+      }
+    },
   })
 }
 

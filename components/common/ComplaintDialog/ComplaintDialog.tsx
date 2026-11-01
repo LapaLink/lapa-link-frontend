@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { ApiError, complaintsApi, getErrorMessage } from "@/api"
 import {
@@ -19,6 +19,7 @@ import {
   Textarea,
 } from "@/components/ui"
 import type { ComplaintTargetType, CreateComplaintDto } from "@/types"
+import { getSessionRevision } from "@/lib/auth"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { LoadingButton } from "../LoadingButton/LoadingButton"
 
@@ -50,6 +51,7 @@ export function ComplaintDialog({
   emptyMessage: string
 }) {
   const [message, setMessage] = useState("")
+  const client = useQueryClient()
   const [fieldError, setFieldError] = useState("")
   const [error, setError] = useState("")
   // isPending lags behind a fast double click, so guard synchronously.
@@ -72,8 +74,11 @@ export function ComplaintDialog({
     if (!text) return setFieldError(emptyMessage)
     setFieldError("")
     submitting.current = true
+    const revision = getSessionRevision()
     try {
       await report.mutateAsync({ targetType, targetId, message: text })
+      if (revision !== getSessionRevision()) return
+      void client.invalidateQueries({ queryKey: ["account", "complaints"] })
       setMessage("")
       onOpenChange(false)
       toast.success("Жалоба отправлена, модератор её рассмотрит.")

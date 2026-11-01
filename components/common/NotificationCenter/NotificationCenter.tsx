@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   AlarmClock,
@@ -13,9 +13,15 @@ import {
   TriangleAlert,
   UserMinus,
   UserX,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
-import { useInbox, useReadNotifications, useUnreadCount } from "@/hooks"
+import {
+  useInbox,
+  useReadNotifications,
+  useUnreadCount,
+  useDeleteNotifications,
+} from "@/hooks"
 import { getErrorMessage } from "@/api"
 import { inboxItemHref } from "@/lib/inbox"
 import {
@@ -27,6 +33,15 @@ import {
   DialogTitle,
   DialogDescription,
   Skeleton,
+  Checkbox,
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
 } from "@/components/ui"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { ListPagination } from "../ListPagination/ListPagination"
@@ -45,11 +60,15 @@ const eventIcons: Record<string, LucideIcon> = {
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const router = useRouter()
   const count = useUnreadCount()
   const inbox = useInbox(page, open)
   const read = useReadNotifications()
+  const remove = useDeleteNotifications()
+  const [selected, setSelected] = useState<string[]>([])
+  const [removing, setRemoving] = useState<string[]>([])
   const unread = count.data?.count ?? 0
 
   return (
@@ -72,13 +91,51 @@ export function NotificationCenter() {
           )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[85dvh] flex-col gap-4 overflow-hidden sm:max-w-lg">
+      <DialogContent
+        ref={contentRef}
+        className="flex max-h-[85dvh] flex-col gap-4 overflow-hidden sm:max-w-lg"
+      >
         <DialogHeader>
           <DialogTitle>Уведомления</DialogTitle>
           <DialogDescription>
             Ответы и новости о вашей помощи животным.
           </DialogDescription>
         </DialogHeader>
+        {!!inbox.data?.content.length && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+              <Checkbox
+                checked={inbox.data.content.every((item) =>
+                  selected.includes(item.id),
+                )}
+                onCheckedChange={(checked) =>
+                  setSelected(
+                    checked ? inbox.data!.content.map((item) => item.id) : [],
+                  )
+                }
+              />
+              Выбрать на странице
+            </label>
+            <Button
+              variant="outline"
+              disabled={!selected.length || remove.isPending}
+              onClick={() => setRemoving(selected)}
+            >
+              <Trash2 aria-hidden />
+              Удалить ({selected.length})
+            </Button>
+          </div>
+        )}
+        <FormAlert
+          message={
+            remove.isError
+              ? getErrorMessage(
+                  remove.error,
+                  "Не удалось удалить уведомления. Попробуйте ещё раз.",
+                )
+              : ""
+          }
+        />
         {unread > 0 && (
           <Button
             variant="outline"
@@ -166,7 +223,33 @@ export function NotificationCenter() {
                   ? "border-border bg-card"
                   : "border-primary/20 bg-primary-soft/60"
                 return (
-                  <li key={item.id}>
+                  <li key={item.id} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2 px-2">
+                      <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                        <Checkbox
+                          aria-label={`Выбрать: ${item.title}`}
+                          checked={selected.includes(item.id)}
+                          onCheckedChange={(checked) =>
+                            setSelected((current) =>
+                              checked
+                                ? [...current, item.id]
+                                : current.filter((id) => id !== item.id),
+                            )
+                          }
+                        />
+                        Выбрать
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-11 shrink-0"
+                        aria-label={`Удалить: ${item.title}`}
+                        disabled={remove.isPending}
+                        onClick={() => setRemoving([item.id])}
+                      >
+                        <Trash2 aria-hidden />
+                      </Button>
+                    </div>
                     {href ? (
                       <button
                         type="button"
@@ -223,9 +306,69 @@ export function NotificationCenter() {
           page={page}
           totalPages={inbox.data?.totalPages ?? 0}
           busy={inbox.isFetching || read.isPending}
-          onPageChange={setPage}
+          onPageChange={(next) => {
+            setSelected([])
+            setPage(next)
+          }}
         />
       </DialogContent>
+      <AlertDialog
+        open={removing.length > 0}
+        onOpenChange={(next) => {
+          if (!next && !remove.isPending) setRemoving([])
+        }}
+      >
+        <AlertDialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            contentRef.current?.focus()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить уведомления?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Выбранные уведомления ({removing.length}) исчезнут из истории.
+              Восстановить их нельзя.
+            </AlertDialogDescription>
+            <FormAlert
+              message={
+                remove.isError
+                  ? getErrorMessage(
+                      remove.error,
+                      "Не удалось удалить уведомления. Попробуйте ещё раз.",
+                    )
+                  : ""
+              }
+            />
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(event) => {
+                event.preventDefault()
+                remove.mutate(removing, {
+                  onSuccess: () => {
+                    if (
+                      page > 0 &&
+                      inbox.data?.content.every((item) =>
+                        removing.includes(item.id),
+                      )
+                    )
+                      setPage(page - 1)
+                    setSelected([])
+                    setRemoving([])
+                  },
+                })
+              }}
+            >
+              {remove.isPending ? "Удаляем…" : "Удалить"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

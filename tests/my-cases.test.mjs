@@ -112,7 +112,7 @@ function renderPage(
       },
     },
     "@/hooks": hooks,
-    "@/api": { getErrorMessage: (err, fallback) => err?.message || fallback },
+    "@/api": { ApiError: class extends Error {}, getErrorMessage: (err, fallback) => err?.message || fallback },
     "next/navigation": {
       useRouter: () => ({ replace() {} }),
       usePathname: () => "/my-cases",
@@ -484,8 +484,9 @@ test("feed: old title links fill search, guests see the matching mode locked, no
   assert.match(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
   assert.ok(guest.includes("доступно только авторизованным"))
   assert.ok(!guest.includes('href="/my-cases"'))
-  assert.match(guest.match(/<input[^>]*id="radius-filter"[^>]*>/)?.[0] ?? "", /disabled=""/)
-  assert.ok(guest.includes("Укажите точку, чтобы искать рядом"))
+  // Nearby controls stay collapsed until the user opens them or supplies a point.
+  assert.ok(!guest.includes('id="radius-filter"'))
+  assert.ok(guest.includes("Рядом со мной"))
   assert.ok(guest.includes("Сбросить фильтры"))
 
   const matching = renderPage(file, "CasesList", {
