@@ -90,3 +90,4 @@ export type {
 } from "./chat"
 export type { FaqItem } from "./faq"
 export type { ModerationReport, ModerationTarget, ModerationFilter, ModerationAction } from "./moderation"
+export type { SupportQuestion, SupportQuestionStatus } from "./support"

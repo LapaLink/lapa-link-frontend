@@ -7,6 +7,7 @@ export { inboxApi } from "./inbox"
 export { chatApi } from "./chat"
 export { complaintsApi } from "./complaints"
 export { faqApi } from "./faq"
+export { supportApi } from "./support"
 export {
   getPreferredLocale,
   refresh as refreshTokens,

@@ -123,6 +123,22 @@ export function isClosedByModerator(
   )
 }
 
+/** A chat with the administration about a support question. */
+export function isSupportConversation(
+  conversation: Pick<Conversation, "targetType">,
+) {
+  return conversation.targetType === "SUPPORT"
+}
+
+/** True once an administrator took the question (joined as OWNER). */
+export function supportAdminJoined(
+  conversation: Pick<Conversation, "participants">,
+) {
+  return conversation.participants.some(
+    (participant) => participant.role === "OWNER",
+  )
+}
+
 /** Link to the object the conversation is about. */
 export function conversationTargetHref(
   conversation: Pick<Conversation, "targetType" | "targetId">,

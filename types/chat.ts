@@ -1,4 +1,5 @@
-export type ChatTargetType = "CASE"
+/** SUPPORT: a question to the administration, created by POST /support-questions only. */
+export type ChatTargetType = "CASE" | "SUPPORT"
 export type ConversationStatus = "REQUESTED" | "ACTIVE" | "DECLINED" | "CLOSED"
 export type ConversationRole = "OWNER" | "INITIATOR"
 

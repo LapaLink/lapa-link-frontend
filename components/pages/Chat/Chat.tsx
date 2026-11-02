@@ -18,6 +18,7 @@ import {
   EllipsisVertical,
   CloudOff,
   Flag,
+  LifeBuoy,
   Lock,
   ShieldAlert,
   MessageCircle,
@@ -46,6 +47,8 @@ import {
   chatErrorMessage,
   conversationDeletionDate,
   isClosedByModerator,
+  isSupportConversation,
+  supportAdminJoined,
   conversationTargetHref,
   counterpart,
   flattenHistory,
@@ -215,6 +218,7 @@ function ChatView({ conversation }: { conversation: Conversation }) {
   const history = useChatMessages(conversation.id, active || closed)
   const messages = useMemo(() => flattenHistory(history.data), [history.data])
   const other = counterpart(conversation, user?.id)
+  const support = isSupportConversation(conversation)
   const targetHref = conversationTargetHref(conversation)
   const isOwner = isConversationOwner(conversation, user?.id)
   const typingNames = useTypingUsers(conversation.id).map(
@@ -342,12 +346,16 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             <ArrowLeft />
           </Link>
         </Button>
-        {other && (
-          <UserAvatar user={{ displayName: other.displayName }} size="lg" />
+        {support ? (
+          <IconCircle icon={LifeBuoy} />
+        ) : (
+          other && (
+            <UserAvatar user={{ displayName: other.displayName }} size="lg" />
+          )
         )}
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="truncate text-lg font-bold">
-            {other?.displayName || "Собеседник"}
+            {support ? "Поддержка" : other?.displayName || "Собеседник"}
           </h1>
           {targetHref ? (
             <Link
@@ -362,8 +370,24 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             </span>
           )}
         </div>
-        <ConversationMenu conversation={conversation} />
+        {/* Support chats are not closed, hidden or reported by the user. */}
+        {!support && <ConversationMenu conversation={conversation} />}
       </header>
+
+      {support && conversation.status === "ACTIVE" && (
+        <p
+          role="status"
+          className="flex items-center gap-2 rounded-2xl bg-primary-soft px-4 py-3 text-sm text-primary"
+        >
+          <LifeBuoy aria-hidden className="size-4 shrink-0" />
+          {supportAdminJoined(conversation)
+            ? `Администратор: ${conversation.participants
+                .filter((participant) => participant.role === "OWNER")
+                .map((participant) => participant.displayName)
+                .join(", ")}`
+            : "Администратор скоро подключится. Можно писать уже сейчас — он увидит все сообщения."}
+        </p>
+      )}
 
       {conversation.status === "REQUESTED" && (
         <SectionCard
@@ -702,6 +726,23 @@ function ClosedNotice({
   const automatic = conversation.closedBy === null
   const byModerator = isClosedByModerator(conversation)
   const byMe = !automatic && conversation.closedBy === userId
+  // A closed support question is final: a new question opens a new chat.
+  if (isSupportConversation(conversation))
+    return (
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <div className="flex items-start gap-3">
+          <IconCircle icon={Lock} tone="muted" size="sm" />
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-foreground">Вопрос закрыт</p>
+            <p>История переписки остаётся доступной.</p>
+            {deletion && <p>Будет удалён {dateFormat.format(deletion)}.</p>}
+          </div>
+        </div>
+        <Button asChild className="h-11 shrink-0 sm:h-10">
+          <Link href={ROUTES.SUPPORT}>Задать новый вопрос</Link>
+        </Button>
+      </div>
+    )
   return (
     <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:p-4">
       <div className="flex items-start gap-3">

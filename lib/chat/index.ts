@@ -27,6 +27,8 @@ export {
   counterpart,
   initiator,
   isClosedByModerator,
+  isSupportConversation,
+  supportAdminJoined,
   isConversationOwner,
   isReadBy,
 } from "./state"

@@ -6,6 +6,7 @@ import {
   AlarmClock,
   Bell,
   CheckCheck,
+  LifeBuoy,
   Eye,
   EyeOff,
   ChevronRight,
@@ -56,6 +57,7 @@ const eventIcons: Record<string, LucideIcon> = {
   CASE_ASSIGNMENT_CANCELLED: UserMinus,
   CASE_HIDDEN: EyeOff,
   CASE_RESTORED: Eye,
+  SUPPORT_QUESTION_ANSWERED: LifeBuoy,
 }
 
 export function NotificationCenter() {

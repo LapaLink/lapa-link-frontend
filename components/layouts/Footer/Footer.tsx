@@ -18,6 +18,12 @@ export function Footer() {
         >
           Частые вопросы
         </Link>
+        <Link
+          href={ROUTES.SUPPORT}
+          className="font-medium text-foreground/80 hover:text-primary hover:underline"
+        >
+          Связаться с администратором
+        </Link>
       </div>
     </footer>
   )

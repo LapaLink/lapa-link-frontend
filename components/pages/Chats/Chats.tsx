@@ -15,6 +15,7 @@ import {
   chatErrorMessage,
   conversationStatusLabels,
   counterpart,
+  isSupportConversation,
 } from "@/lib/chat"
 import { ROUTES } from "@/lib/constants"
 import {
@@ -139,6 +140,8 @@ function ChatsContent() {
 function ConversationItem({ conversation }: { conversation: Conversation }) {
   const { user } = useAuth()
   const other = counterpart(conversation, user?.id)
+  const support = isSupportConversation(conversation)
+  const name = support ? "Поддержка" : other?.displayName || "Собеседник"
   const unread = conversation.unreadCount
   const time = conversation.lastMessageAt ?? conversation.createdAt
   const typing = useTypingUsers(conversation.id).length > 0
@@ -148,11 +151,12 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
         href={ROUTES.CHAT(conversation.id)}
         className="flex items-center gap-3 rounded-2xl border bg-card p-4 pr-12 transition-colors hover:border-primary/30 hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <UserAvatar user={{ displayName: other?.displayName || "?" }} size="lg" />
+        <UserAvatar
+          user={{ displayName: support ? name : other?.displayName || "?" }}
+          size="lg"
+        />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate font-semibold">
-            {other?.displayName || "Собеседник"}
-          </span>
+          <span className="truncate font-semibold">{name}</span>
           <span className="truncate text-sm text-muted-foreground">
             {conversation.targetTitle}
           </span>

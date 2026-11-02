@@ -37,6 +37,8 @@ export function inboxItemHref(item: {
   caseId: string | null
   needId: string | null
 }) {
+  // The answer waits in the support chat; actionUrl is null there.
+  if (item.eventType === "SUPPORT_QUESTION_ANSWERED") return "/support#latest"
   return (
     notificationHref(item.actionUrl, item.needId) ??
     (item.eventType.startsWith("NEED_")

@@ -4,6 +4,7 @@ import { NavigationLink as Link } from "@/components/providers"
 import { useRouter } from "next/navigation"
 import {
   CircleHelp,
+  LifeBuoy,
   LogOut,
   MessageCircle,
   UserRound,
@@ -99,6 +100,12 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
             <Link href={ROUTES.FAQ}>
               <CircleHelp />
               Частые вопросы
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild className="min-h-11">
+            <Link href={ROUTES.SUPPORT}>
+              <LifeBuoy />
+              Связаться с администратором
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

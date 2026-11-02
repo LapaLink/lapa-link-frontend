@@ -19,5 +19,8 @@ export const ROUTES = {
   CREATE_CASE: "/cases/create",
   CHATS: "/chats",
   FAQ: "/faq",
+  SUPPORT: "/support",
+  /** Opens the latest open question, e.g. from an "answered" notification. */
+  SUPPORT_LATEST: "/support#latest",
   CHAT: (conversationId: string) => `/chats/${conversationId}`,
 } as const

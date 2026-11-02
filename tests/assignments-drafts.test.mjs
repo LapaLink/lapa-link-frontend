@@ -139,3 +139,35 @@ test("hidden cases: history texts, status badge and the public FAQ request", asy
   // Public: no token is needed or sent.
   assert.deepEqual(calls, [["/api/v1/faq", null]])
 })
+
+test("support questions: API, chat helpers, schema and the answered notification", async () => {
+  const calls = []
+  const local = new Map([["lapalink.session", JSON.stringify(tokens)]])
+  const [support] = load(["api/support.ts"], {
+    local,
+    fetch: async (url, options) => {
+      calls.push([url, options.method ?? "GET", options.body ? JSON.parse(options.body) : undefined])
+      return response(200, { content: [] })
+    },
+  })
+  await support.supportApi.ask("Не приходит письмо")
+  await support.supportApi.my(1, 20)
+  assert.deepEqual(calls, [
+    ["/api/v1/support-questions", "POST", { message: "Не приходит письмо" }],
+    ["/api/v1/support-questions/my?page=1&size=20", "GET", undefined],
+  ])
+
+  const state = load("lib/chat/state.ts", { overrides: {} })
+  const user = { userId: "u", displayName: "Я", role: "INITIATOR", lastReadAt: null }
+  const admin = { userId: "a", displayName: "Анна", role: "OWNER", lastReadAt: null }
+  assert.equal(state.isSupportConversation({ targetType: "SUPPORT" }), true)
+  assert.equal(state.isSupportConversation({ targetType: "CASE" }), false)
+  assert.equal(state.supportAdminJoined({ participants: [user] }), false)
+  assert.equal(state.supportAdminJoined({ participants: [user, admin] }), true)
+
+  const events = load("lib/inbox/events.ts")
+  assert.equal(
+    events.inboxItemHref({ eventType: "SUPPORT_QUESTION_ANSWERED", actionUrl: null, caseId: null, needId: null }),
+    "/support#latest",
+  )
+})
