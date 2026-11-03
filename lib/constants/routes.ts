@@ -12,6 +12,7 @@ export const ROUTES = {
   /** Step-by-step profile setup shown right after registration. */
   WELCOME: "/welcome",
   MY_TASKS: "/my-tasks",
+  MY_ADOPTIONS: "/my-adoptions",
   MY_CASES: "/my-cases",
   EDIT_CASE: (caseId: string) => `/cases/${caseId}/edit`,
   CASES: "/cases",

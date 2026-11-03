@@ -112,6 +112,8 @@ import { CaseGallery, galleryOf } from "./CaseGallery"
 import { NeedFormDialog } from "./NeedFormDialog"
 import { CaseHistory } from "./CaseHistory"
 import { DraftActions } from "./DraftActions"
+import { ApplicantAdoption, AuthorAdoptionRequests } from "./Adoption"
+import { ADOPTION_NEED_TYPE } from "@/lib/adoption"
 import { ReportCaseButton } from "./ReportCaseButton"
 
 const NEED_REOPEN_REASON_MAX = 500
@@ -397,6 +399,16 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         .getElementById(`need-${highlightedNeedId}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" })
   }, [highlightedNeedId])
+  // Adoption notifications link to /cases/{id}#adoption: scroll once loaded.
+  const loaded = !!details.data
+  useEffect(() => {
+    if (loaded && window.location.hash === "#adoption")
+      requestAnimationFrame(() =>
+        document
+          .getElementById("adoption")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      )
+  }, [loaded])
 
   if (details.isLoading || (details.data && !details.data.author && !details.error))
     return (
@@ -457,6 +469,12 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const reopeningAssigned =
     pendingNeedAction?.need.status === "ASSIGNED" &&
     pendingNeedAction.nextStatus === "OPEN"
+  const adoptionNeed = animalCase.needs.some(
+    (need) => need.type === ADOPTION_NEED_TYPE,
+  )
+  const openAdoptionNeed = animalCase.needs.some(
+    (need) => need.type === ADOPTION_NEED_TYPE && need.status !== "CLOSED",
+  )
   const hasPhoto = !!animalCase.photoUrl
   const gallery = galleryOf(animalCase)
   const draft = animalCase.status === "DRAFT"
@@ -997,6 +1015,36 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
         </SectionCard>
       )}
 
+      {!isAuthor && adoptionNeed && (
+        <ApplicantAdoption
+          caseId={caseId}
+          signedIn={!!user}
+          canApply={animalCase.status === "OPEN" && openAdoptionNeed}
+        />
+      )}
+      {isAuthor && adoptionNeed && !draft && (
+        <AuthorAdoptionRequests
+          caseId={caseId}
+          chats={caseChats.byUser}
+          canManage={animalCase.status === "OPEN"}
+          onApproved={() => {
+            // Approving does not close the case: offer it, with the reason set.
+            setCloseReason("PERMANENT_HOME")
+            toast.success("Заявка одобрена", {
+              description:
+                "Когда животное переедет, закройте объявление с причиной «Найден постоянный дом».",
+              action: {
+                label: "Закрыть объявление",
+                onClick: () =>
+                  document
+                    .getElementById("close-case")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+              },
+            })
+          }}
+        />
+      )}
+
       {user && (isAuthor || hasActiveResponse) && (
         <CaseHistory
           caseId={caseId}
@@ -1122,6 +1170,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       </Dialog>
 
       {canEdit && !draft && !hidden && (
+        <div id="close-case" className="scroll-mt-24">
         <SectionCard
           icon={Lock}
           title="Закрыть объявление"
@@ -1197,6 +1246,7 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             Закрыть объявление
           </LoadingButton>
         </SectionCard>
+        </div>
       )}
     </section>
   )

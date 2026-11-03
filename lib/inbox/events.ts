@@ -26,6 +26,12 @@ export function notificationHref(value: string | null, needId?: string | null) {
     : value
 }
 
+const ADOPTION_EVENTS = [
+  "CASE_ADOPTION_REQUEST_CREATED",
+  "CASE_ADOPTION_REQUEST_CANCELLED",
+  "ADOPTION_REQUEST_STATUS_CHANGED",
+]
+
 /**
  * Where a notification leads: its `actionUrl`. Deadline reminders and expired
  * needs (NEED_*) fall back to their case; anything else without `actionUrl`
@@ -39,6 +45,11 @@ export function inboxItemHref(item: {
 }) {
   // The answer waits in the support chat; actionUrl is null there.
   if (item.eventType === "SUPPORT_QUESTION_ANSWERED") return "/support#latest"
+  // Adoption events open the case at its adoption block.
+  if (ADOPTION_EVENTS.includes(item.eventType)) {
+    const href = notificationHref(item.actionUrl)
+    return href && `${href}#adoption`
+  }
   return (
     notificationHref(item.actionUrl, item.needId) ??
     (item.eventType.startsWith("NEED_")

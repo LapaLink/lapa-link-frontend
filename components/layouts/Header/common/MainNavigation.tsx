@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import {
   ClipboardList,
+  House,
   Menu,
   MessageCircle,
   Newspaper,
@@ -36,7 +37,13 @@ const allLinks = [
     label: "Мои отклики",
     icon: ClipboardList,
     private: true,
+  },  {
+    href: ROUTES.MY_ADOPTIONS,
+    label: "Заявки на дом",
+    icon: House,
+    private: true,
   },
+
   {
     href: ROUTES.CHATS,
     label: "Сообщения",

@@ -11,6 +11,7 @@ import {
   CardFooter,
 } from "@/components/ui"
 import { caseStatusBadge } from "../../Cases/statusLabels"
+import { useNewAdoptionCount } from "../../Cases/Adoption"
 import { ROUTES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +34,7 @@ export function MyCaseCard({
   city: string
 }) {
   const status = caseStatusBadge(item.status)
+  const newAdoptions = useNewAdoptionCount(item.id, item.status === "OPEN").data ?? 0
   const isOpen = item.status === "OPEN"
   const draft = item.status === "DRAFT"
   const hidden = item.status === "HIDDEN"
@@ -50,6 +52,14 @@ export function MyCaseCard({
         >
           {statusLabels[item.status] ?? status.label}
         </StatusBadge>
+        {newAdoptions > 0 && (
+          <StatusBadge
+            tone="primary"
+            className="absolute top-3 right-3 bg-primary text-primary-foreground shadow-sm"
+          >
+            Новые заявки на дом: {newAdoptions}
+          </StatusBadge>
+        )}
       </div>
       <CardHeader>
         <CardTitle className="line-clamp-2 text-lg font-bold [overflow-wrap:anywhere]">

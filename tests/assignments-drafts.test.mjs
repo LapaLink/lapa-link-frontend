@@ -171,3 +171,46 @@ test("support questions: API, chat helpers, schema and the answered notification
     "/support#latest",
   )
 })
+
+test("adoption requests: labels, forward-only transitions, API and notification link", async () => {
+  const adoption = load("lib/adoption.ts")
+  assert.equal(adoption.adoptionStatusLabel("NEW"), "Новая")
+  assert.equal(adoption.adoptionStatusLabel("NEW", true), "На рассмотрении")
+  assert.equal(adoption.adoptionStatusLabel("SOMETHING"), "SOMETHING")
+  const next = (status) => JSON.parse(JSON.stringify(adoption.nextAdoptionStatuses(status)))
+  assert.deepEqual(next("NEW"), ["CONTACTED", "MEETING", "APPROVED", "REJECTED"])
+  assert.deepEqual(next("CONTACTED"), ["MEETING", "APPROVED", "REJECTED"])
+  assert.deepEqual(next("MEETING"), ["APPROVED", "REJECTED"])
+  assert.deepEqual(next("APPROVED"), ["REJECTED"])
+  assert.deepEqual(next("REJECTED"), [])
+  assert.deepEqual(next("CANCELLED"), [])
+
+  const calls = []
+  const local = new Map([["lapalink.session", JSON.stringify(tokens)]])
+  const [api] = load(["api/adoption.ts"], {
+    local,
+    fetch: async (url, options) => {
+      calls.push([url, options.method ?? "GET", options.body ? JSON.parse(options.body) : undefined])
+      return response(200, { content: [], totalElements: 0 })
+    },
+  })
+  await api.adoptionApi.create("c1", "Есть опыт с собаками")
+  await api.adoptionApi.my(undefined, 0, 20)
+  await api.adoptionApi.cancel("r1")
+  await api.adoptionApi.forCase("c1", "NEW", 0, 1)
+  await api.adoptionApi.setStatus("r1", "CONTACTED")
+  assert.deepEqual(calls, [
+    ["/api/v1/cases/c1/adoption-requests", "POST", { message: "Есть опыт с собаками" }],
+    ["/api/v1/account/adoption-requests?page=0&size=20", "GET", undefined],
+    ["/api/v1/adoption-requests/r1/cancel", "POST", undefined],
+    ["/api/v1/cases/c1/adoption-requests?status=NEW&page=0&size=1", "GET", undefined],
+    ["/api/v1/adoption-requests/r1", "PATCH", { status: "CONTACTED" }],
+  ])
+
+  const events = load("lib/inbox/events.ts")
+  const caseId = "2032112f-4957-43d7-99db-4ee94d178eff"
+  assert.equal(
+    events.inboxItemHref({ eventType: "ADOPTION_REQUEST_STATUS_CHANGED", actionUrl: `/cases/${caseId}`, caseId, needId: null }),
+    `/cases/${caseId}#adoption`,
+  )
+})
