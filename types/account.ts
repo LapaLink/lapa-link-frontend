@@ -11,6 +11,8 @@ export type UpdateProfileDto = {
   displayName: string
   cityCode: string | null
   bio: string | null
+  /** `+?` and 7..15 digits; null clears it. Never returned by the API. */
+  phone?: string | null
   /** Both coordinates or neither. */
   homeLatitude: number | null
   homeLongitude: number | null
