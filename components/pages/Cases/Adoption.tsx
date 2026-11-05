@@ -6,9 +6,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { House, MessageCircle } from "lucide-react"
 import { toast } from "sonner"
 import { ApiError, adoptionApi, getErrorMessage } from "@/api"
+import { AdoptionFormDialog } from "./AdoptionFormDialog"
 import {
-  ADOPTION_MESSAGE_MAX,
+  CURATOR_ANSWER_MAX,
+  CURATOR_QUESTION_MAX,
   adoptionStatusLabel,
+  canAskCuratorQuestion,
+  curatorAnswers,
+  questionnaireRows,
   isActiveAdoption,
   nextAdoptionStatuses,
 } from "@/lib/adoption"
@@ -34,15 +39,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Field,
   FieldDescription,
-  FieldError,
   FieldLabel,
   Textarea,
 } from "@/components/ui"
@@ -158,7 +156,6 @@ export function ApplicantAdoption({
   /** OPEN case with an ADOPTION need that is not closed. */
   canApply: boolean
 }) {
-  const client = useQueryClient()
   const mine = useQuery({
     queryKey: [...MY_ADOPTIONS_KEY, "all"],
     queryFn: ({ signal }) => adoptionApi.my(undefined, 0, 100, signal),
@@ -169,45 +166,6 @@ export function ApplicantAdoption({
   )
   const cancel = useCancelAdoption(caseId)
   const [open, setOpen] = useState(false)
-  const [message, setMessage] = useState("")
-  const [fieldError, setFieldError] = useState("")
-  const [error, setError] = useState("")
-  const [busy, setBusy] = useState(false)
-  const sending = useRef(false)
-
-  async function submit() {
-    if (sending.current) return
-    const text = message.trim()
-    setError("")
-    if (!text) return setFieldError("Расскажите автору о себе и условиях.")
-    setFieldError("")
-    sending.current = true
-    setBusy(true)
-    try {
-      await adoptionApi.create(caseId, text)
-      setMessage("")
-      setOpen(false)
-      toast.success("Заявка отправлена")
-      void client.invalidateQueries({ queryKey: MY_ADOPTIONS_KEY })
-      // «Написать автору» becomes available without a reload.
-      void client.invalidateQueries({ queryKey: ["chat", "permission"] })
-    } catch (cause) {
-      const code = cause instanceof ApiError ? cause.code : undefined
-      const text = getErrorMessage(cause, "Не удалось отправить заявку.")
-      if (code === "VALIDATION_FAILED")
-        setFieldError(
-          (cause instanceof ApiError && cause.fields.message) || text,
-        )
-      else if (code === "ADOPTION_REQUEST_ALREADY_EXISTS") {
-        toast.info(text)
-        setOpen(false)
-        void client.invalidateQueries({ queryKey: MY_ADOPTIONS_KEY })
-      } else setError(text)
-    } finally {
-      sending.current = false
-      setBusy(false)
-    }
-  }
 
   if (active)
     return (
@@ -256,52 +214,7 @@ export function ApplicantAdoption({
           </Button>
         )}
       </div>
-      <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Заявка на постоянный дом</DialogTitle>
-            <DialogDescription>
-              Расскажите о себе, условиях и опыте с животными. Автор увидит
-              заявку и сможет написать вам.
-            </DialogDescription>
-          </DialogHeader>
-          <FormAlert message={error} />
-          <Field data-invalid={!!fieldError}>
-            <FieldLabel htmlFor="adoption-message">Сообщение автору</FieldLabel>
-            <Textarea
-              id="adoption-message"
-              autoFocus
-              className="min-h-32"
-              maxLength={ADOPTION_MESSAGE_MAX}
-              value={message}
-              aria-invalid={!!fieldError}
-              aria-describedby="adoption-message-error"
-              placeholder="Например: живём в частном доме, есть опыт с собаками"
-              onChange={(event) => setMessage(event.target.value)}
-            />
-            <FieldDescription className="text-right">
-              {message.length} / {ADOPTION_MESSAGE_MAX}
-            </FieldDescription>
-            <FieldError id="adoption-message-error">{fieldError}</FieldError>
-          </Field>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={busy}
-              onClick={() => setOpen(false)}
-            >
-              Отмена
-            </Button>
-            <LoadingButton
-              loading={busy}
-              loadingText="Отправляем…"
-              onClick={() => void submit()}
-            >
-              Отправить
-            </LoadingButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AdoptionFormDialog open={open} onOpenChange={setOpen} caseId={caseId} />
     </SectionCard>
   )
 }
@@ -423,6 +336,17 @@ export function AuthorAdoptionRequests({
                   <p className="text-sm whitespace-pre-line [overflow-wrap:anywhere]">
                     {request.message}
                   </p>
+                  <RequestAnswers request={request} />
+                  {canManage && canAskCuratorQuestion(request.status) && (
+                    <CuratorQuestionForm
+                      request={request}
+                      onSaved={() =>
+                        void client.invalidateQueries({
+                          queryKey: caseRequestsKey(caseId),
+                        })
+                      }
+                    />
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {canManage &&
                       nextAdoptionStatuses(request.status).map((status) => (
@@ -505,4 +429,173 @@ export function useNewAdoptionCount(caseId: string, enabled: boolean) {
     enabled,
     select: (page) => page.totalElements,
   })
+}
+
+/** The filled questionnaire and the author's recorded follow-up questions. */
+function RequestAnswers({ request }: { request: AdoptionRequest }) {
+  const rows = questionnaireRows(request.answers)
+  const follow = curatorAnswers(request.answers)
+  if (!rows.length && !follow.length) return null
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.length > 0 && (
+        <dl className="grid gap-x-4 gap-y-1.5 rounded-lg bg-muted/50 p-3 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex flex-col">
+              <dt className="text-xs text-foreground/60">{label}</dt>
+              <dd className="font-medium whitespace-pre-line [overflow-wrap:anywhere]">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {follow.length > 0 && (
+        <section
+          aria-label="Уточняющие вопросы"
+          className="flex flex-col gap-2"
+        >
+          <h4 className="text-sm font-semibold text-muted-foreground">
+            Уточняющие вопросы
+          </h4>
+          <ul className="flex flex-col gap-2">
+            {follow.map((item) => (
+              <li
+                key={item.key}
+                className="rounded-lg border bg-card p-3 text-sm [overflow-wrap:anywhere]"
+              >
+                <p className="font-semibold whitespace-pre-line">
+                  {item.question}
+                </p>
+                <p className="mt-1 whitespace-pre-line text-foreground/80">
+                  {item.answer}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  )
+}
+
+/**
+ * «Задать уточняющий вопрос»: the author asked by phone or in chat and
+ * records the answer at once (CONTACTED and MEETING only). The answer
+ * replaces the request from the response; a status race gets a toast.
+ */
+function CuratorQuestionForm({
+  request,
+  onSaved,
+}: {
+  request: AdoptionRequest
+  onSaved: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [question, setQuestion] = useState("")
+  const [answer, setAnswer] = useState("")
+  const [error, setError] = useState("")
+  const [busy, setBusy] = useState(false)
+  const sending = useRef(false)
+
+  async function submit() {
+    if (sending.current) return
+    if (!question.trim() || !answer.trim())
+      return setError("Заполните вопрос и ответ.")
+    setError("")
+    sending.current = true
+    setBusy(true)
+    try {
+      await adoptionApi.addAnswer(request.id, question.trim(), answer.trim())
+      setQuestion("")
+      setAnswer("")
+      setOpen(false)
+      toast.success("Ответ записан")
+      onSaved()
+    } catch (cause) {
+      const code = cause instanceof ApiError ? cause.code : undefined
+      const text = getErrorMessage(cause, "Не удалось записать ответ.")
+      if (code === "ADOPTION_CURATOR_QUESTION_NOT_ALLOWED") {
+        // The status changed meanwhile: reload it, the form disappears.
+        toast.error(text)
+        setOpen(false)
+        onSaved()
+      } else if (
+        code === "NOT_CASE_AUTHOR" ||
+        code === "ADOPTION_REQUEST_NOT_FOUND"
+      ) {
+        toast.error(text)
+        setOpen(false)
+        onSaved()
+      } else setError(text)
+    } finally {
+      sending.current = false
+      setBusy(false)
+    }
+  }
+
+  if (!open)
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="self-start"
+        onClick={() => setOpen(true)}
+      >
+        Задать уточняющий вопрос
+      </Button>
+    )
+  const id = `curator-${request.id}`
+  return (
+    <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
+      <FormAlert message={error} />
+      <Field>
+        <FieldLabel htmlFor={`${id}-question`}>Вопрос</FieldLabel>
+        <Textarea
+          id={`${id}-question`}
+          className="min-h-16"
+          maxLength={CURATOR_QUESTION_MAX}
+          value={question}
+          placeholder="О чём спросили заявителя"
+          onChange={(event) => setQuestion(event.target.value)}
+        />
+        <FieldDescription className="text-right">
+          {question.length} / {CURATOR_QUESTION_MAX}
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`${id}-answer`}>Ответ</FieldLabel>
+        <Textarea
+          id={`${id}-answer`}
+          className="min-h-20"
+          maxLength={CURATOR_ANSWER_MAX}
+          value={answer}
+          placeholder="Что ответил заявитель"
+          onChange={(event) => setAnswer(event.target.value)}
+        />
+        <FieldDescription className="text-right">
+          {answer.length} / {CURATOR_ANSWER_MAX}
+        </FieldDescription>
+      </Field>
+      <div className="flex gap-2">
+        <LoadingButton
+          size="sm"
+          loading={busy}
+          loadingText="Записываем…"
+          onClick={() => void submit()}
+        >
+          Записать
+        </LoadingButton>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={busy}
+          onClick={() => setOpen(false)}
+        >
+          Отмена
+        </Button>
+      </div>
+    </div>
+  )
 }

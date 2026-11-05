@@ -214,3 +214,55 @@ test("adoption requests: labels, forward-only transitions, API and notification 
     `/cases/${caseId}#adoption`,
   )
 })
+
+test("adoption questionnaire: request bodies, answers mapping and follow-up questions", async () => {
+  const calls = []
+  const local = new Map([["lapalink.session", JSON.stringify(tokens)]])
+  const [api] = load(["api/adoption.ts"], {
+    local,
+    fetch: async (url, options) => {
+      calls.push([url, JSON.parse(options.body)])
+      return response(200, {})
+    },
+  })
+  const questionnaire = {
+    housingType: "OWN_HOUSE",
+    ownerConsent: "NOT_REQUIRED",
+    familyAgreement: true,
+    hasYoungChildren: false,
+    petExperience: "FIRST_PET",
+    hasCurrentPets: false,
+    travelPlan: "PET_HOTEL",
+    readyForSterilization: true,
+  }
+  await api.adoptionApi.create("c1", "Живём в доме", questionnaire)
+  await api.adoptionApi.addAnswer("r1", "Где будет спать?", "В прихожей")
+  assert.deepEqual(calls, [
+    ["/api/v1/cases/c1/adoption-requests", { message: "Живём в доме", ...questionnaire }],
+    ["/api/v1/adoption-requests/r1/answers", { question: "Где будет спать?", answer: "В прихожей" }],
+  ])
+
+  const lib = load("lib/adoption.ts")
+  const rows = lib.questionnaireRows({ ...questionnaire, curator_1: { question: "q", answer: "a" }, extra: "?" })
+  const map = Object.fromEntries(rows)
+  assert.equal(map["Жильё"], "Свой дом")
+  assert.equal(map["Согласие собственника"], "Не требуется")
+  assert.equal(map["Опыт с животными"], "Первое животное")
+  assert.equal(map["Есть питомцы сейчас"], "Нет")
+  assert.equal(map["Готовы к стерилизации"], "Да")
+  assert.equal("Кто и сколько" in map, false)
+
+  // Sorted by the epoch millis after the prefix; malformed entries are skipped.
+  const follow = lib.curatorAnswers({
+    housingType: "OWN_HOUSE",
+    curator_1700000000200: { question: "второй", answer: "b" },
+    curator_1700000000100: { question: "первый", answer: "a" },
+    curator_9: "oops",
+    curator_x: { question: "q", answer: "a" },
+  })
+  assert.deepEqual([...follow.map((item) => item.question)], ["первый", "второй"])
+  assert.equal(lib.canAskCuratorQuestion("CONTACTED"), true)
+  assert.equal(lib.canAskCuratorQuestion("MEETING"), true)
+  assert.equal(lib.canAskCuratorQuestion("NEW"), false)
+  assert.equal(lib.canAskCuratorQuestion("APPROVED"), false)
+})

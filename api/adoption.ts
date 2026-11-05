@@ -1,4 +1,5 @@
 import type {
+  AdoptionQuestionnaire,
   AdoptionRequest,
   AdoptionRequestStatus,
   PageResponse,
@@ -13,11 +14,28 @@ const page = (
   `?${new URLSearchParams({ ...(status && { status }), page: String(p), size: String(size) })}`
 
 export const adoptionApi = {
-  /** Applies for a case with an open ADOPTION need (message 1..1000). */
-  create: (caseId: string, message: string) =>
+  /**
+   * Applies for a case with an open ADOPTION need: message 1..1000 and the
+   * questionnaire. 400 ADOPTION_ANSWERS_INVALID when current pets are
+   * declared without details or health status.
+   */
+  create: (
+    caseId: string,
+    message: string,
+    questionnaire: AdoptionQuestionnaire,
+  ) =>
     authorizedRequest<AdoptionRequest>(
       `/cases/${encodeURIComponent(caseId)}/adoption-requests`,
-      { method: "POST", body: JSON.stringify({ message }) },
+      { method: "POST", body: JSON.stringify({ message, ...questionnaire }) },
+    ),
+  /**
+   * The author records a follow-up question and its answer (CONTACTED or
+   * MEETING only, else 409 ADOPTION_CURATOR_QUESTION_NOT_ALLOWED).
+   */
+  addAnswer: (requestId: string, question: string, answer: string) =>
+    authorizedRequest<AdoptionRequest>(
+      `/adoption-requests/${encodeURIComponent(requestId)}/answers`,
+      { method: "POST", body: JSON.stringify({ question, answer }) },
     ),
   /** Own requests, newest first. */
   my: (
