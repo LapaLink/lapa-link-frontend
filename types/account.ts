@@ -26,6 +26,16 @@ export type UserProfile = {
   updatedAt: string
 }
 
+/** Result of POST /account/phone: the SMS code was sent. */
+export type PhoneCodeResponse = {
+  requestId: string
+  userId: string
+  expiresInSeconds: number
+  resendAvailableInSeconds: number
+}
+
+export type PhoneConfirmDto = { requestId: string; code: string }
+
 export type EmailChangeDto = {
   newEmail: string
   password: string

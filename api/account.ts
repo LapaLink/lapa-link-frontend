@@ -6,6 +6,8 @@ import type {
   UserProfile,
   EmailChangeDto,
   EmailConfirmationDto,
+  PhoneCodeResponse,
+  PhoneConfirmDto,
   NotificationSetting,
   PasswordChangeDto,
   UserLocale,
@@ -74,6 +76,21 @@ export const accountApi = {
     authorizedRequest<UserProfile>("/account/avatar", { method: "DELETE" }),
   requestEmailChange: (data: EmailChangeDto) =>
     authorizedRequest<OtpResponse>("/account/email/change", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  /**
+   * Saves the number as unconfirmed and sends a 6-digit SMS code; a repeated
+   * call sends a new one. 400 PHONE_ALREADY_CONFIRMED when it is confirmed.
+   */
+  requestPhoneCode: (phone: string) =>
+    authorizedRequest<PhoneCodeResponse>("/account/phone", {
+      method: "POST",
+      body: JSON.stringify({ phone }),
+    }),
+  /** Confirms the number; returns the current user with phoneConfirmed true. */
+  confirmPhone: (data: PhoneConfirmDto) =>
+    authorizedRequest<CurrentUser>("/account/phone/confirm", {
       method: "POST",
       body: JSON.stringify(data),
     }),

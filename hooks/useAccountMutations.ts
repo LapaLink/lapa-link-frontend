@@ -12,6 +12,7 @@ import type {
   PasswordChangeDto,
   UserLocale,
   UserProfile,
+  PhoneConfirmDto,
   UpdateProfileDto,
 } from "@/types"
 
@@ -27,6 +28,37 @@ export function useUpdateProfile() {
       if (revision !== getSessionRevision() || !readTokens())
         throw new ApiError("Сессия завершена. Войдите заново.", 401)
       await client.cancelQueries({ queryKey: ACCOUNT_QUERY_KEY })
+      if (revision !== getSessionRevision() || !readTokens())
+        throw new ApiError("Сессия завершена. Войдите заново.", 401)
+      client.setQueriesData<CurrentUser>(
+        { queryKey: ACCOUNT_QUERY_KEY },
+        (current) => (current?.id === user.id ? user : current),
+      )
+      void client.invalidateQueries({ queryKey: ACCOUNT_QUERY_KEY })
+      return user
+    },
+  })
+}
+
+/** Sends the SMS code for a phone number; an already confirmed one refreshes the user. */
+export function useRequestPhoneCode() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (phone: string) => accountApi.requestPhoneCode(phone),
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === "PHONE_ALREADY_CONFIRMED")
+        void client.invalidateQueries({ queryKey: ACCOUNT_QUERY_KEY })
+    },
+  })
+}
+
+/** Confirms the phone by the SMS code and puts the returned user into the cache. */
+export function useConfirmPhone() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: PhoneConfirmDto) => {
+      const revision = getSessionRevision()
+      const user = await accountApi.confirmPhone(data)
       if (revision !== getSessionRevision() || !readTokens())
         throw new ApiError("Сессия завершена. Войдите заново.", 401)
       client.setQueriesData<CurrentUser>(

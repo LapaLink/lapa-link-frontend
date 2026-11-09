@@ -42,8 +42,7 @@ export function valuesOf(user: CurrentUser): ProfileValues {
     displayName: user.displayName,
     cityCode: user.cityCode ?? "__none",
     bio: user.bio ?? "",
-    // The API does not return the saved number.
-    phone: "",
+    phone: user.phone ?? "",
   }
 }
 
@@ -231,7 +230,7 @@ export function ProfileEditForm({
             autoComplete="tel"
             placeholder="+375291234567"
             maxLength={25}
-            description="Номер видят только администраторы сервиса. Сохранённый номер здесь не показывается: если оставить поле пустым, он будет удалён."
+            description="Номер видят только администраторы сервиса. Если изменить или очистить номер, подтверждение сбросится — подтвердить его можно в блоке «Телефон»."
           />
           <Field data-invalid={!!form.formState.errors.bio}>
             <FieldLabel htmlFor="profile-bio">О себе</FieldLabel>

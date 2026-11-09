@@ -20,6 +20,8 @@ export {
 export { useCountdown, useCooldown } from "./useCountdown"
 export {
   useUploadAvatar,
+  useRequestPhoneCode,
+  useConfirmPhone,
   useUpdateProfile,
   useDeleteAvatar,
   useRequestEmailChange,

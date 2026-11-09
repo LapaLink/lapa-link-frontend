@@ -69,6 +69,8 @@ export type {
   UserLocale,
   NotificationSetting,
   EmailChangeDto,
+  PhoneCodeResponse,
+  PhoneConfirmDto,
   EmailConfirmationDto,
   MyHelpApplication,
   MyAssignment,

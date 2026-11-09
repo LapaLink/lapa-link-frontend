@@ -84,6 +84,7 @@ export function NotificationSettings({
   const settings = useQuery({
     queryKey: queryKeys.notifications,
     queryFn: ({ signal }) => accountApi.getNotifications(signal),
+    select: (list) => list.filter((item) => item.channel !== "SMS"),
   })
   const update = useUpdateNotification()
   const channels = useNotificationChannels()

@@ -69,6 +69,8 @@ export function useHomePoint(user: CurrentUser) {
         displayName: user.displayName,
         cityCode: user.cityCode ?? null,
         bio: user.bio ?? null,
+        // PUT replaces every field: without it the number would be cleared.
+        phone: user.phone ?? null,
         homeLatitude: draft?.latitude ?? null,
         homeLongitude: draft?.longitude ?? null,
       })

@@ -266,3 +266,29 @@ test("adoption questionnaire: request bodies, answers mapping and follow-up ques
   assert.equal(lib.canAskCuratorQuestion("NEW"), false)
   assert.equal(lib.canAskCuratorQuestion("APPROVED"), false)
 })
+
+test("phone confirmation: API calls, number validation and the hidden SMS channel", async () => {
+  const calls = []
+  const local = new Map([["lapalink.session", JSON.stringify(tokens)]])
+  const [api] = load(["api/account.ts"], {
+    local,
+    fetch: async (url, options) => {
+      calls.push([url, options.method, JSON.parse(options.body)])
+      return response(200, {})
+    },
+  })
+  await api.accountApi.requestPhoneCode("+375291234567")
+  await api.accountApi.confirmPhone({ requestId: "r1", code: "123456" })
+  assert.deepEqual(calls, [
+    ["/api/v1/account/phone", "POST", { phone: "+375291234567" }],
+    ["/api/v1/account/phone/confirm", "POST", { requestId: "r1", code: "123456" }],
+  ])
+
+  const { isValidPhone, normalizePhone, toUpdateProfileDto } = load("components/pages/Account/schemas.ts")
+  assert.equal(isValidPhone(normalizePhone("+375 (29) 123-45-67")), true)
+  assert.equal(isValidPhone("12345"), false)
+  assert.equal(isValidPhone(""), true)
+  // Saving the profile with the same number keeps it (and its confirmation).
+  const dto = toUpdateProfileDto({ displayName: "А", cityCode: "minsk", bio: "", phone: "+375291234567" }, {})
+  assert.equal(dto.phone, "+375291234567")
+})

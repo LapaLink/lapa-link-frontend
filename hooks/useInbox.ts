@@ -60,6 +60,8 @@ export function useNotificationChannels() {
   return useQuery({
     queryKey: queryKeys.notificationChannels,
     queryFn: ({ signal }) => inboxApi.channels(signal),
+    // SMS only carries confirmation codes: no switch for it.
+    select: (channels) => channels.filter((item) => item.channel !== "SMS"),
   })
 }
 

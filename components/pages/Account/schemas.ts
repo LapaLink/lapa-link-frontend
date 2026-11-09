@@ -39,6 +39,11 @@ export function normalizePhone(value: string) {
   return value.replace(/[\s()-]/g, "")
 }
 
+/** True for an empty value or `+?` and 7..15 digits once spaces are dropped. */
+export function isValidPhone(value: string | undefined) {
+  return !value?.trim() || PHONE_PATTERN.test(normalizePhone(value))
+}
+
 export const profileSchema = z.object({
   displayName: z
     .string()
@@ -52,7 +57,7 @@ export const profileSchema = z.object({
     .string()
     .optional()
     .refine(
-      (value) => !value?.trim() || PHONE_PATTERN.test(normalizePhone(value)),
+      isValidPhone,
       "Введите номер в формате +375291234567: от 7 до 15 цифр.",
     ),
 })
@@ -60,8 +65,8 @@ export type ProfileValues = z.infer<typeof profileSchema>
 
 /**
  * PUT /account/profile replaces every field, so the home point is sent as is.
- * The phone is never returned by the API: an empty field sends null and
- * clears the saved number.
+ * An empty phone sends null and clears the number; changing it resets its
+ * confirmation, sending the same number keeps it.
  */
 export function toUpdateProfileDto(
   values: ProfileValues,

@@ -13,6 +13,10 @@ export type CurrentUser = {
   emailVerifiedAt?: string | null
   cityCode?: string | null
   bio?: string | null
+  /** Own phone number; null when none. */
+  phone?: string | null
+  /** False when there is no number or it is not confirmed by the SMS code. */
+  phoneConfirmed?: boolean
   /** Home point for help offer radius matching; visible to the owner only. */
   homeLatitude?: number | null
   homeLongitude?: number | null

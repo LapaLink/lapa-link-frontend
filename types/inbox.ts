@@ -14,7 +14,8 @@ export type InboxNotification = {
 }
 
 export type NotificationChannelSetting = {
-  channel: "EMAIL" | "IN_APP"
+  /** SMS only carries confirmation codes and has no switch. */
+  channel: "EMAIL" | "IN_APP" | "SMS"
   /** Channel name translated to the session language. */
   title: string
   enabled: boolean
