@@ -39,6 +39,11 @@ export type OtpConfirmResponse = {
   type: string
   expiresInSeconds: number
 }
+export type RegistrationRequestDto = {
+  email: string
+  /** The user ticked the consent checkbox; the backend stores the fact, time and document version. */
+  consentAccepted: boolean
+}
 export type RegistrationCompleteDto = {
   confirmationToken: string
   password: string

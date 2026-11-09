@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
 import { ApiError } from "@/api"
-import { useLogin, useCooldown, useRegister } from "@/hooks"
+import { useLogin, useCooldown } from "@/hooks"
 import {
+  registrationStorage,
   setPasswordResetEmail,
   takeAccountDeleted,
   takePasswordResetDone,
@@ -20,8 +20,6 @@ import { FieldGroup } from "@/components/ui"
 import { loginSchema, type LoginValues } from "../schemas"
 import { setFormError } from "@/lib/forms"
 import { useAuthRedirect } from "../hooks/useAuthRedirect"
-import { GENERIC_ERROR, requestOtpCode } from "../otpFlow"
-import { registrationFlow } from "../registrationFlow"
 
 export function LoginForm() {
   const form = useForm<LoginValues>({
@@ -34,10 +32,6 @@ export function LoginForm() {
   const [notice, setNotice] = useState("")
   // Registration started but not finished: the account has no password yet.
   const [unverifiedEmail, setUnverifiedEmail] = useState("")
-  const [continueHint, setContinueHint] = useState("")
-  const register = useRegister()
-  const { secondsLeft: continueWait, start: startContinueCooldown } =
-    useCooldown()
   useAuthRedirect()
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -55,7 +49,6 @@ export function LoginForm() {
     if (wait > 0) return
     form.clearErrors()
     setUnverifiedEmail("")
-    setContinueHint("")
     try {
       await login.mutateAsync(values)
       router.replace(ROUTES.HOME)
@@ -70,34 +63,12 @@ export function LoginForm() {
     }
   }
 
-  async function continueRegistration() {
-    if (!unverifiedEmail || register.isPending || continueWait > 0) return
-    setContinueHint("")
-    const result = await requestOtpCode(
-      registrationFlow,
-      unverifiedEmail,
-      register.mutateAsync,
-    )
-    if ("redirect" in result) {
-      router.push(result.redirect)
-      return
-    }
-    const { action, error } = result
-    if (action === "in-progress") return
-    if (action === "unknown") {
-      toast.error(GENERIC_ERROR)
-      return
-    }
-    const apiError = error instanceof ApiError ? error : null
-    if (apiError?.code === "OTP_RESEND_TOO_OFTEN") {
-      // The code was sent recently, but this device has no requestId for it.
-      setContinueHint("Код уже отправлен недавно, запросите новый через минуту.")
-      startContinueCooldown(60)
-      return
-    }
-    setContinueHint(apiError?.message || GENERIC_ERROR)
-    if (action === "throttled")
-      startContinueCooldown(apiError?.retryAfterSeconds || 60)
+  // The registration request now carries the consent, which only the registration form can collect:
+  // an unverified account continues there, with the email prefilled.
+  function continueRegistration() {
+    if (!unverifiedEmail) return
+    registrationStorage.setEmail(unverifiedEmail)
+    router.push(ROUTES.REGISTER)
   }
 
   return (
@@ -111,20 +82,14 @@ export function LoginForm() {
       {unverifiedEmail && (
         <div role="alert" className="flex flex-col gap-3 text-sm">
           <p>Регистрация не завершена. Подтвердите email, чтобы продолжить.</p>
-          {continueHint && (
-            <p className="text-muted-foreground">{continueHint}</p>
-          )}
           <LoadingButton
             type="button"
             variant="outline"
-            loading={register.isPending}
-            loadingText="Отправляем код…"
-            disabled={continueWait > 0}
-            onClick={() => void continueRegistration()}
+            loading={false}
+            loadingText=""
+            onClick={continueRegistration}
           >
-            {continueWait > 0
-              ? `Отправить код ещё раз через ${continueWait} с`
-              : "Продолжить регистрацию"}
+            Продолжить регистрацию
           </LoadingButton>
         </div>
       )}

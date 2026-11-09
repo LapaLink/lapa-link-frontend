@@ -14,7 +14,12 @@ export const loginSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
 })
-export const registerSchema = z.object({ email: emailSchema })
+export const registerSchema = z.object({
+  email: emailSchema,
+  consentAccepted: z.boolean().refine((value) => value, {
+    message: "Подтвердите согласие, чтобы продолжить.",
+  }),
+})
 export const completeRegistrationSchema = z
   .object({
     displayName: z

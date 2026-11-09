@@ -12,6 +12,7 @@ test("registration → OTP → onboarding → feed", async ({ page }) => {
   await installFixture(page, { signedIn: false })
   await page.goto("/register")
   await page.getByLabel("Электронная почта").fill("new@example.test")
+  await page.getByRole("checkbox").check()
   await page.getByRole("button", { name: "Получить код" }).click()
   await expect(page).toHaveURL(/\/register\/code$/)
   await page.getByRole("textbox").fill("123456")

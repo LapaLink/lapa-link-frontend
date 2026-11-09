@@ -56,6 +56,7 @@ export type {
   OtpResponse,
   OtpRequestResponse,
   RegistrationCompleteDto,
+  RegistrationRequestDto,
   PasswordResetDto,
   OtpConfirmDto,
   OtpConfirmResponse,

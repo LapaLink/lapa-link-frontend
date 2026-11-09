@@ -42,14 +42,14 @@ test("registration endpoints are public and never use userId or /verification", 
   })
   assert.equal(authApi.verify, undefined)
   assert.equal(authApi.resend, undefined)
-  await authApi.register("user@example.com")
+  await authApi.register({ email: "user@example.com", consentAccepted: true })
   await authApi.confirmOtp({ requestId: "r1", code: "123456" })
   assert.deepEqual(
     { ...(await authApi.completeRegistration({ confirmationToken: "token-1", password: "GoodPass123", displayName: "Анна" })) },
     tokens,
   )
   assert.deepEqual(calls, [
-    ["/api/v1/auth/registration", null, "be", '{"email":"user@example.com"}'],
+    ["/api/v1/auth/registration", null, "be", '{"email":"user@example.com","consentAccepted":true}'],
     ["/api/v1/auth/otp/confirm", null, "be", '{"requestId":"r1","code":"123456"}'],
     ["/api/v1/auth/registration/complete", null, "be", '{"confirmationToken":"token-1","password":"GoodPass123","displayName":"Анна"}'],
   ])
@@ -183,7 +183,9 @@ test("login with EMAIL_NOT_VERIFIED → «Продолжить регистра�
     status: 403,
     code: "EMAIL_NOT_VERIFIED",
   })
-  const result = await otp.requestOtpCode(flow, "user@example.com", authApi.register)
+  const result = await otp.requestOtpCode(flow, "user@example.com", (email) =>
+    authApi.register({ email, consentAccepted: true }),
+  )
   assert.deepEqual({ ...result }, { redirect: "/register/code" })
   const step = otp.openOtpCodeStep(flow)
   assert.deepEqual(
@@ -196,7 +198,9 @@ test("continuing registration right after a code was sent reports OTP_RESEND_TOO
   const { otp, flow, authApi, auth } = loadFlow(async () =>
     failure(429, "OTP_RESEND_TOO_OFTEN", "Код уже отправлен."),
   )
-  const result = await otp.requestOtpCode(flow, "user@example.com", authApi.register)
+  const result = await otp.requestOtpCode(flow, "user@example.com", (email) =>
+    authApi.register({ email, consentAccepted: true }),
+  )
   assert.equal(result.action, "throttled")
   assert.equal(result.error.code, "OTP_RESEND_TOO_OFTEN")
   assert.equal(result.error.retryAfterSeconds, undefined)

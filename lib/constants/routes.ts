@@ -6,6 +6,8 @@ export const ROUTES = {
   REGISTRATION_CODE: "/register/code",
   REGISTRATION_COMPLETE: "/register/complete",
   FORGOT_PASSWORD: "/forgot-password",
+  TERMS: "/terms",
+  PRIVACY: "/privacy",
   PASSWORD_RESET_CODE: "/forgot-password/code",
   NEW_PASSWORD: "/forgot-password/new-password",
   ACCOUNT: "/account",

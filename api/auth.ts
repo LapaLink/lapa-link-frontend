@@ -3,6 +3,7 @@ import type {
   Tokens,
   OtpRequestResponse,
   RegistrationCompleteDto,
+  RegistrationRequestDto,
   PasswordResetDto,
   OtpConfirmDto,
   OtpConfirmResponse,
@@ -13,8 +14,8 @@ export const authApi = {
   login: (data: LoginDto) => post<Tokens>("/auth/login", data),
   // Public endpoints: sent without Authorization even if stale tokens remain.
   /** Sends a registration code; a repeated call with the same email is a resend. */
-  register: (email: string) =>
-    post<OtpRequestResponse>("/auth/registration", { email }),
+  register: (data: RegistrationRequestDto) =>
+    post<OtpRequestResponse>("/auth/registration", data),
   completeRegistration: (data: RegistrationCompleteDto) =>
     post<Tokens>("/auth/registration/complete", data),
   /** Exchanges a one-time code for a confirmation token; shared by all OTP flows. */

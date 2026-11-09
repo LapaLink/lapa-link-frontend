@@ -384,10 +384,11 @@ test("Zod trims identity fields and keeps login and registration requirements se
     "components/pages/Auth/schemas.ts",
   )
   assert.deepEqual(
-    { ...registerSchema.parse({ email: " user@example.com " }) },
-    { email: "user@example.com" },
+    { ...registerSchema.parse({ email: " user@example.com ", consentAccepted: true }) },
+    { email: "user@example.com", consentAccepted: true },
   )
-  assert.equal(registerSchema.safeParse({ email: "bad" }).success, false)
+  assert.equal(registerSchema.safeParse({ email: "bad", consentAccepted: true }).success, false)
+  assert.equal(registerSchema.safeParse({ email: "user@example.com", consentAccepted: false }).success, false)
   const parsed = completeRegistrationSchema.parse({
     displayName: " Анна ",
     password: "GoodPass123",

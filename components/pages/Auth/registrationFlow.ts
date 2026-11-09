@@ -13,7 +13,8 @@ export const ALREADY_REGISTERED =
 export const registrationFlow: OtpFlow = {
   type: "EMAIL_VERIFICATION",
   storage: registrationStorage,
-  requestCode: authApi.register,
+  // A resend repeats the first step, whose form cannot be submitted without the consent.
+  requestCode: (email) => authApi.register({ email, consentAccepted: true }),
   routes: {
     start: ROUTES.REGISTER,
     code: ROUTES.REGISTRATION_CODE,

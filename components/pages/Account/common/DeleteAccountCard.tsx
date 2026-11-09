@@ -113,7 +113,7 @@ export function DeleteAccountAction({ className }: { className?: string }) {
       return
     }
     // Replace the history entry so "Back" does not return to the account page.
-    router.replace(ROUTES.LOGIN)
+    router.replace(ROUTES.HOME)
   }
 
   return (
@@ -131,9 +131,10 @@ export function DeleteAccountAction({ className }: { className?: string }) {
           <DialogHeader>
             <DialogTitle>Удалить аккаунт навсегда?</DialogTitle>
             <DialogDescription>
-              Это действие необратимо. Вместе с аккаунтом будут удалены профиль,
-              аватар, все ваши объявления (включая закрытые) с откликами на них,
-              ваши отклики и назначения, а также уведомления.
+              Аккаунт будет удалён без возможности восстановления. Ваши
+              объявления будут скрыты, фотографии и личные данные удалены.
+              Сообщения в чатах останутся у собеседников под именем «Удаленный
+              пользователь».
             </DialogDescription>
           </DialogHeader>
           <Form
