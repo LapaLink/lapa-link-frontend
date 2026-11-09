@@ -11,6 +11,11 @@ export type InboxNotification = {
   responseId: string | null
   assignmentId: string | null
   actionUrl: string | null
+  /**
+   * An administrator's broadcast: shown in a modal until read, skipped by
+   * "read all" and delete. Missing on older responses means false.
+   */
+  mandatory?: boolean
 }
 
 export type NotificationChannelSetting = {

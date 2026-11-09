@@ -15,6 +15,8 @@ export const queryKeys = {
   inbox: ["account", "inbox"] as const,
   inboxPage: (page = 0) => ["account", "inbox", "list", page] as const,
   unreadCount: ["account", "inbox", "unread-count"] as const,
+  /** Unread mandatory notifications, oldest first: the modal queue. */
+  inboxMandatory: ["account", "inbox", "mandatory"] as const,
   notificationChannels: ["account", "notification-channels"] as const,
   myCases: (page = 0, size = 20, status?: CaseStatus) =>
     ["account", "cases", { page, size, status }] as const,

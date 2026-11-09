@@ -289,6 +289,39 @@ test("phone confirmation: API calls, number validation and the hidden SMS channe
   assert.equal(isValidPhone("12345"), false)
   assert.equal(isValidPhone(""), true)
   // Saving the profile with the same number keeps it (and its confirmation).
-  const dto = toUpdateProfileDto({ displayName: "А", cityCode: "minsk", bio: "", phone: "+375291234567" }, {})
+  const dto = toUpdateProfileDto({ displayName: "А", cityCode: "minsk", bio: "" }, { phone: "+375291234567" })
   assert.equal(dto.phone, "+375291234567")
+})
+
+test("mandatory notifications: queue is deduped by id, API path, schema keeps the flag", async () => {
+  const { enqueueMandatory } = load("lib/inbox/cache.ts")
+  const n = (id) => ({ id, title: id, mandatory: true })
+  const ids = (queue) => [...queue].map((item) => item.id)
+  assert.deepEqual(ids(enqueueMandatory(undefined, n("a"))), ["a"])
+  // The same id from SSE and from GET /inbox/mandatory is queued once, in place.
+  assert.deepEqual(ids(enqueueMandatory([n("a"), n("b")], n("a"))), ["a", "b"])
+  assert.deepEqual(ids(enqueueMandatory([n("a")], n("b"))), ["a", "b"])
+  // Clicking one in the center makes it the current one.
+  assert.deepEqual(ids(enqueueMandatory([n("a"), n("b")], n("b"), true)), ["b", "a"])
+
+  const calls = []
+  const local = new Map([["lapalink.session", JSON.stringify(tokens)]])
+  const [inbox] = load(["api/inbox.ts"], {
+    local,
+    fetch: async (url, options) => {
+      calls.push([url, options.method ?? "GET"])
+      return response(200, [])
+    },
+  })
+  await inbox.inboxApi.mandatory()
+  assert.deepEqual(calls, [["/api/v1/account/inbox/mandatory", "GET"]])
+
+  const { inboxNotificationSchema } = load("lib/inbox/events.ts")
+  const base = {
+    id: "2032112f-4957-43d7-99db-4ee94d178eff", eventType: "BROADCAST", title: "Т", message: "М\nМ",
+    read: false, readAt: null, createdAt: "2026-11-10T10:00:00Z",
+    caseId: null, needId: null, responseId: null, assignmentId: null, actionUrl: null,
+  }
+  assert.equal(inboxNotificationSchema.parse({ ...base, mandatory: true }).mandatory, true)
+  assert.equal(inboxNotificationSchema.parse(base).mandatory, undefined)
 })

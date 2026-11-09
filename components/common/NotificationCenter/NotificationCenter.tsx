@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   AlarmClock,
   Bell,
@@ -26,7 +27,9 @@ import {
   useDeleteNotifications,
 } from "@/hooks"
 import { getErrorMessage } from "@/api"
-import { inboxItemHref } from "@/lib/inbox"
+import { enqueueMandatory, inboxItemHref } from "@/lib/inbox"
+import { queryKeys } from "@/lib/queryKeys"
+import type { InboxNotification } from "@/types"
 import {
   Button,
   Dialog,
@@ -47,6 +50,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui"
 import { FormAlert } from "../FormAlert/FormAlert"
+import { StatusBadge } from "../StatusBadge/StatusBadge"
 import { ListPagination } from "../ListPagination/ListPagination"
 
 // Events that get an icon next to the title.
@@ -65,7 +69,11 @@ const eventIcons: Record<string, LucideIcon> = {
   ADOPTION_REQUEST_STATUS_CHANGED: House,
 }
 
+/** An unread mandatory notification: not selectable, opens the modal. */
+const isLocked = (item: InboxNotification) => !!item.mandatory && !item.read
+
 export function NotificationCenter() {
+  const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
@@ -112,12 +120,16 @@ export function NotificationCenter() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
               <Checkbox
-                checked={inbox.data.content.every((item) =>
-                  selected.includes(item.id),
-                )}
+                checked={inbox.data.content
+                  .filter((item) => !isLocked(item))
+                  .every((item) => selected.includes(item.id))}
                 onCheckedChange={(checked) =>
                   setSelected(
-                    checked ? inbox.data!.content.map((item) => item.id) : [],
+                    checked
+                      ? inbox
+                          .data!.content.filter((item) => !isLocked(item))
+                          .map((item) => item.id)
+                      : [],
                   )
                 }
               />
@@ -190,6 +202,7 @@ export function NotificationCenter() {
             <ul className="space-y-2">
               {inbox.data.content.map((item) => {
                 const href = inboxItemHref(item)
+                const locked = isLocked(item)
                 const EventIcon = eventIcons[item.eventType]
                 const content = (
                   <>
@@ -205,6 +218,11 @@ export function NotificationCenter() {
                           />
                         )}
                         {item.title}
+                        {locked && (
+                          <StatusBadge tone="primary" className="ml-1">
+                            Обязательное
+                          </StatusBadge>
+                        )}
                       </span>
                       <span className="mt-1 block whitespace-pre-wrap text-sm text-muted-foreground">
                         {item.message}
@@ -231,33 +249,49 @@ export function NotificationCenter() {
                   : "border-primary/20 bg-primary-soft/60"
                 return (
                   <li key={item.id} className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between gap-2 px-2">
-                      <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                        <Checkbox
-                          aria-label={`Выбрать: ${item.title}`}
-                          checked={selected.includes(item.id)}
-                          onCheckedChange={(checked) =>
-                            setSelected((current) =>
-                              checked
-                                ? [...current, item.id]
-                                : current.filter((id) => id !== item.id),
-                            )
-                          }
-                        />
-                        Выбрать
-                      </label>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-11 shrink-0"
-                        aria-label={`Удалить: ${item.title}`}
-                        disabled={remove.isPending}
-                        onClick={() => setRemoving([item.id])}
+                    {!locked && (
+                      <div className="flex items-center justify-between gap-2 px-2">
+                        <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                          <Checkbox
+                            aria-label={`Выбрать: ${item.title}`}
+                            checked={selected.includes(item.id)}
+                            onCheckedChange={(checked) =>
+                              setSelected((current) =>
+                                checked
+                                  ? [...current, item.id]
+                                  : current.filter((id) => id !== item.id),
+                              )
+                            }
+                          />
+                          Выбрать
+                        </label>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11 shrink-0"
+                          aria-label={`Удалить: ${item.title}`}
+                          disabled={remove.isPending}
+                          onClick={() => setRemoving([item.id])}
+                        >
+                          <Trash2 aria-hidden />
+                        </Button>
+                      </div>
+                    )}
+                    {locked ? (
+                      // Unread mandatory: opens the blocking modal, no navigation.
+                      <button
+                        type="button"
+                        className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone}`}
+                        onClick={() =>
+                          client.setQueryData<InboxNotification[]>(
+                            queryKeys.inboxMandatory,
+                            (queue) => enqueueMandatory(queue, item, true),
+                          )
+                        }
                       >
-                        <Trash2 aria-hidden />
-                      </Button>
-                    </div>
-                    {href ? (
+                        {content}
+                      </button>
+                    ) : href ? (
                       <button
                         type="button"
                         disabled={read.isPending}

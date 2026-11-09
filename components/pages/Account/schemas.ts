@@ -52,21 +52,13 @@ export const profileSchema = z.object({
     .max(100, "Имя должно быть не длиннее 100 символов."),
   cityCode: z.string().max(64, "Выберите город из списка."),
   bio: z.string().max(1000, "Расскажите о себе в пределах 1000 символов."),
-  /** Optional; shown to administrators only. */
-  phone: z
-    .string()
-    .optional()
-    .refine(
-      isValidPhone,
-      "Введите номер в формате +375291234567: от 7 до 15 цифр.",
-    ),
 })
 export type ProfileValues = z.infer<typeof profileSchema>
 
 /**
- * PUT /account/profile replaces every field, so the home point is sent as is.
- * An empty phone sends null and clears the number; changing it resets its
- * confirmation, sending the same number keeps it.
+ * PUT /account/profile replaces every field, so the home point and the phone
+ * are sent as saved: the number changes only through the SMS flow of the
+ * «Телефон» block (sending the same number keeps its confirmation).
  */
 export function toUpdateProfileDto(
   values: ProfileValues,
@@ -76,7 +68,7 @@ export function toUpdateProfileDto(
     displayName: values.displayName,
     cityCode: values.cityCode === "__none" ? null : values.cityCode,
     bio: values.bio.trim() ? values.bio : null,
-    phone: normalizePhone(values.phone ?? "") || null,
+    phone: user.phone ?? null,
     homeLatitude: user.homeLatitude ?? null,
     homeLongitude: user.homeLongitude ?? null,
   }

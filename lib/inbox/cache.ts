@@ -20,3 +20,19 @@ export function prependNotification(
     last: totalPages <= 1,
   }
 }
+
+/**
+ * Modal queue after a mandatory notification arrived or was clicked: deduped
+ * by id; `front` makes it the one shown now, otherwise it waits at the end.
+ */
+export function enqueueMandatory(
+  queue: InboxNotification[] | undefined,
+  item: InboxNotification,
+  front = false,
+) {
+  const rest = (queue ?? []).filter((entry) => entry.id !== item.id)
+  if (front) return [item, ...rest]
+  return (queue ?? []).some((entry) => entry.id === item.id)
+    ? (queue ?? [])
+    : [...rest, item]
+}

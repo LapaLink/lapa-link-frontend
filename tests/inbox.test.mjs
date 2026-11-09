@@ -100,6 +100,11 @@ test("notification center escapes backend text, exposes unread count and read co
       },
       "../FormAlert/FormAlert": { FormAlert: () => null },
       "../ListPagination/ListPagination": { ListPagination: () => null },
+      "../StatusBadge/StatusBadge": {
+        StatusBadge: ({ children }) => React.createElement("span", null, children),
+      },
+      "@/lib/queryKeys": { queryKeys: { inboxMandatory: ["mandatory"] } },
+      "@tanstack/react-query": { useQueryClient: () => ({ setQueryData() {} }) },
     },
   )
   const html = renderToStaticMarkup(React.createElement(NotificationCenter))

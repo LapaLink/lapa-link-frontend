@@ -42,7 +42,6 @@ export function valuesOf(user: CurrentUser): ProfileValues {
     displayName: user.displayName,
     cityCode: user.cityCode ?? "__none",
     bio: user.bio ?? "",
-    phone: user.phone ?? "",
   }
 }
 
@@ -56,7 +55,7 @@ export function setProfileSaveError(
     return
   }
   if (error instanceof ApiError) {
-    for (const name of ["displayName", "cityCode", "bio", "phone"] as const) {
+    for (const name of ["displayName", "cityCode", "bio"] as const) {
       if (error.fields[name])
         form.setError(name, { message: error.fields[name] })
     }
@@ -222,16 +221,6 @@ export function ProfileEditForm({
             />
             <CaseCityField locale={locale} optional />
           </div>
-          <FormField
-            name="phone"
-            label="Телефон"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="+375291234567"
-            maxLength={25}
-            description="Номер видят только администраторы сервиса. Если изменить или очистить номер, подтверждение сбросится — подтвердить его можно в блоке «Телефон»."
-          />
           <Field data-invalid={!!form.formState.errors.bio}>
             <FieldLabel htmlFor="profile-bio">О себе</FieldLabel>
             <Textarea

@@ -11,9 +11,14 @@ import {
   getServerSessionSnapshot,
   subscribeSession,
 } from "@/lib/auth"
-import { inboxItemHref, prependNotification } from "@/lib/inbox"
+import {
+  enqueueMandatory,
+  inboxItemHref,
+  prependNotification,
+} from "@/lib/inbox"
 import type { InboxNotification, PageResponse } from "@/types"
 import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
+import { MandatoryNotifications } from "@/components/common"
 
 export function NotificationsProvider({
   children,
@@ -76,6 +81,13 @@ function Connection({ session }: { session: string }) {
         void client.invalidateQueries({
           queryKey: [...queryKeys.inbox, "list"],
         })
+        // Mandatory ones wait in the modal queue; the same id may also come
+        // from GET /inbox/mandatory, the queue dedupes by id.
+        if (item.mandatory && !item.read)
+          client.setQueryData<InboxNotification[]>(
+            queryKeys.inboxMandatory,
+            (queue) => enqueueMandatory(queue, item),
+          )
         if (item.caseId) {
           void client.invalidateQueries({
             queryKey: queryKeys.caseDetail(item.caseId),
@@ -134,5 +146,5 @@ function Connection({ session }: { session: string }) {
       client.removeQueries({ queryKey: queryKeys.inbox })
     }
   }, [client, router, session])
-  return null
+  return <MandatoryNotifications />
 }

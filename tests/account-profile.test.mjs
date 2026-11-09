@@ -27,16 +27,11 @@ test("profile save keeps the home point because the PUT replaces every field", (
   assert.equal(withoutPoint.homeLongitude, null)
 })
 
-test("profile phone: spaces, brackets and dashes are dropped; empty means null", () => {
-  const { toUpdateProfileDto, profileSchema } = load("components/pages/Account/schemas.ts")
-  const base = { displayName: "Анна", cityCode: "minsk", bio: "" }
-  const dto = (phone) => toUpdateProfileDto({ ...base, phone }, {}).phone
-  assert.equal(dto("+375 (29) 123-45-67"), "+375291234567")
-  assert.equal(dto("375291234567"), "375291234567")
-  assert.equal(dto("   "), null)
-  const valid = (phone) => profileSchema.safeParse({ ...base, phone }).success
-  assert.equal(valid(""), true)
-  assert.equal(valid("+375 29 123 45 67"), true)
-  for (const bad of ["123456", "+3752912345678901", "abc1234567", "++375291234567"])
-    assert.equal(valid(bad), false, bad)
+test("the profile form sends the saved phone as is; it changes only by SMS", () => {
+  const { toUpdateProfileDto } = load("components/pages/Account/schemas.ts")
+  const values = { displayName: "Анна", cityCode: "minsk", bio: "" }
+  assert.equal(toUpdateProfileDto(values, { phone: "+375291234567" }).phone, "+375291234567")
+  assert.equal(toUpdateProfileDto(values, {}).phone, null)
+  // A phone typed into the values is ignored.
+  assert.equal(toUpdateProfileDto({ ...values, phone: "+375000000000" }, {}).phone, null)
 })

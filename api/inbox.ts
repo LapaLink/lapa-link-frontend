@@ -15,6 +15,11 @@ const withShortTimes = (
 })
 
 export const inboxApi = {
+  /** Unread mandatory notifications of the user, oldest first. */
+  mandatory: (signal?: AbortSignal) =>
+    authorizedRequest<InboxNotification[]>("/account/inbox/mandatory", {
+      signal,
+    }),
   delete: (ids: readonly string[]) => {
     const unique = [...new Set(ids)]
     if (!unique.length || unique.length > 100)

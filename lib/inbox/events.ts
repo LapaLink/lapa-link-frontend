@@ -16,6 +16,7 @@ export const inboxNotificationSchema = z.object({
   responseId: z.uuid().nullable(),
   assignmentId: z.uuid().nullable(),
   actionUrl: z.string().nullable(),
+  mandatory: z.boolean().optional(),
 })
 
 /** Same-site case link; with `needId` the case page opens and highlights that need. */
