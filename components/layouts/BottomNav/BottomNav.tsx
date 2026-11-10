@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 import { NavigationLink as Link } from "@/components/providers"
+import { UnreadCount } from "@/components/common"
 import { useAuth, useChatUnreadCount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 
@@ -83,6 +84,7 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
+                aria-label={badge > 0 ? `${label}, непрочитанных: ${badge}` : undefined}
                 className={cn(
                   "flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold outline-none transition-colors focus-visible:bg-muted",
                   active
@@ -92,12 +94,7 @@ export function BottomNav() {
               >
                 <span className="relative">
                   <Icon aria-hidden className="size-6" />
-                  {badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 font-bold text-primary-foreground">
-                      <span className="sr-only">, непрочитанных: </span>
-                      {badge > 99 ? "99+" : badge}
-                    </span>
-                  )}
+                  <UnreadCount count={badge} />
                 </span>
                 {label}
               </Link>

@@ -28,3 +28,4 @@ export {
   COMPLAINT_MESSAGE_MAX,
   ComplaintDialog,
 } from "./ComplaintDialog/ComplaintDialog"
+export { UnreadCount } from "./UnreadCount/UnreadCount"

@@ -22,7 +22,7 @@ export function Brand() {
           className="absolute left-1/2 -top-3.5 w-20 max-w-none -translate-x-1/2 sm:-top-4 sm:w-24"
         />
       </span>
-      <span className="hidden text-2xl font-extrabold tracking-tight sm:inline">
+      <span className="hidden text-xl font-extrabold tracking-tight min-[375px]:inline sm:text-2xl">
         Lapa<span className="text-primary">Link</span>
       </span>
     </Link>
