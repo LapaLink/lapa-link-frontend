@@ -86,6 +86,7 @@ test("notification center escapes backend text, exposes unread count and read co
       },
       "@/api": { getErrorMessage: (error) => error.message },
       "@/lib/inbox": events,
+      "@/lib/utils": require("cn"),
       "next/navigation": { useRouter: () => ({ push() {} }) },
       "@/components/ui": {
         Button: ({ children, ...props }) => {
@@ -101,6 +102,11 @@ test("notification center escapes backend text, exposes unread count and read co
         DialogDescription: container,
         Skeleton: container,
         Checkbox: () => null,
+        DropdownMenu: container,
+        DropdownMenuContent: container,
+        DropdownMenuGroup: container,
+        DropdownMenuItem: container,
+        DropdownMenuTrigger: container,
         AlertDialog: ({ open, children }) => open ? children : null,
         AlertDialogContent: container,
         AlertDialogHeader: container,

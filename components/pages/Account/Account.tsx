@@ -42,7 +42,6 @@ import {
 import { Card, CardContent } from "@/components/ui"
 import {
   AccountSkeleton,
-  AvatarCard,
   AvatarEditor,
   DeleteAccountAction,
   EmailChangeCard,
@@ -346,9 +345,6 @@ function OverviewSection({
               : !!user.emailVerifiedAt
           }
         />
-        <div className="md:col-span-2">
-          <AvatarCard user={user} />
-        </div>
       </div>
       <NotificationsCard user={user} />
       <HelpOffersCard user={user} />

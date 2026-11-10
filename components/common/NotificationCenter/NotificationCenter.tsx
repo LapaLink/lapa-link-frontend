@@ -7,7 +7,9 @@ import {
   AlarmClock,
   Award,
   Bell,
+  Check,
   CheckCheck,
+  Ellipsis,
   House,
   HousePlus,
   LifeBuoy,
@@ -28,7 +30,11 @@ import {
   useDeleteNotifications,
 } from "@/hooks"
 import { getErrorMessage } from "@/api"
-import { enqueueMandatory, inboxItemHref, navigateToInboxItem } from "@/lib/inbox"
+import {
+  enqueueMandatory,
+  inboxItemHref,
+  navigateToInboxItem,
+} from "@/lib/inbox"
 import { queryKeys } from "@/lib/queryKeys"
 import type { InboxNotification } from "@/types"
 import {
@@ -41,6 +47,11 @@ import {
   DialogDescription,
   Skeleton,
   Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -50,6 +61,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui"
+import { cn } from "@/lib/utils"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { StatusBadge } from "../StatusBadge/StatusBadge"
 import { ListPagination } from "../ListPagination/ListPagination"
@@ -74,6 +86,13 @@ const eventIcons: Record<string, LucideIcon> = {
 /** An unread mandatory notification: not selectable, opens the modal. */
 const isLocked = (item: InboxNotification) => !!item.mandatory && !item.read
 
+const notificationDate = new Intl.DateTimeFormat("ru", {
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
 export function NotificationCenter() {
   const client = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -84,12 +103,33 @@ export function NotificationCenter() {
   const inbox = useInbox(page, open)
   const read = useReadNotifications()
   const remove = useDeleteNotifications()
+  const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [removing, setRemoving] = useState<string[]>([])
   const unread = count.data?.count ?? 0
+  const selectable = inbox.data?.content.filter((item) => !isLocked(item)) ?? []
+  const selectedOnPage = selectable
+    .filter((item) => selected.includes(item.id))
+    .map((item) => item.id)
+
+  function closeSelection() {
+    setSelecting(false)
+    setSelected([])
+  }
+
+  function confirmRemoval(ids: string[]) {
+    remove.reset()
+    setRemoving(ids)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) closeSelection()
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -110,62 +150,87 @@ export function NotificationCenter() {
       </DialogTrigger>
       <DialogContent
         ref={contentRef}
-        className="flex max-h-[85dvh] flex-col gap-4 overflow-hidden sm:max-w-lg"
+        className="flex max-h-[85dvh] flex-col gap-3 overflow-hidden sm:max-w-lg sm:p-5"
       >
-        <DialogHeader>
-          <DialogTitle>Уведомления</DialogTitle>
+        <DialogHeader className="gap-1 pr-8">
+          <DialogTitle className="text-lg font-bold">Уведомления</DialogTitle>
           <DialogDescription>
-            Ответы и новости о вашей помощи животным.
+            {unread > 0
+              ? `Непрочитанных: ${unread}`
+              : "Ответы и новости о вашей помощи животным."}
           </DialogDescription>
         </DialogHeader>
-        {!!inbox.data?.content.length && (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
-              <Checkbox
-                checked={inbox.data.content
-                  .filter((item) => !isLocked(item))
-                  .every((item) => selected.includes(item.id))}
-                onCheckedChange={(checked) =>
-                  setSelected(
-                    checked
-                      ? inbox
-                          .data!.content.filter((item) => !isLocked(item))
-                          .map((item) => item.id)
-                      : [],
-                  )
-                }
-              />
-              Выбрать на странице
-            </label>
-            <Button
-              variant="outline"
-              disabled={!selected.length || remove.isPending}
-              onClick={() => setRemoving(selected)}
-            >
-              <Trash2 aria-hidden />
-              Удалить ({selected.length})
-            </Button>
+        {selecting ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t pt-2">
+            {selectable.length > 0 && (
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                <Checkbox
+                  checked={
+                    selectedOnPage.length === selectable.length
+                      ? true
+                      : selectedOnPage.length > 0
+                        ? "indeterminate"
+                        : false
+                  }
+                  onCheckedChange={(checked) =>
+                    setSelected(
+                      checked ? selectable.map((item) => item.id) : [],
+                    )
+                  }
+                />
+                Выбрать все
+              </label>
+            )}
+            <div className="ml-auto flex flex-wrap items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11"
+                onClick={closeSelection}
+              >
+                Готово
+              </Button>
+              {selectedOnPage.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="min-h-11"
+                  disabled={remove.isPending}
+                  onClick={() => confirmRemoval(selectedOnPage)}
+                >
+                  <Trash2 data-icon="inline-start" />
+                  Удалить ({selectedOnPage.length})
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-        <FormAlert
-          message={
-            remove.isError
-              ? getErrorMessage(
-                  remove.error,
-                  "Не удалось удалить уведомления. Попробуйте ещё раз.",
-                )
-              : ""
-          }
-        />
-        {unread > 0 && (
-          <Button
-            variant="outline"
-            disabled={read.isPending}
-            onClick={() => read.mutate(null)}
-          >
-            <CheckCheck className="size-4" />
-            Прочитать все
-          </Button>
+        ) : (
+          (unread > 0 || selectable.length > 1) && (
+            <div className="flex flex-wrap items-center justify-end gap-1 border-t pt-2">
+              {unread > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11"
+                  disabled={read.isPending}
+                  onClick={() => read.mutate(null)}
+                >
+                  <CheckCheck data-icon="inline-start" />
+                  Прочитать все
+                </Button>
+              )}
+              {selectable.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11"
+                  onClick={() => setSelecting(true)}
+                >
+                  Выбрать
+                </Button>
+              )}
+            </div>
+          )
         )}
         <FormAlert
           message={
@@ -182,14 +247,14 @@ export function NotificationCenter() {
             <div
               role="status"
               aria-label="Загружаем уведомления"
-              className="space-y-3"
+              className="flex flex-col gap-3"
             >
               {[0, 1, 2].map((key) => (
                 <Skeleton key={key} className="h-24 rounded-xl" />
               ))}
             </div>
           ) : inbox.isError ? (
-            <div className="space-y-3">
+            <div className="flex flex-col items-start gap-3">
               <FormAlert
                 message={getErrorMessage(
                   inbox.error,
@@ -201,27 +266,44 @@ export function NotificationCenter() {
               </Button>
             </div>
           ) : inbox.data.content.length ? (
-            <ul className="space-y-2">
+            <ul className="divide-y overflow-hidden rounded-2xl border">
               {inbox.data.content.map((item) => {
                 const href = inboxItemHref(item)
                 const locked = isLocked(item)
-                const EventIcon = eventIcons[item.eventType]
+                const EventIcon = eventIcons[item.eventType] ?? Bell
+                const checkboxId = `inbox-select-${item.id}`
+                const selectedItem = selectedOnPage.includes(item.id)
+                const bodyClass =
+                  "flex min-w-0 flex-1 items-start gap-3 px-3 py-3.5 text-left"
                 const content = (
                   <>
                     <span
-                      className={`mt-1.5 size-2 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-primary"}`}
-                    />
+                      aria-hidden="true"
+                      className={cn(
+                        "relative flex size-9 shrink-0 items-center justify-center rounded-full",
+                        item.read
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-primary-soft text-primary",
+                      )}
+                    >
+                      <EventIcon className="size-4" />
+                      {!item.read && (
+                        <span className="absolute top-0 right-0 size-2 rounded-full bg-primary" />
+                      )}
+                    </span>
                     <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-                      <span className="flex items-start gap-1.5 text-sm font-bold">
-                        {EventIcon && (
-                          <EventIcon
-                            aria-hidden
-                            className="mt-0.5 size-4 shrink-0 text-primary"
-                          />
+                      <span
+                        className={cn(
+                          "block text-sm",
+                          item.read ? "font-semibold" : "font-bold",
                         )}
+                      >
                         {item.title}
                         {locked && (
-                          <StatusBadge tone="primary" className="ml-1">
+                          <StatusBadge
+                            tone="primary"
+                            className="ml-2 align-middle"
+                          >
                             Обязательное
                           </StatusBadge>
                         )}
@@ -231,14 +313,9 @@ export function NotificationCenter() {
                       </span>
                       <time
                         dateTime={item.createdAt}
-                        className="mt-2 block text-xs text-muted-foreground"
+                        className="mt-1.5 block text-xs text-muted-foreground"
                       >
-                        {new Intl.DateTimeFormat("ru", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }).format(new Date(item.createdAt))}
+                        {notificationDate.format(new Date(item.createdAt))}
                       </time>
                       {!item.read && (
                         <span className="sr-only">Не прочитано</span>
@@ -246,96 +323,120 @@ export function NotificationCenter() {
                     </span>
                   </>
                 )
-                const tone = item.read
-                  ? "border-border bg-card"
-                  : "border-primary/20 bg-primary-soft/60"
+                function openNotification() {
+                  if (locked) {
+                    client.setQueryData<InboxNotification[]>(
+                      queryKeys.inboxMandatory,
+                      (queue) => enqueueMandatory(queue, item, true),
+                    )
+                    return
+                  }
+                  if (!href) return
+                  const navigate = () => {
+                    setOpen(false)
+                    if (item.eventType === "BADGE_AWARDED")
+                      void client.invalidateQueries({
+                        queryKey: queryKeys.myBadges,
+                      })
+                    navigateToInboxItem(href, router.push)
+                  }
+                  if (item.read) navigate()
+                  else if (item.eventType === "BADGE_AWARDED") {
+                    read.mutate(item.id)
+                    navigate()
+                  } else read.mutate(item.id, { onSuccess: navigate })
+                }
+
                 return (
-                  <li key={item.id} className="flex flex-col gap-1">
-                    {!locked && (
-                      <div className="flex items-center justify-between gap-2 px-2">
-                        <label className="flex min-h-11 min-w-0 items-center gap-2 text-sm text-muted-foreground">
-                          <Checkbox
-                            aria-label={`Выбрать: ${item.title}`}
-                            checked={selected.includes(item.id)}
-                            onCheckedChange={(checked) =>
-                              setSelected((current) =>
-                                checked
-                                  ? [...current, item.id]
-                                  : current.filter((id) => id !== item.id),
-                              )
-                            }
-                          />
-                          Выбрать
-                        </label>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-11 shrink-0"
-                          aria-label={`Удалить: ${item.title}`}
-                          disabled={remove.isPending}
-                          onClick={() => setRemoving([item.id])}
-                        >
-                          <Trash2 aria-hidden />
-                        </Button>
-                      </div>
+                  <li
+                    key={item.id}
+                    className={cn(
+                      "flex items-start",
+                      selectedItem
+                        ? "bg-primary-soft"
+                        : !item.read && "bg-primary-soft/40",
                     )}
-                    {locked ? (
-                      // Unread mandatory: opens the blocking modal, no navigation.
-                      <button
-                        type="button"
-                        className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tone}`}
-                        onClick={() =>
-                          client.setQueryData<InboxNotification[]>(
-                            queryKeys.inboxMandatory,
-                            (queue) => enqueueMandatory(queue, item, true),
-                          )
-                        }
-                      >
-                        {content}
-                      </button>
-                    ) : href ? (
-                      <button
-                        type="button"
-                        disabled={read.isPending}
-                        className={`flex w-full gap-3 rounded-2xl border p-4 text-left transition-colors hover:bg-primary-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 ${tone}`}
-                        onClick={() => {
-                          const navigate = () => {
-                            setOpen(false)
-                            if (item.eventType === "BADGE_AWARDED")
-                              void client.invalidateQueries({
-                                queryKey: queryKeys.myBadges,
-                              })
-                            navigateToInboxItem(href, router.push)
+                  >
+                    {selecting && !locked ? (
+                      <div className="flex min-w-0 flex-1 items-start pl-3">
+                        <Checkbox
+                          id={checkboxId}
+                          aria-label={`Выбрать: ${item.title}`}
+                          checked={selectedItem}
+                          className="mt-5"
+                          onCheckedChange={(checked) =>
+                            setSelected((current) =>
+                              checked === true
+                                ? [...current, item.id]
+                                : current.filter((id) => id !== item.id),
+                            )
                           }
-                          if (item.read) navigate()
-                          else if (item.eventType === "BADGE_AWARDED") {
-                            read.mutate(item.id)
-                            navigate()
-                          } else read.mutate(item.id, { onSuccess: navigate })
-                        }}
+                        />
+                        <label
+                          htmlFor={checkboxId}
+                          className={cn(bodyClass, "cursor-pointer")}
+                        >
+                          {content}
+                        </label>
+                      </div>
+                    ) : !selecting && (locked || href) ? (
+                      <button
+                        type="button"
+                        disabled={!locked && read.isPending}
+                        className={cn(
+                          bodyClass,
+                          "self-stretch transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-60",
+                        )}
+                        onClick={openNotification}
                       >
                         {content}
-                        <ChevronRight className="mt-1 size-4 shrink-0 text-primary" />
+                        <ChevronRight
+                          aria-hidden
+                          className="mt-1 size-4 shrink-0 text-muted-foreground"
+                        />
                       </button>
                     ) : (
-                      // Nothing to open: not a link, only marking it read.
-                      <div
-                        className={`flex w-full items-start gap-3 rounded-2xl border p-4 ${tone}`}
-                      >
-                        {content}
-                        {!item.read && (
+                      <div className={bodyClass}>{content}</div>
+                    )}
+                    {!selecting && !locked && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
                           <Button
-                            type="button"
                             variant="ghost"
-                            size="sm"
-                            className="shrink-0"
-                            disabled={read.isPending}
-                            onClick={() => read.mutate(item.id)}
+                            size="icon"
+                            className="mt-2 mr-1 size-11"
+                            aria-label={`Действия: ${item.title}`}
                           >
-                            Прочитано
+                            <Ellipsis aria-hidden />
                           </Button>
-                        )}
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-max max-w-[calc(100vw-2rem)]"
+                        >
+                          <DropdownMenuGroup>
+                            {!item.read && (
+                              <DropdownMenuItem
+                                disabled={read.isPending}
+                                className="min-h-11"
+                                onSelect={() => read.mutate(item.id)}
+                              >
+                                <Check />
+                                Отметить прочитанным
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={remove.isPending}
+                              className="min-h-11"
+                              onSelect={() => confirmRemoval([item.id])}
+                            >
+                              <Trash2 />
+                              Удалить уведомление
+                            </DropdownMenuItem>
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </li>
                 )
@@ -375,10 +476,16 @@ export function NotificationCenter() {
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>Удалить уведомления?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {removing.length === 1
+                ? "Удалить уведомление?"
+                : "Удалить уведомления?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Выбранные уведомления ({removing.length}) исчезнут из истории.
-              Восстановить их нельзя.
+              {removing.length === 1
+                ? "Уведомление исчезнет из истории."
+                : `Выбранные уведомления (${removing.length}) исчезнут из истории.`}{" "}
+              Удаление нельзя отменить.
             </AlertDialogDescription>
             <FormAlert
               message={
@@ -408,7 +515,7 @@ export function NotificationCenter() {
                       )
                     )
                       setPage(page - 1)
-                    setSelected([])
+                    closeSelection()
                     setRemoving([])
                   },
                 })

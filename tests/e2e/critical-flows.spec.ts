@@ -195,13 +195,21 @@ test("notification event → read all → select → confirmed delete", async ({
     page.getByRole("button", { name: /Уведомления, непрочитанных: 2/ }),
   ).toBeVisible()
   await page.getByRole("button", { name: /Уведомления/ }).click()
+  const inbox = page.getByRole("dialog", { name: "Уведомления" })
+  await expect(inbox.getByRole("checkbox")).toHaveCount(0)
+  await expect(inbox.getByRole("button", { name: /Удалить/ })).toHaveCount(0)
   await page.screenshot({
     path: test.info().outputPath("notifications-mobile.png"),
     fullPage: true,
   })
   await page.getByRole("button", { name: "Прочитать все" }).click()
   await expect.poll(() => state.notifications[0].read).toBe(true)
-  await page.getByLabel("Выбрать на странице").check()
+  await page.getByRole("button", { name: "Выбрать", exact: true }).click()
+  await page.getByRole("checkbox", { name: "Выбрать: Новый отклик" }).check()
+  await expect(
+    page.getByRole("checkbox", { name: "Выбрать все" }),
+  ).toHaveAttribute("aria-checked", "mixed")
+  await page.getByRole("checkbox", { name: "Выбрать все" }).click()
   await page.getByRole("button", { name: "Удалить (2)" }).click()
   await page
     .getByRole("alertdialog")
@@ -314,6 +322,7 @@ test("moderation reads a complaint snapshot without using ordinary chat history"
 test("a failed notification delete keeps records and can be retried", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
   const state = await installFixture(page)
   let failing = true
   await page.route("**/api/v1/account/inbox", (route) =>
@@ -323,7 +332,11 @@ test("a failed notification delete keeps records and can be retried", async ({
   )
   await page.goto("/cases")
   await page.getByRole("button", { name: /Уведомления/ }).click()
-  await page.getByRole("button", { name: "Удалить: Новый отклик" }).click()
+  await page.getByRole("button", { name: "Действия: Новый отклик" }).click()
+  await page.getByRole("menuitem", { name: "Отметить прочитанным" }).click()
+  await expect.poll(() => state.notifications[0].read).toBe(true)
+  await page.getByRole("button", { name: "Действия: Новый отклик" }).click()
+  await page.getByRole("menuitem", { name: "Удалить уведомление" }).click()
   const confirmation = page.getByRole("alertdialog")
   await confirmation
     .getByRole("button", { name: "Удалить", exact: true })
