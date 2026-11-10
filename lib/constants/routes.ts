@@ -11,6 +11,7 @@ export const ROUTES = {
   PASSWORD_RESET_CODE: "/forgot-password/code",
   NEW_PASSWORD: "/forgot-password/new-password",
   ACCOUNT: "/account",
+  MY_BADGES: "/account#badges",
   /** Step-by-step profile setup shown right after registration. */
   WELCOME: "/welcome",
   MY_TASKS: "/my-tasks",

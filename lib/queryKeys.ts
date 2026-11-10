@@ -7,6 +7,7 @@ import type {
 } from "@/types"
 
 export const queryKeys = {
+  myBadges: ["account", "badges"] as const,
   moderation: ["moderation"] as const,
   moderationReports: (filter: import("@/types").ModerationFilter) =>
     ["moderation", "reports", filter] as const,

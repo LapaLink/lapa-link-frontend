@@ -101,3 +101,4 @@ export type {
   AdoptionRequestStatus,
   CuratorAnswer,
 } from "./adoption"
+export type { BadgeCategory, BadgeResponse, MyBadgeResponse } from "./badges"

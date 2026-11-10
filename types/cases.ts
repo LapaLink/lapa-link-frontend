@@ -1,3 +1,5 @@
+import type { BadgeResponse } from "./badges"
+
 export type AnimalType = "CAT" | "DOG"
 export type UpdateCaseDto = Partial<{
   title: string | null
@@ -194,6 +196,7 @@ export type UpdateNeedDto = Partial<{
 }>
 
 export type CaseAuthor = {
+  badges?: BadgeResponse[]
   id: string
   displayName: string | null
   avatarUrl: string | null

@@ -14,6 +14,7 @@ import {
 import {
   enqueueMandatory,
   inboxItemHref,
+  navigateToInboxItem,
   prependNotification,
 } from "@/lib/inbox"
 import type { InboxNotification, PageResponse } from "@/types"
@@ -104,16 +105,26 @@ function Connection({ session }: { session: string }) {
         void client.invalidateQueries({ queryKey: ["account", "applications"] })
         void client.invalidateQueries({ queryKey: ["account", "assignments"] })
         if (item.eventType.startsWith("CHAT_")) void invalidateChatData(client)
+        const badgeAwarded = item.eventType === "BADGE_AWARDED"
+        if (badgeAwarded)
+          void client.invalidateQueries({ queryKey: queryKeys.myBadges })
         const href = inboxItemHref(item)
-        toast(item.title, {
+        const showToast = badgeAwarded ? toast.success : toast
+        showToast(item.title, {
           id: item.id,
           description: item.message,
           ...(href
             ? {
                 action: {
-                  label: "Посмотреть",
+                  label: badgeAwarded ? "Мои значки" : "Посмотреть",
                   onClick: () => {
                     if (!current()) return
+                    if (badgeAwarded) {
+                      void client.invalidateQueries({
+                        queryKey: queryKeys.myBadges,
+                      })
+                      navigateToInboxItem(href, router.push)
+                    }
                     void inboxApi
                       .read(item.id)
                       .then(() => {
@@ -121,7 +132,7 @@ function Connection({ session }: { session: string }) {
                         void client.invalidateQueries({
                           queryKey: queryKeys.inbox,
                         })
-                        router.push(href)
+                        if (!badgeAwarded) router.push(href)
                       })
                       .catch((error) => {
                         if (current())

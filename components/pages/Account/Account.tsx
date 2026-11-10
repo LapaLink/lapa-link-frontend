@@ -10,6 +10,7 @@ import {
 import { cn } from "cn"
 import {
   ArrowLeft,
+  Award,
   Bell,
   Flag,
   Globe,
@@ -58,10 +59,17 @@ import {
   ProfileSummaryCard,
 } from "./common"
 import { MyComplaints } from "./common/MyComplaints"
+import { MyBadges } from "./common/MyBadges"
 import { SettingRow } from "./common/SettingRow"
 
 type SectionId =
-  "overview" | "personal" | "notifications" | "help" | "complaints" | "security"
+  | "overview"
+  | "personal"
+  | "notifications"
+  | "help"
+  | "badges"
+  | "complaints"
+  | "security"
 
 const sections: Array<{
   id: SectionId
@@ -98,6 +106,13 @@ const sections: Array<{
     title: "Моя помощь",
     description:
       "Чем и где вы готовы помочь — по этим настройкам подбираем объявления в «Подходит мне».",
+  },
+  {
+    id: "badges",
+    label: "Мои значки",
+    icon: Award,
+    title: "Мои значки",
+    description: "Ваши достижения и прогресс к следующим значкам.",
   },
   {
     id: "complaints",
@@ -234,6 +249,7 @@ function AccountContent() {
           </>
         )}
         {current === "complaints" && <MyComplaints />}
+        {current === "badges" && <MyBadges locale={user.locale} />}
         {current === "security" && <SecuritySection user={user} />}
       </div>
     </div>

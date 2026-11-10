@@ -115,6 +115,7 @@ import { DraftActions } from "./DraftActions"
 import { ApplicantAdoption, AuthorAdoptionRequests } from "./Adoption"
 import { ADOPTION_NEED_TYPE } from "@/lib/adoption"
 import { ReportCaseButton } from "./ReportCaseButton"
+import { AuthorBadges } from "./AuthorBadges"
 
 const NEED_REOPEN_REASON_MAX = 500
 
@@ -577,9 +578,18 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           <h1 className="text-2xl font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-3xl lg:text-4xl">
             {animalCase.title}
           </h1>
-          <p className="text-sm text-muted-foreground sm:text-base">
-            Автор: {animalCase.author.displayName || "Пользователь"}
-          </p>
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+            <UserAvatar
+              user={{
+                displayName: animalCase.author.displayName || "Пользователь",
+                avatarUrl: animalCase.author.avatarUrl,
+              }}
+            />
+            <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere] sm:text-base">
+              Автор: {animalCase.author.displayName || "Пользователь"}
+            </p>
+            <AuthorBadges badges={animalCase.author.badges} />
+          </div>
           {animalCase.condition && (
             <StatusBadge tone="success" icon={PawPrint} className="text-sm">
               <span className="sr-only">Состояние: </span>

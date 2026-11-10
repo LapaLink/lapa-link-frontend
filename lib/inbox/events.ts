@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { ROUTES } from "@/lib/constants"
 
 export const unreadCountSchema = z.object({
   count: z.number().int().nonnegative(),
@@ -11,11 +12,11 @@ export const inboxNotificationSchema = z.object({
   read: z.boolean(),
   readAt: z.string().nullable(),
   createdAt: z.string(),
-  caseId: z.uuid().nullable(),
-  needId: z.uuid().nullable(),
-  responseId: z.uuid().nullable(),
-  assignmentId: z.uuid().nullable(),
-  actionUrl: z.string().nullable(),
+  caseId: z.uuid().nullable().default(null),
+  needId: z.uuid().nullable().default(null),
+  responseId: z.uuid().nullable().default(null),
+  assignmentId: z.uuid().nullable().default(null),
+  actionUrl: z.string().nullable().default(null),
   mandatory: z.boolean().optional(),
 })
 
@@ -44,6 +45,7 @@ export function inboxItemHref(item: {
   caseId: string | null
   needId: string | null
 }) {
+  if (item.eventType === "BADGE_AWARDED") return ROUTES.MY_BADGES
   // The answer waits in the support chat; actionUrl is null there.
   if (item.eventType === "SUPPORT_QUESTION_ANSWERED") return "/support#latest"
   // Adoption events open the case at its adoption block.
@@ -57,6 +59,13 @@ export function inboxItemHref(item: {
       ? notificationHref(item.caseId && `/cases/${item.caseId}`, item.needId)
       : null)
   )
+}
+
+export function navigateToInboxItem(href: string, push: (url: string) => void) {
+  // Account switches its sections on hashchange, which Next pushState does not emit.
+  if (href === ROUTES.MY_BADGES && window.location.pathname === ROUTES.ACCOUNT)
+    window.location.hash = new URL(href, window.location.origin).hash
+  else push(href)
 }
 
 /** Parse incremental UTF-8 SSE, including fragmented CRLF and multiline data. */

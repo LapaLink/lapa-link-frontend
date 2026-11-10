@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   AlarmClock,
+  Award,
   Bell,
   CheckCheck,
   House,
@@ -27,7 +28,7 @@ import {
   useDeleteNotifications,
 } from "@/hooks"
 import { getErrorMessage } from "@/api"
-import { enqueueMandatory, inboxItemHref } from "@/lib/inbox"
+import { enqueueMandatory, inboxItemHref, navigateToInboxItem } from "@/lib/inbox"
 import { queryKeys } from "@/lib/queryKeys"
 import type { InboxNotification } from "@/types"
 import {
@@ -55,6 +56,7 @@ import { ListPagination } from "../ListPagination/ListPagination"
 
 // Events that get an icon next to the title.
 const eventIcons: Record<string, LucideIcon> = {
+  BADGE_AWARDED: Award,
   NEED_DEADLINE_APPROACHING: AlarmClock,
   NEED_EXPIRED: TimerOff,
   MODERATION_WARNING: TriangleAlert,
@@ -299,10 +301,17 @@ export function NotificationCenter() {
                         onClick={() => {
                           const navigate = () => {
                             setOpen(false)
-                            router.push(href)
+                            if (item.eventType === "BADGE_AWARDED")
+                              void client.invalidateQueries({
+                                queryKey: queryKeys.myBadges,
+                              })
+                            navigateToInboxItem(href, router.push)
                           }
                           if (item.read) navigate()
-                          else read.mutate(item.id, { onSuccess: navigate })
+                          else if (item.eventType === "BADGE_AWARDED") {
+                            read.mutate(item.id)
+                            navigate()
+                          } else read.mutate(item.id, { onSuccess: navigate })
                         }}
                       >
                         {content}

@@ -28,7 +28,9 @@ function load(file, mocks = {}) {
   })(exports, (name) => mocks[name] ?? require(name))
   return exports
 }
-const events = load("lib/inbox/events.ts")
+const events = load("lib/inbox/events.ts", {
+  "@/lib/constants": load("lib/constants/routes.ts"),
+})
 const item = {
   id: "2032112f-4957-43d7-99db-4ee94d178eff",
   eventType: "CASE_CLOSED",
@@ -43,6 +45,16 @@ const item = {
   assignmentId: null,
   actionUrl: null,
 }
+
+test("badge award without target fields opens the achievements section", () => {
+  const result = events.inboxNotificationSchema.parse({
+    id: item.id, eventType: "BADGE_AWARDED", title: "Новый значок",
+    message: "Вы получили значок", read: false, readAt: null, createdAt: item.createdAt,
+  })
+  assert.equal(result.caseId, null)
+  assert.equal(result.actionUrl, null)
+  assert.equal(events.inboxItemHref(result), "/account#badges")
+})
 
 test("notification center escapes backend text, exposes unread count and read controls", () => {
   const container = ({ children }) => React.createElement("div", null, children)

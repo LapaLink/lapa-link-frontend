@@ -1,6 +1,7 @@
 import type {
   AccountDeletionDto,
   CurrentUser,
+  MyBadgeResponse,
   UpdateProfileDto,
   MyCaseListItem,
   UserProfile,
@@ -36,6 +37,8 @@ function query(params: Record<string, string | number | undefined>) {
 }
 
 export const accountApi = {
+  getBadges: (signal?: AbortSignal) =>
+    authorizedRequest<MyBadgeResponse[]>("/account/badges", { signal }),
   updateProfile: (data: UpdateProfileDto) =>
     authorizedRequest<CurrentUser>("/account/profile", {
       method: "PUT",

@@ -176,6 +176,8 @@ export function useUpdateLocale() {
       )
       // Setting titles are translated to the session language.
       void client.invalidateQueries({ queryKey: queryKeys.notifications })
+      void client.invalidateQueries({ queryKey: queryKeys.myBadges })
+      void client.invalidateQueries({ queryKey: ["cases", "detail"] })
       void client.invalidateQueries({
         queryKey: queryKeys.notificationChannels,
       })
