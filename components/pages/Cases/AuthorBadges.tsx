@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { badgeIcon } from "@/lib/badges"
+import { BadgeArtwork } from "@/components/common"
 import type { BadgeResponse } from "@/types"
 import {
   Button,
@@ -30,29 +30,30 @@ export function AuthorBadges({
       aria-label="Значки автора"
       className="flex flex-wrap items-center gap-1"
     >
-      {latest.slice(0, VISIBLE_BADGES).map((badge) => {
-        const Icon = badgeIcon(badge.icon, badge.category)
-        return (
-          <li key={badge.code}>
-            <BadgeDetails
-              title={badge.name}
-              description={badge.description}
-              trigger={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-9 rounded-full text-primary"
-                  aria-label={badge.name}
-                  title={badge.name}
-                >
-                  <Icon aria-hidden />
-                </Button>
-              }
-            />
-          </li>
-        )
-      })}
+      {latest.slice(0, VISIBLE_BADGES).map((badge) => (
+        <li key={badge.code}>
+          <BadgeDetails
+            title={badge.name}
+            description={badge.description}
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-11 rounded-xl"
+                aria-label={badge.name}
+                title={badge.name}
+              >
+                <BadgeArtwork badge={badge} size={38} />
+              </Button>
+            }
+          >
+            <div className="flex justify-center">
+              <BadgeArtwork badge={badge} size={104} />
+            </div>
+          </BadgeDetails>
+        </li>
+      ))}
       {remaining.length > 0 && (
         <li>
           <BadgeDetails
@@ -63,7 +64,7 @@ export function AuthorBadges({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-full"
+                className="h-11 rounded-xl"
                 aria-label={`Другие значки автора: ${remaining.length}`}
               >
                 +{remaining.length}
@@ -71,26 +72,15 @@ export function AuthorBadges({
             }
           >
             <ul className="flex flex-col gap-3">
-              {remaining.map((badge) => {
-                const Icon = badgeIcon(badge.icon, badge.category)
-                return (
-                  <li
-                    key={badge.code}
-                    className="flex min-w-0 items-start gap-3"
-                  >
-                    <Icon
-                      aria-hidden
-                      className="mt-0.5 size-5 shrink-0 text-primary"
-                    />
-                    <div className="min-w-0 [overflow-wrap:anywhere]">
-                      <p className="font-semibold">{badge.name}</p>
-                      <p className="text-muted-foreground">
-                        {badge.description}
-                      </p>
-                    </div>
-                  </li>
-                )
-              })}
+              {remaining.map((badge) => (
+                <li key={badge.code} className="flex min-w-0 items-start gap-3">
+                  <BadgeArtwork badge={badge} size={44} />
+                  <div className="min-w-0 [overflow-wrap:anywhere]">
+                    <p className="font-semibold">{badge.name}</p>
+                    <p className="text-muted-foreground">{badge.description}</p>
+                  </div>
+                </li>
+              ))}
             </ul>
           </BadgeDetails>
         </li>

@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query"
 import { Award } from "lucide-react"
 import { cn } from "cn"
 import { accountApi, getErrorMessage } from "@/api"
-import { EmptyState, FormAlert } from "@/components/common"
+import { BadgeArtwork, EmptyState, FormAlert } from "@/components/common"
 import { Button, Card, CardContent, Skeleton } from "@/components/ui"
-import { badgeCategories, badgeIcon, groupBadges } from "@/lib/badges"
+import { badgeCategories, groupBadges } from "@/lib/badges"
 import { queryKeys } from "@/lib/queryKeys"
 
 export function MyBadges({ locale }: { locale?: string | null }) {
@@ -71,66 +71,54 @@ export function MyBadges({ locale }: { locale?: string | null }) {
             {badgeCategories[category]?.label ?? "Другие значки"}
           </h2>
           <ul className="grid gap-3 sm:grid-cols-2">
-            {group.map((badge) => {
-              const Icon = badgeIcon(badge.icon, badge.category)
-              return (
-                <li key={badge.code} className="min-w-0">
-                  <Card
-                    className={cn(
-                      "h-full",
-                      badge.earned && "border-primary/30 bg-primary-soft/40",
-                    )}
-                  >
-                    <CardContent className="flex min-w-0 items-start gap-3">
-                      <span
-                        className={cn(
-                          "flex size-10 shrink-0 items-center justify-center rounded-full",
-                          badge.earned
-                            ? "bg-primary-soft text-primary"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        <Icon aria-hidden className="size-5" />
-                      </span>
-                      <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
-                        <h3 className="font-bold">{badge.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {badge.description}
+            {group.map((badge) => (
+              <li key={badge.code} className="min-w-0">
+                <Card
+                  className={cn(
+                    "h-full",
+                    badge.earned && "border-primary/30 bg-primary-soft/40",
+                  )}
+                >
+                  <CardContent className="flex min-w-0 items-start gap-3">
+                    <BadgeArtwork badge={badge} dimmed={!badge.earned} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
+                      <h3 className="font-bold">{badge.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {badge.description}
+                      </p>
+                      {badge.earned ? (
+                        <p className="mt-1 text-xs font-semibold text-primary">
+                          Получено
+                          {badge.awardedAt && (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <time dateTime={badge.awardedAt}>
+                                {new Date(badge.awardedAt).toLocaleDateString(
+                                  locale === "be" ? "be-BY" : "ru-RU",
+                                )}
+                              </time>
+                            </>
+                          )}
                         </p>
-                        {badge.earned ? (
-                          <p className="mt-1 text-xs font-semibold text-primary">
-                            Получено
-                            {badge.awardedAt && (
-                              <>
-                                {" "}
-                                ·{" "}
-                                <time dateTime={badge.awardedAt}>
-                                  {new Date(badge.awardedAt).toLocaleDateString(
-                                    locale === "be" ? "be-BY" : "ru-RU",
-                                  )}
-                                </time>
-                              </>
-                            )}
+                      ) : (
+                        <>
+                          <progress
+                            aria-label={`Прогресс: ${badge.name}`}
+                            value={badge.progress}
+                            max={badge.threshold}
+                            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted accent-primary"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {badge.progress} из {badge.threshold}
                           </p>
-                        ) : (
-                          <>
-                            <progress
-                              aria-label={`Прогресс: ${badge.name}`}
-                              value={badge.progress}
-                              max={badge.threshold}
-                              className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted accent-primary"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                              {badge.progress} из {badge.threshold}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </li>
-              )
-            })}
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
           </ul>
         </section>
       ))}

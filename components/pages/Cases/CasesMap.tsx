@@ -15,10 +15,17 @@ import {
   useMapEvents,
 } from "react-leaflet"
 import L, { type Map as LeafletMap } from "leaflet"
-import { Cat, Dog, LocateFixed, LoaderCircle, MapPin } from "lucide-react"
+import {
+  Cat,
+  Dog,
+  LocateFixed,
+  LoaderCircle,
+  MapPin,
+  UserRound,
+} from "lucide-react"
 import { cn } from "cn"
 import { ROUTES } from "@/lib/constants"
-import type { MapBounds } from "@/lib/cases"
+import type { FeedPoint, MapBounds } from "@/lib/cases"
 import type { AnimalType, CaseMapItem, NeedPriority } from "@/types"
 
 export type MapView = { latitude: number; longitude: number; zoom: number }
@@ -36,25 +43,9 @@ const priorityClasses: Record<Priority, string> = {
 // Accuracy circles wider than this say little and cover the map.
 const ACCURACY_MAX_M = 2000
 const LOCATE_ZOOM = 14
-// Labels stay on only when they fit: zoomed in and not too many markers.
-const LABEL_ZOOM = 13
-const LABEL_LIMIT = 40
 const BOUNDS_DELAY_MS = 300
 
 const round = (value: number) => Math.round(value * 1e4) / 1e4
-
-/** HTML marker: a lucide icon rendered once into Leaflet's `divIcon`. */
-function htmlIcon(html: string, size: number) {
-  return L.divIcon({
-    // An empty class drops Leaflet's default white square behind the icon.
-    className: "",
-    html,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    tooltipAnchor: [size / 2, 0],
-    popupAnchor: [0, -size / 2],
-  })
-}
 
 const caseIcons = new Map<string, L.DivIcon>()
 // Height of the pin's tail under the round head.
@@ -105,15 +96,17 @@ function caseIcon(animal: AnimalType, priority: Priority) {
   return icon
 }
 
-const ownPositionIcon = htmlIcon(
-  renderToStaticMarkup(
-    <span className="relative flex size-5">
-      <span className="absolute inset-0 animate-ping rounded-full bg-sky-500/50" />
-      <span className="relative size-5 rounded-full border-[3px] border-white bg-sky-500 shadow-[0_1px_6px_rgb(23_36_59/0.4)]" />
+const ownPositionIcon = L.divIcon({
+  className: "",
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  tooltipAnchor: [0, -18],
+  html: renderToStaticMarkup(
+    <span className="flex size-9 items-center justify-center rounded-full border-[3px] border-white bg-sky-700 text-white shadow-[0_2px_8px_rgb(23_36_59/0.4)]">
+      <UserRound aria-hidden className="size-4" strokeWidth={2.5} />
     </span>,
   ),
-  20,
-)
+})
 
 const searchPointIcon = L.divIcon({
   className: "",
@@ -128,17 +121,19 @@ const searchPointIcon = L.divIcon({
   iconAnchor: [16, 30],
 })
 
-type OwnPosition = { latitude: number; longitude: number; accuracy: number }
+type OwnPosition = FeedPoint & { accuracy: number }
 
 /**
- * "Где я" button: shows the browser's position as a blue dot with its
- * accuracy and flies there. The feed filters stay as they are.
+ * The profile point takes precedence. With no saved point, locate via the browser.
  */
-function LocateControl() {
+function LocateControl({ homePoint }: { homePoint?: FeedPoint }) {
   const map = useMap()
   const box = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<OwnPosition | null>(null)
   const [status, setStatus] = useState<"idle" | "locating" | "denied">("idle")
+  const point = homePoint ?? position
+  const markerLabel = homePoint ? "Ваша точка" : "Вы здесь"
+  const buttonLabel = point ? "К моей точке" : "Показать, где я"
 
   // Clicks on the button must not reach the map (no zoom on double click).
   useEffect(() => {
@@ -147,21 +142,28 @@ function LocateControl() {
     L.DomEvent.disableScrollPropagation(box.current)
   }, [])
 
+  function centerOn({ latitude, longitude }: FeedPoint) {
+    map.setView([latitude, longitude], Math.max(map.getZoom(), LOCATE_ZOOM))
+  }
+
   function locate() {
+    if (point) {
+      setStatus("idle")
+      centerOn(point)
+      return
+    }
     if (!navigator.geolocation) return setStatus("denied")
     setStatus("locating")
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        if (!box.current) return
         setStatus("idle")
         setPosition({
           latitude: coords.latitude,
           longitude: coords.longitude,
           accuracy: coords.accuracy,
         })
-        map.flyTo(
-          [coords.latitude, coords.longitude],
-          Math.max(map.getZoom(), LOCATE_ZOOM),
-        )
+        centerOn(coords)
       },
       () => setStatus("denied"),
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
@@ -178,11 +180,10 @@ function LocateControl() {
           type="button"
           onClick={locate}
           disabled={status === "locating"}
-          aria-label="Показать, где я"
-          title="Показать, где я"
+          aria-label={buttonLabel}
           className={cn(
-            "flex size-10 items-center justify-center rounded-xl bg-card shadow-md ring-1 ring-foreground/10 outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait",
-            position ? "text-sky-600" : "text-foreground/80",
+            "flex min-h-11 items-center gap-2 rounded-xl bg-card px-3 text-sm font-semibold shadow-md ring-1 ring-foreground/10 outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-wait",
+            point ? "text-sky-800" : "text-foreground/80",
           )}
         >
           {status === "locating" ? (
@@ -190,6 +191,7 @@ function LocateControl() {
           ) : (
             <LocateFixed aria-hidden className="size-5" />
           )}
+          {status === "locating" ? "Определяем…" : buttonLabel}
         </button>
         {status === "denied" && (
           <p
@@ -200,9 +202,9 @@ function LocateControl() {
           </p>
         )}
       </div>
-      {position && (
+      {point && (
         <>
-          {position.accuracy <= ACCURACY_MAX_M && (
+          {!homePoint && position && position.accuracy <= ACCURACY_MAX_M && (
             <Circle
               center={[position.latitude, position.longitude]}
               radius={position.accuracy}
@@ -215,13 +217,18 @@ function LocateControl() {
             />
           )}
           <Marker
-            position={[position.latitude, position.longitude]}
+            position={[point.latitude, point.longitude]}
             icon={ownPositionIcon}
             zIndexOffset={1000}
             keyboard={false}
+            interactive={false}
           >
-            <Tooltip direction="top" offset={[0, -10]}>
-              Вы здесь
+            <Tooltip
+              permanent
+              direction="top"
+              className="font-sans font-semibold"
+            >
+              {markerLabel}
             </Tooltip>
           </Marker>
         </>
@@ -241,25 +248,19 @@ function readBounds(map: LeafletMap): MapBounds {
 }
 
 /** Reports the visible area once the map settles after a move or zoom. */
-function WatchBounds({
-  onChange,
-}: {
-  onChange: (bounds: MapBounds, zoom: number) => void
-}) {
+function WatchBounds({ onChange }: { onChange: (bounds: MapBounds) => void }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const report = (map: LeafletMap) => {
     clearTimeout(timer.current)
-    timer.current = setTimeout(
-      () => onChange(readBounds(map), map.getZoom()),
-      BOUNDS_DELAY_MS,
-    )
+    timer.current = setTimeout(() => onChange(readBounds(map)), BOUNDS_DELAY_MS)
   }
   const map = useMapEvents({
     moveend: () => report(map),
     zoomend: () => report(map),
   })
   useEffect(() => {
-    onChange(readBounds(map), map.getZoom())
+    map.attributionControl?.setPrefix(false)
+    onChange(readBounds(map))
     return () => clearTimeout(timer.current)
     // The first area is reported once; later ones come from map events.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -279,30 +280,36 @@ function FollowView({ view }: { view: MapView }) {
 
 /**
  * Feed map: cat and dog markers colored by need priority with the need type
- * as the label, the search point with its radius and the "Где я" button.
+ * as the label, the search radius and a control to return to the user's point.
  * Client only: load it with `next/dynamic` and `ssr: false`.
  */
 export default function CasesMap({
   view,
   point,
+  homePoint,
   radiusKm,
   items,
   needTypeName,
   onBoundsChange,
 }: {
   view: MapView
-  point?: { latitude: number; longitude: number }
+  point?: FeedPoint
+  homePoint?: FeedPoint
   radiusKm?: number
   items: CaseMapItem[]
   needTypeName: (code: string) => string
-  onBoundsChange: (bounds: MapBounds, zoom: number) => void
+  onBoundsChange: (bounds: MapBounds) => void
 }) {
-  const [zoom, setZoom] = useState(view.zoom)
-  const labels = zoom >= LABEL_ZOOM && items.length <= LABEL_LIMIT
+  const samePoint =
+    point &&
+    homePoint &&
+    point.latitude === homePoint.latitude &&
+    point.longitude === homePoint.longitude
   return (
     <MapContainer
       center={[view.latitude, view.longitude]}
       zoom={view.zoom}
+      scrollWheelZoom={false}
       className="size-full"
     >
       <TileLayer
@@ -310,13 +317,8 @@ export default function CasesMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FollowView view={view} />
-      <LocateControl />
-      <WatchBounds
-        onChange={(bounds, value) => {
-          setZoom(value)
-          onBoundsChange(bounds, value)
-        }}
-      />
+      <LocateControl homePoint={homePoint} />
+      <WatchBounds onChange={onBoundsChange} />
       {point && (
         <>
           {radiusKm && (
@@ -330,15 +332,17 @@ export default function CasesMap({
               }}
             />
           )}
-          <Marker
-            position={[point.latitude, point.longitude]}
-            icon={searchPointIcon}
-            keyboard={false}
-          >
-            <Tooltip direction="top" offset={[0, -28]}>
-              Точка поиска
-            </Tooltip>
-          </Marker>
+          {!samePoint && (
+            <Marker
+              position={[point.latitude, point.longitude]}
+              icon={searchPointIcon}
+              keyboard={false}
+            >
+              <Tooltip direction="top" offset={[0, -28]}>
+                Точка поиска
+              </Tooltip>
+            </Marker>
+          )}
         </>
       )}
       {items.map((item) => {
@@ -347,8 +351,7 @@ export default function CasesMap({
           : item.title
         return (
           <Marker
-            // A label switch remounts the marker so Leaflet re-binds the tooltip.
-            key={`${item.id}-${labels}`}
+            key={item.id}
             position={[item.latitude, item.longitude]}
             icon={caseIcon(item.animalType, item.topNeedPriority ?? "NONE")}
             // Urgent cases stay on top where markers overlap.
@@ -365,7 +368,6 @@ export default function CasesMap({
             }}
           >
             <Tooltip
-              permanent={labels}
               direction="right"
               offset={[4, 0]}
               className="font-semibold"

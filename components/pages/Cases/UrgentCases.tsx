@@ -46,7 +46,7 @@ export function UrgentCases({
   return (
     <section
       aria-labelledby="urgent-cases-title"
-      className="flex h-full min-w-0 flex-col gap-4 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5"
+      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5"
     >
       <div className="flex items-center justify-between gap-3">
         <h2
@@ -68,7 +68,7 @@ export function UrgentCases({
         <div
           role="status"
           aria-label="Загружаем срочные запросы"
-          className="flex flex-col gap-3"
+          className="grid gap-3 lg:grid-cols-2"
         >
           {[0, 1, 2].map((key) => (
             <Skeleton key={key} className="h-[4.75rem] rounded-xl" />
@@ -82,7 +82,7 @@ export function UrgentCases({
           )}
         />
       ) : items.length ? (
-        <ul className="flex flex-col gap-2.5">
+        <ul className="grid gap-2.5 lg:grid-cols-2">
           {items.map((item) => {
             const need = item.topNeed!
             const meta = [
@@ -133,17 +133,13 @@ export function UrgentCases({
           })}
         </ul>
       ) : (
-        <div className="flex flex-1 items-center gap-3 rounded-xl bg-success/60 p-4 lg:flex-col lg:justify-center lg:text-center">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card text-success-foreground shadow-xs">
-            <CircleCheck aria-hidden className="size-5" />
-          </span>
-          <span className="flex flex-col gap-0.5">
-            <span className="font-semibold">Срочных запросов нет</span>
-            <span className="text-sm text-foreground/75">
-              По выбранным фильтрам сейчас нет объявлений с высоким приоритетом.
-            </span>
-          </span>
-        </div>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CircleCheck
+            aria-hidden
+            className="size-4 shrink-0 text-success-foreground"
+          />
+          По выбранным фильтрам срочных запросов нет.
+        </p>
       )}
     </section>
   )

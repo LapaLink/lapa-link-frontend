@@ -29,3 +29,4 @@ export {
   ComplaintDialog,
 } from "./ComplaintDialog/ComplaintDialog"
 export { UnreadCount } from "./UnreadCount/UnreadCount"
+export { BadgeArtwork } from "./BadgeArtwork/BadgeArtwork"

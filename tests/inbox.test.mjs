@@ -117,6 +117,7 @@ test("notification center escapes backend text, exposes unread count and read co
         AlertDialogAction: container,
       },
       "../FormAlert/FormAlert": { FormAlert: () => null },
+      "../BadgeArtwork/BadgeArtwork": { BadgeArtwork: () => null },
       "../ListPagination/ListPagination": { ListPagination: () => null },
       "../StatusBadge/StatusBadge": {
         StatusBadge: ({ children }) => React.createElement("span", null, children),

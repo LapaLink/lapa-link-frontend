@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   AlarmClock,
-  Award,
   Bell,
   Check,
   CheckCheck,
@@ -62,13 +61,13 @@ import {
   AlertDialogAction,
 } from "@/components/ui"
 import { cn } from "@/lib/utils"
+import { BadgeArtwork } from "../BadgeArtwork/BadgeArtwork"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { StatusBadge } from "../StatusBadge/StatusBadge"
 import { ListPagination } from "../ListPagination/ListPagination"
 
 // Events that get an icon next to the title.
 const eventIcons: Record<string, LucideIcon> = {
-  BADGE_AWARDED: Award,
   NEED_DEADLINE_APPROACHING: AlarmClock,
   NEED_EXPIRED: TimerOff,
   MODERATION_WARNING: TriangleAlert,
@@ -286,7 +285,11 @@ export function NotificationCenter() {
                           : "bg-primary-soft text-primary",
                       )}
                     >
-                      <EventIcon className="size-4" />
+                      {item.eventType === "BADGE_AWARDED" ? (
+                        <BadgeArtwork size={30} />
+                      ) : (
+                        <EventIcon className="size-4" />
+                      )}
                       {!item.read && (
                         <span className="absolute top-0 right-0 size-2 rounded-full bg-primary" />
                       )}

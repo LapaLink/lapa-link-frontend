@@ -19,7 +19,7 @@ import {
 } from "@/lib/inbox"
 import type { InboxNotification, PageResponse } from "@/types"
 import { invalidateChatData, queryKeys } from "@/lib/queryKeys"
-import { MandatoryNotifications } from "@/components/common"
+import { BadgeArtwork, MandatoryNotifications } from "@/components/common"
 
 export function NotificationsProvider({
   children,
@@ -113,6 +113,7 @@ function Connection({ session }: { session: string }) {
         showToast(item.title, {
           id: item.id,
           description: item.message,
+          ...(badgeAwarded ? { icon: <BadgeArtwork size={22} /> } : {}),
           ...(href
             ? {
                 action: {

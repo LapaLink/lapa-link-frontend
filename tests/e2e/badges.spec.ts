@@ -6,7 +6,7 @@ const badge = {
   category: "HELPER",
   name: "Надёжный помощник",
   description: "Выполнил 5 назначений по помощи животным",
-  icon: "shield",
+  icon: null,
 }
 
 test("my badges retry, refresh on an award and open from the inbox", async ({
@@ -61,12 +61,19 @@ test("my badges retry, refresh on an award and open from the inbox", async ({
   await expect(page.getByText("Значки временно недоступны")).toBeVisible()
   await page.getByRole("button", { name: "Повторить" }).click()
   await expect(page.getByText("Получено 0 из 1")).toBeVisible()
+  const medal = page.locator('img[src="/badges/reliable-helper.svg"]')
+  await expect(medal).toBeVisible()
+  await expect
+    .poll(() => medal.evaluate((image: HTMLImageElement) => image.naturalWidth))
+    .toBeGreaterThan(0)
+  await expect(medal).toHaveCSS("opacity", "0.55")
   await expect(page.getByRole("progressbar")).toHaveAttribute("value", "3")
   expect(authorization).toBe("Bearer e2e-access")
 
   earned = true
   await expect(page.getByText(award.message)).toBeVisible()
   await expect(page.getByText("Получено 1 из 1")).toBeVisible()
+  await expect(medal).toHaveCSS("opacity", "1")
   await expect(page.locator(`time[datetime="${now}"]`)).toBeVisible()
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -88,6 +95,7 @@ test("guests can open recent and additional badges on a case", async ({
   await installFixture(page, { signedIn: false })
   const badges = Array.from({ length: 4 }, (_, index) => ({
     ...badge,
+    icon: index === 3 ? "shield" : null,
     code: `BADGE_${index + 1}`,
     name: `Значок ${index + 1}`,
     awardedAt: `2026-11-0${index + 1}T10:00:00Z`,
@@ -100,6 +108,12 @@ test("guests can open recent and additional badges on a case", async ({
 
   await page.goto(`/cases/${ids.animalCase}`)
   const authorBadges = page.getByRole("list", { name: "Значки автора" })
+  await expect(
+    authorBadges.locator('img[src="/badges/helper.svg"]'),
+  ).toHaveCount(2)
+  await expect(
+    authorBadges.locator('img[src="/badges/trust.svg"]'),
+  ).toHaveCount(1)
   await expect(authorBadges.getByRole("button").first()).toHaveAccessibleName(
     "Значок 4",
   )

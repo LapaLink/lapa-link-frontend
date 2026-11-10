@@ -41,7 +41,6 @@ import {
 import {
   FEED_DEFAULT_RADIUS_KM,
   FEED_SEARCH_MAX,
-  MAP_MAX_SPAN,
   changeFeed,
   feedQueryString,
   hasFeedFilters,
@@ -127,12 +126,10 @@ const mapLegend = [
   ["fill-amber-500", "Средний"],
   ["fill-slate-500", "Низкий"],
   ["fill-slate-400", "Без потребностей"],
-  ["fill-sky-500", "Вы здесь"],
 ] as const
 
 const geolocationHint =
   "Не удалось определить местоположение. Разрешите доступ к геолокации в браузере или выберите точку на карте."
-
 
 function useDebouncedCommit<T>(initial: T, commit: (value: T) => void) {
   const [input, setInput] = useState({ source: initial, value: initial })
@@ -171,9 +168,8 @@ export function CasesList() {
   const [mapOpen, setMapOpen] = useState(false)
   const [locating, setLocating] = useState(false)
   const [pointHint, setPointHint] = useState("")
-  const [nearOpen, setNearOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [nearOpen, setNearOpen] = useState<boolean | null>(null)
+  const [moreOpen, setMoreOpen] = useState<boolean | null>(null)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
 
   const navigate = (next: FeedState) => {
@@ -291,11 +287,17 @@ export function CasesList() {
       void client.resetQueries({ queryKey: ["cases", "list", "cursor"] })
   }, [cursorBroken, client])
   const city = allCities?.find((item) => item.code === state.cityCode)
+  const homePoint =
+    user?.homeLatitude != null && user.homeLongitude != null
+      ? { latitude: user.homeLatitude, longitude: user.homeLongitude }
+      : undefined
   const mapView = state.point
     ? { ...state.point, zoom: 12 }
     : city
       ? { latitude: city.latitude, longitude: city.longitude, zoom: 11 }
-      : DEFAULT_VIEW
+      : homePoint
+        ? { ...homePoint, zoom: 12 }
+        : DEFAULT_VIEW
   // Areas over MAP_MAX_SPAN° are not requested (400 INVALID_BOUNDS).
   const mapFilter =
     mapBounds && isMapAreaAllowed(mapBounds)
@@ -339,8 +341,12 @@ export function CasesList() {
       )
   }, [dictionaryReady, requestedCodes, availableCodes, cleanedQuery, router])
 
-  const nearVisible = nearOpen || !!state.point
-  const moreVisible = moreOpen || !!state.needStatus
+  const nearVisible = nearOpen ?? !!state.point
+  const advancedCount =
+    Number(!!state.point) +
+    Number(!!state.priority) +
+    Number(!!state.needStatus)
+  const moreVisible = moreOpen ?? advancedCount > 0
   // Neutral fields: the burgundy accent is kept for actions. The value sits
   // next to the icon instead of the trigger's center.
   const fieldClass =
@@ -560,123 +566,25 @@ export function CasesList() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="outline"
-            className={cn(
-              chipClass,
-              "flex-1 sm:flex-none",
-              nearVisible && "border-primary/40 bg-primary-soft text-primary",
-            )}
-            aria-expanded={nearVisible}
-            aria-controls="near-filter"
-            onClick={() => {
-              // Closing the panel also drops the point it set.
-              if (nearVisible && state.point) update({ point: undefined })
-              setNearOpen(!nearVisible)
-            }}
-          >
-            <LocateFixed aria-hidden />
-            Рядом со мной
-          </Button>
-          {/* On phones the rest folds behind "Фильтры" to leave room for cases. */}
-          <Button
-            type="button"
-            variant="outline"
-            className={cn(
-              chipClass,
-              "flex-1 sm:hidden",
-              filtersOpen && "border-primary/40 bg-primary-soft text-primary",
-            )}
-            aria-expanded={filtersOpen}
+            variant={moreVisible ? "secondary" : "outline"}
+            className={chipClass}
+            aria-expanded={moreVisible}
             aria-controls="feed-more-filters"
-            onClick={() => setFiltersOpen((open) => !open)}
+            onClick={() => setMoreOpen(!moreVisible)}
           >
-            <SlidersHorizontal aria-hidden />
-            Фильтры
-            {(state.priority || state.needStatus) && (
-              <span aria-hidden className="size-2 rounded-full bg-primary" />
+            <SlidersHorizontal data-icon="inline-start" />
+            Ещё фильтры
+            {advancedCount > 0 && (
+              <span className="rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">
+                <span className="sr-only">активных: </span>
+                {advancedCount}
+              </span>
             )}
+            <ChevronDown
+              data-icon="inline-end"
+              className={cn(moreVisible && "rotate-180")}
+            />
           </Button>
-          <div
-            id="feed-more-filters"
-            className={cn(
-              "w-full flex-wrap items-center gap-2 sm:contents",
-              filtersOpen ? "flex" : "hidden",
-            )}
-          >
-          <Select
-            value={state.priority ?? ALL}
-            onValueChange={(value) =>
-              update({
-                priority: value === ALL ? undefined : (value as NeedPriority),
-              })
-            }
-          >
-            <SelectTrigger
-              size="sm"
-              aria-label="Приоритет"
-              className={cn(
-                "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
-                fieldClass,
-              )}
-            >
-              <CircleAlert aria-hidden className="text-primary" />
-              <span className="text-muted-foreground">Приоритет:</span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={ALL}>любой</SelectItem>
-                {(["HIGH", "MEDIUM", "LOW"] as const).map((priority) => (
-                  <SelectItem key={priority} value={priority}>
-                    {needPriorityLabels[priority]}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          {moreVisible ? (
-            <Select
-              value={state.needStatus ?? ALL}
-              onValueChange={(value) =>
-                update({
-                  needStatus: value === ALL ? undefined : (value as NeedStatus),
-                })
-              }
-            >
-              <SelectTrigger
-                size="sm"
-                aria-label="Статус потребности"
-                className={cn(
-                  "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
-                  fieldClass,
-                )}
-              >
-                <ListFilter aria-hidden className="text-primary" />
-                <span className="text-muted-foreground">Статус:</span>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={ALL}>любой</SelectItem>
-                  {(["OPEN", "ASSIGNED", "CLOSED"] as const).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {needStatusLabels[status]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className={cn(chipClass, "text-foreground/80")}
-              onClick={() => setMoreOpen(true)}
-            >
-              <Plus aria-hidden />
-              Ещё фильтры
-            </Button>
-          )}
           {(hasFeedFilters(state) || searchText) && (
             <Button
               type="button"
@@ -688,83 +596,167 @@ export function CasesList() {
               Сбросить фильтры
             </Button>
           )}
-          </div>
         </div>
-
-        {nearVisible && (
-          <fieldset
-            id="near-filter"
-            className="flex flex-col gap-3 rounded-xl bg-muted/60 p-3 sm:flex-row sm:flex-wrap sm:items-center"
-          >
-            <legend className="sr-only">Рядом со мной</legend>
+        <div id="feed-more-filters" hidden={!moreVisible}>
+          <div className="flex flex-col gap-3 border-t pt-3">
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className={chipClass}
-                disabled={locating}
-                onClick={locate}
+                className={cn(
+                  chipClass,
+                  "flex-1 sm:flex-none",
+                  nearVisible &&
+                    "border-primary/40 bg-primary-soft text-primary",
+                )}
+                aria-expanded={nearVisible}
+                aria-controls="near-filter"
+                onClick={() => setNearOpen(!nearVisible)}
               >
                 <LocateFixed aria-hidden />
-                {locating ? "Определяем…" : "Моё местоположение"}
+                Рядом со мной
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className={chipClass}
-                onClick={() => setMapOpen(true)}
+              <Select
+                value={state.priority ?? ALL}
+                onValueChange={(value) =>
+                  update({
+                    priority:
+                      value === ALL ? undefined : (value as NeedPriority),
+                  })
+                }
               >
-                <MapIcon aria-hidden />
-                На карте
-              </Button>
-              {state.point ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className={chipClass}
-                  onClick={() => update({ point: undefined })}
-                >
-                  <X aria-hidden />
-                  Убрать точку
-                </Button>
-              ) : (
-                <span className="text-sm text-foreground/75">
-                  Укажите точку, чтобы искать рядом
-                </span>
-              )}
-            </div>
-            <div className="flex min-w-48 flex-1 flex-col gap-1">
-              <div className="flex items-baseline gap-3">
-                <label
-                  htmlFor="radius-filter"
-                  className="text-sm text-foreground/75"
-                >
-                  Радиус
-                </label>
-                <span
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Приоритет"
                   className={cn(
-                    "text-sm font-semibold",
-                    !state.point && "text-muted-foreground",
+                    "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+                    fieldClass,
                   )}
                 >
-                  {radius} км
-                </span>
-              </div>
-              <input
-                id="radius-filter"
-                type="range"
-                min={1}
-                max={100}
-                step={1}
-                value={radius}
-                disabled={!state.point}
-                aria-valuetext={`до ${radius} км`}
-                onChange={(event) => setRadius(Number(event.target.value))}
-                className="h-7 w-full cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
-              />
+                  <CircleAlert aria-hidden className="text-primary" />
+                  <span className="text-muted-foreground">Приоритет:</span>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={ALL}>любой</SelectItem>
+                    {(["HIGH", "MEDIUM", "LOW"] as const).map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {needPriorityLabels[priority]}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select
+                value={state.needStatus ?? ALL}
+                onValueChange={(value) =>
+                  update({
+                    needStatus:
+                      value === ALL ? undefined : (value as NeedStatus),
+                  })
+                }
+              >
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Статус потребности"
+                  className={cn(
+                    "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+                    fieldClass,
+                  )}
+                >
+                  <ListFilter aria-hidden className="text-primary" />
+                  <span className="text-muted-foreground">Статус:</span>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value={ALL}>любой</SelectItem>
+                    {(["OPEN", "ASSIGNED", "CLOSED"] as const).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {needStatusLabels[status]}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-          </fieldset>
-        )}
+            {nearVisible && (
+              <fieldset
+                id="near-filter"
+                className="flex flex-col gap-3 rounded-xl bg-muted/60 p-3 sm:flex-row sm:flex-wrap sm:items-center"
+              >
+                <legend className="sr-only">Рядом со мной</legend>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={chipClass}
+                    disabled={locating}
+                    onClick={locate}
+                  >
+                    <LocateFixed aria-hidden />
+                    {locating ? "Определяем…" : "Моё местоположение"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={chipClass}
+                    onClick={() => setMapOpen(true)}
+                  >
+                    <MapIcon aria-hidden />
+                    На карте
+                  </Button>
+                  {state.point ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className={chipClass}
+                      onClick={() => update({ point: undefined })}
+                    >
+                      <X aria-hidden />
+                      Убрать точку
+                    </Button>
+                  ) : (
+                    <span className="text-sm text-foreground/75">
+                      Укажите точку, чтобы искать рядом
+                    </span>
+                  )}
+                </div>
+                <div className="flex min-w-48 flex-1 flex-col gap-1">
+                  <div className="flex items-baseline gap-3">
+                    <label
+                      htmlFor="radius-filter"
+                      className="text-sm text-foreground/75"
+                    >
+                      Радиус
+                    </label>
+                    <span
+                      className={cn(
+                        "text-sm font-semibold",
+                        !state.point && "text-muted-foreground",
+                      )}
+                    >
+                      {radius} км
+                    </span>
+                  </div>
+                  <input
+                    id="radius-filter"
+                    type="range"
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={radius}
+                    disabled={!state.point}
+                    aria-valuetext={`до ${radius} км`}
+                    onChange={(event) => setRadius(Number(event.target.value))}
+                    className="h-7 w-full cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              </fieldset>
+            )}
+          </div>
+        </div>
         <FormAlert message={pointHint} />
       </div>
 
@@ -794,63 +786,66 @@ export function CasesList() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-5 lg:grid-cols-5">
-        <section
-          aria-label="Карта объявлений"
-          className="relative flex min-w-0 flex-col gap-2 lg:col-span-3"
+      <section
+        aria-labelledby="cases-map-title"
+        className="flex min-w-0 flex-col gap-3"
+      >
+        <h2
+          id="cases-map-title"
+          className="flex items-center gap-2 text-xl font-bold"
         >
-          {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
-          <div className="relative isolate h-72 overflow-hidden rounded-2xl border border-foreground/[0.07] shadow-card sm:h-96">
-            <CasesMap
-              view={mapView}
-              point={state.point}
-              radiusKm={state.point ? radius : undefined}
-              items={(mapFilter && markers.data?.items) || []}
-              needTypeName={needTypeName}
-              onBoundsChange={setMapBounds}
-            />
-            {(mapBounds && !mapFilter) ||
-            markers.data?.truncated ||
-            markers.isError ? (
-              <p
-                role="status"
-                className="absolute inset-x-3 top-3 z-[1000] mx-auto w-fit max-w-[calc(100%-1.5rem)] rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
-              >
-                {mapBounds && !mapFilter
-                  ? `Приблизьте карту: показываем область не больше ${MAP_MAX_SPAN}° по стороне`
-                  : markers.isError
-                    ? getErrorMessage(
-                        markers.error,
-                        "Не удалось загрузить метки на карте.",
-                      )
-                    : "Показаны не все объявления — приблизьте карту"}
-              </p>
-            ) : null}
-          </div>
-          {/* Over the map's corner from sm up; under it on phones. */}
-          <ul
-            aria-label="Цвет метки — приоритет"
-            className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-foreground/75 sm:absolute sm:bottom-3 sm:left-3 sm:z-[1000] sm:max-w-[calc(100%-15rem)] sm:rounded-lg sm:bg-card/95 sm:px-2.5 sm:py-1.5 sm:shadow-sm sm:backdrop-blur"
-          >
-            {mapLegend.map(([fill, label]) => (
-              <li key={label} className="flex items-center gap-1.5">
-                <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
-                  <circle cx="5" cy="5" r="5" className={fill} />
-                </svg>
-                {label}
-              </li>
-            ))}
-          </ul>
-        </section>
-        <div className="lg:col-span-2">
-          <UrgentCases
-            filter={filter}
-            enabled={feedReady}
-            cityName={(code) => getCityName(cities.data, code, locale)}
+          <MapIcon aria-hidden className="size-5 text-primary" />
+          Карта объявлений
+        </h2>
+        {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
+        <div className="relative isolate h-[22rem] overflow-hidden rounded-2xl border border-foreground/[0.07] shadow-card sm:h-[28rem] lg:h-[34rem]">
+          <CasesMap
+            view={mapView}
+            point={state.point}
+            homePoint={homePoint}
+            radiusKm={state.point ? radius : undefined}
+            items={(mapFilter && markers.data?.items) || []}
             needTypeName={needTypeName}
+            onBoundsChange={setMapBounds}
           />
+          {(mapBounds && !mapFilter) ||
+          markers.data?.truncated ||
+          markers.isError ? (
+            <p
+              role="status"
+              className="absolute inset-x-14 top-3 z-[1000] mx-auto w-fit rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
+            >
+              {mapBounds && !mapFilter
+                ? "Приблизьте карту, чтобы увидеть объявления"
+                : markers.isError
+                  ? getErrorMessage(
+                      markers.error,
+                      "Не удалось загрузить метки на карте.",
+                    )
+                  : "Показаны не все объявления — приблизьте карту"}
+            </p>
+          ) : null}
         </div>
-      </div>
+        <ul
+          aria-label="Цвет метки — приоритет"
+          className="flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs text-foreground/75"
+        >
+          {mapLegend.map(([fill, label]) => (
+            <li key={label} className="flex items-center gap-1.5">
+              <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
+                <circle cx="5" cy="5" r="5" className={fill} />
+              </svg>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <UrgentCases
+        filter={filter}
+        enabled={feedReady}
+        cityName={(code) => getCityName(cities.data, code, locale)}
+        needTypeName={needTypeName}
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
@@ -884,14 +879,14 @@ export function CasesList() {
             <SelectGroup>
               {(["NEWEST", "DISTANCE", "PRIORITY", "DEADLINE"] as const).map(
                 (orderBy) => (
-                <SelectItem
-                  key={orderBy}
-                  value={orderBy}
-                  // Ordering by distance needs a point (FEED_POINT_REQUIRED).
-                  disabled={orderBy === "DISTANCE" && !state.point}
-                >
-                  {sortLabels[orderBy]}
-                </SelectItem>
+                  <SelectItem
+                    key={orderBy}
+                    value={orderBy}
+                    // Ordering by distance needs a point (FEED_POINT_REQUIRED).
+                    disabled={orderBy === "DISTANCE" && !state.point}
+                  >
+                    {sortLabels[orderBy]}
+                  </SelectItem>
                 ),
               )}
             </SelectGroup>
