@@ -70,6 +70,12 @@ export type CaseFeedFilter = {
   /** Integer 1..100. */
   radiusKm?: number
   orderBy?: CaseFeedSort
+  /**
+   * Cursor mode of GET /cases (not for matching-cases): "" starts it, then
+   * the `nextCursor` of the previous page with the same filters and order.
+   * `page` is ignored with a cursor; an invalid one is 400 INVALID_CURSOR.
+   */
+  cursor?: string
   page?: number
   size?: number
 }
@@ -84,6 +90,19 @@ export type PageResponse<T> = {
   totalPages: number
   first: boolean
   last: boolean
+}
+
+/**
+ * One page of GET /cases. In cursor mode the totals are null and `page` is
+ * 0; `nextCursor` is null on the last page.
+ */
+export type CaseListPage = Omit<
+  PageResponse<CaseListItem>,
+  "totalElements" | "totalPages"
+> & {
+  totalElements: number | null
+  totalPages: number | null
+  nextCursor?: string | null
 }
 
 export type CreateCaseDto = {

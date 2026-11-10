@@ -7,6 +7,7 @@ export {
   feedQueryString,
   hasFeedFilters,
   isMapAreaAllowed,
+  mergeFeedPages,
   toMapFilter,
   parseFeedState,
   toFeedFilter,

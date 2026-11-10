@@ -6,6 +6,7 @@ import type {
   CaseFeedFilter,
   CaseGalleryPhoto,
   CaseListItem,
+  CaseListPage,
   CaseMapFilter,
   CaseMapResponse,
   CaseNeed,
@@ -43,9 +44,19 @@ export const casesApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
-  /** Public feed. Empty strings and undefined are not sent; there is no `sort` (use `orderBy`). */
-  list: (params: CaseFeedFilter = {}, signal?: AbortSignal) =>
-    request<PageResponse<CaseListItem>>(`/cases${query(params)}`, { signal }),
+  /**
+   * Public feed. Empty strings and undefined are not sent, except `cursor`:
+   * an empty one starts the cursor mode. There is no `sort` (use `orderBy`).
+   */
+  list: (params: CaseFeedFilter = {}, signal?: AbortSignal) => {
+    const { cursor, ...rest } = params
+    const search = new URLSearchParams(query(rest).slice(1))
+    if (cursor !== undefined) search.set("cursor", cursor)
+    const value = search.toString()
+    return request<CaseListPage>(`/cases${value ? `?${value}` : ""}`, {
+      signal,
+    })
+  },
   getCases: (params: CaseFeedFilter = {}) => casesApi.list(params),
   /**
    * Feed of cases with an OPEN need matching the user's active help offers:

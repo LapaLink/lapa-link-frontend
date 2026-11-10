@@ -136,6 +136,14 @@ function renderPage(
         queryKey[1] === "responses"
           ? { ...result, data: { content: [] } }
           : result,
+      // The public feed loads by cursor: one page, "more" while nextCursor is set.
+      useInfiniteQuery: () => ({
+        ...result,
+        data: result.data && { pages: [result.data] },
+        hasNextPage: !!result.data?.nextCursor,
+        isFetchingNextPage: false,
+        fetchNextPage() {},
+      }),
       useQueryClient: () => ({}),
       useMutation: () => ({ isPending: false, isSuccess: false }),
     },
@@ -421,14 +429,21 @@ test("needs are an accordion: summary with an author menu, the first one expande
   assert.ok(!stranger.includes("Действия:"))
 })
 
-test("public cards link to details, use logo placeholder and paginate six items", () => {
+test("public cards link to details, use logo placeholder and load more by cursor", () => {
   const html = renderPage("components/pages/Cases/CasesList.tsx", "CasesList", {
-    data: { content: [item], totalPages: 2 },
+    data: { content: [item], totalPages: null, nextCursor: "abc" },
   })
   assert.ok(html.includes('href="/cases/case-1"'))
   assert.ok(html.includes('href="/my-cases"'))
   assert.ok(html.includes('src="/icon.svg"'))
-  assert.ok(html.includes("1 из 2"))
+  assert.ok(html.includes("Показать ещё"))
+  // Cursor mode has no page numbers and no total.
+  assert.ok(!html.includes("1 из 2"))
+  assert.ok(!html.includes("Найдено объявлений"))
+  const last = renderPage("components/pages/Cases/CasesList.tsx", "CasesList", {
+    data: { content: [item], nextCursor: null },
+  })
+  assert.ok(!last.includes("Показать ещё"))
   assert.ok(!html.includes(">Открыть<"))
 })
 
@@ -480,7 +495,7 @@ test("feed: old title links fill search, guests see the matching mode locked, no
     data: { content: [item], totalPages: 1, totalElements: 1 },
   })
   assert.match(guest, /id="search-filter"[^>]*value="рыжий"/)
-  assert.ok(guest.includes("Найдено объявлений: 1"))
+  assert.ok(guest.includes("Показано объявлений: 1"))
   assert.match(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
   assert.ok(guest.includes("доступно только авторизованным"))
   assert.ok(!guest.includes('href="/my-cases"'))

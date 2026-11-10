@@ -209,3 +209,13 @@ export function toMapFilter(
     ...bounds,
   }
 }
+
+/** Cards of cursor pages in order, each id once: the feed is live, so a card can repeat. */
+export function mergeFeedPages<T extends { id: string }>(
+  pages: ReadonlyArray<{ content: readonly T[] }>,
+): T[] {
+  const seen = new Set<string>()
+  return pages
+    .flatMap((page) => page.content)
+    .filter((item) => !seen.has(item.id) && !!seen.add(item.id))
+}

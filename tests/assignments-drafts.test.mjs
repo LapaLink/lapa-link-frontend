@@ -325,3 +325,27 @@ test("mandatory notifications: queue is deduped by id, API path, schema keeps th
   assert.equal(inboxNotificationSchema.parse({ ...base, mandatory: true }).mandatory, true)
   assert.equal(inboxNotificationSchema.parse(base).mandatory, undefined)
 })
+
+test("cursor feed: an empty cursor is sent, pages merge without repeats", async () => {
+  const urls = []
+  const [api] = load(["api/cases.ts"], {
+    fetch: async (url) => {
+      urls.push(url)
+      return response(200, { content: [], nextCursor: null })
+    },
+  })
+  await api.casesApi.list({ size: 20, cursor: "" })
+  await api.casesApi.list({ size: 20, cursor: "abc", cityCode: "minsk" })
+  await api.casesApi.list({ size: 20, page: 2 })
+  assert.deepEqual(urls, [
+    "/api/v1/cases?size=20&cursor=",
+    "/api/v1/cases?size=20&cityCode=minsk&cursor=abc",
+    "/api/v1/cases?size=20&page=2",
+  ])
+  const { mergeFeedPages } = load("lib/cases/feed.ts")
+  const merged = mergeFeedPages([
+    { content: [{ id: "a" }, { id: "b" }] },
+    { content: [{ id: "b" }, { id: "c" }] },
+  ])
+  assert.deepEqual([...merged].map((item) => item.id), ["a", "b", "c"])
+})

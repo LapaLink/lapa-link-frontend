@@ -20,6 +20,7 @@ export type {
   PageResponse,
   CaseAuthor,
   CaseListItem,
+  CaseListPage,
   CaseTopNeed,
   CaseMapFilter,
   CaseMapItem,

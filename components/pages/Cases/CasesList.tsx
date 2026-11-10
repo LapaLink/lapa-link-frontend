@@ -4,7 +4,12 @@ import Link from "next/link"
 import dynamic from "next/dynamic"
 import { useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { cn } from "cn"
 import {
   ArrowUpDown,
@@ -41,6 +46,7 @@ import {
   feedQueryString,
   hasFeedFilters,
   isMapAreaAllowed,
+  mergeFeedPages,
   parseFeedState,
   toFeedFilter,
   toMapFilter,
@@ -85,6 +91,7 @@ import {
   EmptyState,
   FormAlert,
   ListPagination,
+  LoadingButton,
   PageHeader,
 } from "@/components/common"
 import { needStatusLabels } from "./statusLabels"
@@ -249,18 +256,40 @@ export function CasesList() {
     (!matching || !authLoading) &&
     (!state.needTypes.length || !!needTypes.data) &&
     (!state.cityCode || !!cities.data)
-  const cases = useQuery({
-    queryKey: ["cases", "list", state.mode, filter],
-    // The signal aborts the request once the filters move on.
-    queryFn: ({ signal }) =>
-      matching
-        ? casesApi.matching(filter, signal)
-        : casesApi.list(filter, signal),
-    // "Подходит мне" waits for the session check; without a session the
-    // authorized request fails with the usual 401.
-    // Need type and city codes wait for the dictionaries that validate them.
-    enabled: feedReady,
+  // "Подходит мне" keeps page numbers: the cursor is not supported there.
+  const matchingFeed = useQuery({
+    queryKey: ["cases", "list", "matching", filter],
+    queryFn: ({ signal }) => casesApi.matching(filter, signal),
+    // It waits for the session check; without a session the authorized
+    // request fails with the usual 401. Need type and city codes wait for
+    // the dictionaries that validate them.
+    enabled: feedReady && matching,
   })
+  // The public feed loads by cursor ("Показать ещё"). Any change of filters
+  // or order is a new key, so the list restarts from an empty cursor.
+  const cursorFilter = { ...filter, page: undefined }
+  const cursorFeed = useInfiniteQuery({
+    queryKey: ["cases", "list", "cursor", cursorFilter],
+    queryFn: ({ pageParam, signal }) =>
+      casesApi.list({ ...cursorFilter, cursor: pageParam }, signal),
+    initialPageParam: "",
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: feedReady && !matching,
+  })
+  const cases = matching ? matchingFeed : cursorFeed
+  const feedItems = matching
+    ? matchingFeed.data?.content
+    : cursorFeed.data && mergeFeedPages(cursorFeed.data.pages)
+  // A broken cursor is not for the user: start the list over, silently.
+  const cursorBroken =
+    !matching &&
+    cursorFeed.error instanceof ApiError &&
+    cursorFeed.error.code === "INVALID_CURSOR"
+  const client = useQueryClient()
+  useEffect(() => {
+    if (cursorBroken)
+      void client.resetQueries({ queryKey: ["cases", "list", "cursor"] })
+  }, [cursorBroken, client])
   const city = allCities?.find((item) => item.code === state.cityCode)
   const mapView = state.point
     ? { ...state.point, zoom: 12 }
@@ -828,9 +857,11 @@ export function CasesList() {
           <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
             Объявления
           </h2>
-          {cases.data && (
+          {feedItems && (
             <p role="status" className="text-sm text-foreground/75">
-              Найдено объявлений: {cases.data.totalElements}
+              {matching
+                ? `Найдено объявлений: ${matchingFeed.data?.totalElements}`
+                : `Показано объявлений: ${feedItems.length}`}
             </p>
           )}
         </div>
@@ -868,9 +899,9 @@ export function CasesList() {
         </Select>
       </div>
 
-      {cases.isPending ? (
+      {cases.isPending || cursorBroken ? (
         <CaseFeedSkeleton />
-      ) : cases.isError ? (
+      ) : cases.isError && !feedItems?.length ? (
         <EmptyState
           icon={CloudOff}
           title="Не получилось загрузить объявления"
@@ -890,9 +921,9 @@ export function CasesList() {
             Попробовать ещё раз
           </Button>
         </EmptyState>
-      ) : cases.data.content.length ? (
+      ) : feedItems?.length ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {cases.data.content.map((item) => (
+          {feedItems.map((item) => (
             <CaseFeedCard
               key={item.id}
               item={item}
@@ -920,13 +951,36 @@ export function CasesList() {
           description="Пока нет объявлений по выбранным фильтрам."
         />
       )}
-      {cases.data && (
+      {matching && matchingFeed.data && (
         <ListPagination
           page={state.page}
-          totalPages={cases.data.totalPages}
-          busy={cases.isFetching}
+          totalPages={matchingFeed.data.totalPages}
+          busy={matchingFeed.isFetching}
           onPageChange={(page) => navigate({ ...state, page })}
         />
+      )}
+      {!matching && !!feedItems?.length && (
+        <div className="flex flex-col items-center gap-3">
+          {cursorFeed.isError && (
+            <FormAlert
+              message={getErrorMessage(
+                cursorFeed.error,
+                "Не удалось загрузить объявления.",
+              )}
+            />
+          )}
+          {cursorFeed.hasNextPage && (
+            <LoadingButton
+              variant="outline"
+              className="h-11 px-8 sm:h-10"
+              loading={cursorFeed.isFetchingNextPage}
+              loadingText="Загружаем…"
+              onClick={() => void cursorFeed.fetchNextPage()}
+            >
+              Показать ещё
+            </LoadingButton>
+          )}
+        </div>
       )}
     </section>
   )
