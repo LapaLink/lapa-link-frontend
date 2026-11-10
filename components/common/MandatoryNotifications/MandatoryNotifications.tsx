@@ -6,22 +6,23 @@ import { ApiError, getErrorMessage, inboxApi } from "@/api"
 import { queryKeys } from "@/lib/queryKeys"
 import type { InboxNotification } from "@/types"
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui"
 import { FormAlert } from "../FormAlert/FormAlert"
 import { LoadingButton } from "../LoadingButton/LoadingButton"
 
 /**
- * Blocking modal for an administrator's mandatory notifications, one at a
- * time, oldest first. No close button, no Esc or outside click: the only way
- * out is «Прочитано», and the next one appears only after the server confirmed
- * it. The queue lives in the query cache (filled by GET /inbox/mandatory and
- * by SSE), deduped by id. Title and text are plain text.
+ * Modal for an administrator's mandatory notifications, one at a time, oldest
+ * first. Closing it (button, cross, Esc or a click outside) marks the
+ * notification as read; the next one appears only after the server confirmed
+ * it, and on an error the modal stays open with the message. The queue lives
+ * in the query cache (filled by GET /inbox/mandatory and by SSE), deduped by
+ * id. Title and text are plain text.
  */
 export function MandatoryNotifications() {
   const client = useQueryClient()
@@ -57,22 +58,24 @@ export function MandatoryNotifications() {
   }
 
   return (
-    <AlertDialog open={!!current}>
+    <Dialog
+      open={!!current}
+      onOpenChange={(open) => {
+        if (!open && current) void markRead(current)
+      }}
+    >
       {current && (
-        <AlertDialogContent
-          // The modal covers the app until the queue is empty.
-          onEscapeKeyDown={(event) => event.preventDefault()}
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle className="[overflow-wrap:anywhere]">
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="[overflow-wrap:anywhere]">
               {current.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="max-h-[50dvh] overflow-y-auto whitespace-pre-line [overflow-wrap:anywhere]">
+            </DialogTitle>
+            <DialogDescription className="max-h-[50dvh] overflow-y-auto whitespace-pre-line [overflow-wrap:anywhere]">
               {current.message}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            </DialogDescription>
+          </DialogHeader>
           <FormAlert message={error} />
-          <AlertDialogFooter>
+          <DialogFooter>
             {(queue.data?.length ?? 0) > 1 && (
               <span className="text-sm text-muted-foreground sm:mr-auto sm:self-center">
                 Ещё обязательных: {(queue.data?.length ?? 1) - 1}
@@ -80,14 +83,14 @@ export function MandatoryNotifications() {
             )}
             <LoadingButton
               loading={busy}
-              loadingText="Отмечаем…"
+              loadingText="Закрываем…"
               onClick={() => void markRead(current)}
             >
-              Прочитано
+              Закрыть
             </LoadingButton>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+          </DialogFooter>
+        </DialogContent>
       )}
-    </AlertDialog>
+    </Dialog>
   )
 }
