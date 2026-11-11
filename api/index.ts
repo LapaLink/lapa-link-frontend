@@ -9,6 +9,7 @@ export { complaintsApi } from "./complaints"
 export { faqApi } from "./faq"
 export { supportApi } from "./support"
 export { adoptionApi } from "./adoption"
+export { usersApi } from "./users"
 export {
   getPreferredLocale,
   refresh as refreshTokens,

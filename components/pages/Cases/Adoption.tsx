@@ -28,6 +28,7 @@ import {
   LoadingButton,
   SectionCard,
   StatusBadge,
+  UserAvatar,
 } from "@/components/common"
 import {
   AlertDialog,
@@ -322,9 +323,18 @@ export function AuthorAdoptionRequests({
                   className="flex flex-col gap-2 rounded-xl border bg-background/60 p-3 sm:p-4"
                 >
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">
+                    <Link
+                      href={ROUTES.USER(request.applicant.id)}
+                      className="flex min-w-0 items-center gap-2 font-semibold hover:text-primary hover:underline"
+                    >
+                      <UserAvatar
+                        user={{
+                          displayName: request.applicant.displayName,
+                          avatarUrl: request.applicant.avatarUrl,
+                        }}
+                      />
                       {request.applicant.displayName}
-                    </span>
+                    </Link>
                     <AdoptionStatusBadge status={request.status} />
                     <time
                       dateTime={request.createdAt}
@@ -455,9 +465,15 @@ function RequestAnswers({ request }: { request: AdoptionRequest }) {
           aria-label="Уточняющие вопросы"
           className="flex flex-col gap-2"
         >
-          <h4 className="text-sm font-semibold text-muted-foreground">
-            Уточняющие вопросы
-          </h4>
+          <div>
+            <h4 className="text-sm font-semibold text-muted-foreground">
+              Уточняющие вопросы
+            </h4>
+            <p className="text-xs text-foreground/60">
+              Что вы спросили у заявителя по телефону или в чате и что он
+              ответил.
+            </p>
+          </div>
           <ul className="flex flex-col gap-2">
             {follow.map((item) => (
               <li
@@ -480,7 +496,7 @@ function RequestAnswers({ request }: { request: AdoptionRequest }) {
 }
 
 /**
- * «Задать уточняющий вопрос»: the author asked by phone or in chat and
+ * «Записать вопрос и ответ»: the author asked by phone or in chat and
  * records the answer at once (CONTACTED and MEETING only). The answer
  * replaces the request from the response; a status race gets a toast.
  */
@@ -536,19 +552,28 @@ function CuratorQuestionForm({
 
   if (!open)
     return (
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="self-start"
-        onClick={() => setOpen(true)}
-      >
-        Задать уточняющий вопрос
-      </Button>
+      <div className="flex flex-col items-start gap-1">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen(true)}
+        >
+          Записать вопрос и ответ
+        </Button>
+        <p className="text-xs text-foreground/60">
+          Уточнили детали у заявителя по телефону или в чате? Сохраните вопрос и
+          его ответ в заявке.
+        </p>
+      </div>
     )
   const id = `curator-${request.id}`
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-card p-3">
+      <p className="text-sm text-foreground/70">
+        Запишите, о чём вы спросили заявителя и что он ответил. Заявитель запись
+        не увидит, она сохранится только в заявке.
+      </p>
       <FormAlert message={error} />
       <Field>
         <FieldLabel htmlFor={`${id}-question`}>Вопрос</FieldLabel>

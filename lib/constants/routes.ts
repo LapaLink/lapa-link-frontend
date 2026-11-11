@@ -20,6 +20,7 @@ export const ROUTES = {
   EDIT_CASE: (caseId: string) => `/cases/${caseId}/edit`,
   CASES: "/cases",
   CASE_DETAILS: (caseId: string) => `/cases/${caseId}`,
+  USER: (userId: string) => `/users/${userId}`,
   CREATE_CASE: "/cases/create",
   CHATS: "/chats",
   FAQ: "/faq",

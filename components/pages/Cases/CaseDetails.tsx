@@ -585,7 +585,17 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
               }}
             />
             <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere] sm:text-base">
-              Автор: {animalCase.author.displayName || "Пользователь"}
+              Автор:{" "}
+              {isAuthor ? (
+                animalCase.author.displayName || "Пользователь"
+              ) : (
+                <Link
+                  href={ROUTES.USER(animalCase.author.id)}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {animalCase.author.displayName || "Пользователь"}
+                </Link>
+              )}
             </p>
             <AuthorBadges badges={animalCase.author.badges} />
           </div>
@@ -1368,7 +1378,14 @@ function HelperRow({
     <div className="flex min-w-0 items-start gap-3">
       <UserAvatar user={{ displayName: name }} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="font-semibold [overflow-wrap:anywhere]">{name}</p>
+        <p className="font-semibold [overflow-wrap:anywhere]">
+          <Link
+            href={ROUTES.USER(response.user.id)}
+            className="hover:text-primary hover:underline"
+          >
+            {name}
+          </Link>
+        </p>
         <p
           className={cn(
             "text-sm text-muted-foreground [overflow-wrap:anywhere]",

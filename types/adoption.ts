@@ -37,7 +37,7 @@ export type CuratorAnswer = { question: string; answer: string }
 export type AdoptionRequest = {
   id: string
   animalCase: { id: string; title: string; photoUrl: string | null }
-  applicant: { id: string; displayName: string }
+  applicant: { id: string; displayName: string; avatarUrl?: string | null }
   message: string
   /**
    * Flat object: questionnaire keys with scalar values, plus `curator_<epoch

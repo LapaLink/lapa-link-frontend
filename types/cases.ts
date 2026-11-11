@@ -55,6 +55,8 @@ export type CaseFeedSort = "NEWEST" | "DISTANCE" | "PRIORITY" | "DEADLINE"
 export type CaseFeedFilter = {
   animalType?: AnimalType
   cityCode?: string
+  /** Only this author's open cases (the public profile). */
+  authorId?: string
   /** Legacy title-only search; the UI uses `search`. */
   title?: string
   /** Title and description, up to 200 characters. */

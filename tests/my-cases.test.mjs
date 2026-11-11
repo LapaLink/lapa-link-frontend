@@ -754,3 +754,23 @@ test("badge picture: uploaded image first, then the icon, then the category or d
   // Not earned: the picture is dimmed.
   assert.ok(draw({ ...base, imageUrl: "https://cdn.example.by/x.png", dimmed: true }).includes("opacity-55"))
 })
+
+test("user profile: header, counters, badges, help offers and the open cases", () => {
+  const profile = {
+    id: "u-2", displayName: "Анна", avatarUrl: null, bio: "Люблю собак\nи кошек", cityCode: "minsk", cityName: "Минск",
+    registeredAt: "2026-03-05T10:00:00Z",
+    // The harness answers the cases feed with this same object: no cards.
+    content: [], nextCursor: null,
+    stats: { openCases: 2, closedCases: 5, casesClosedHomeFound: 3, helpApplications: 4, assignmentsCompleted: 1, adoptionRequests: 0, conversationsAccepted: 7, activeHelpOffers: 1 },
+    badges: [{ code: "FIRST_CASE", category: "AUTHOR", name: "Первое объявление", description: "Создали объявление", icon: null, imageUrl: null, awardedAt: "2026-04-01T10:00:00Z" }],
+    helpOffers: [{ id: "o1", type: "TRANSPORT", radiusKm: 15, availability: "Будни после 18:00", active: true, createdAt: "", updatedAt: "" }],
+  }
+  const file = "components/pages/UserProfile/UserProfile.tsx"
+  const html = renderPage(file, "UserProfile", { user: { ...owner, id: "me" }, data: profile, props: { userId: "u-2" } })
+  for (const text of ["Анна", "Минск", "На платформе с", "Люблю собак", "Закрытых объявлений", "Первое объявление", "до 15 км", "Будни после 18:00"])
+    assert.ok(html.includes(text), text)
+  // Contacts are never part of a public profile.
+  assert.ok(!html.includes("@") && !html.includes("Телефон"))
+  const empty = renderPage(file, "UserProfile", { user: { ...owner, id: "me" }, data: { ...profile, badges: [], helpOffers: [] }, props: { userId: "u-2" } })
+  assert.ok(!empty.includes("Бейджи") && !empty.includes("Готов помочь"))
+})

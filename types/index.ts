@@ -102,3 +102,4 @@ export type {
   CuratorAnswer,
 } from "./adoption"
 export type { BadgeCategory, BadgeResponse, MyBadgeResponse } from "./badges"
+export type { PublicProfile, PublicProfileStats } from "./users"
