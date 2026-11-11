@@ -33,7 +33,7 @@ export {
   isReadBy,
 } from "./state"
 export type { CaseChatAction } from "./state"
-export { chatErrorMessage } from "./errors"
+export { chatErrorMessage, userChatRequestError } from "./errors"
 export { resolveStompError } from "./session"
 export type { StompErrorAction } from "./session"
 export { mergeConversation } from "./conversations"

@@ -366,7 +366,9 @@ function ChatView({ conversation }: { conversation: Conversation }) {
             </Link>
           ) : (
             <span className="truncate text-sm text-muted-foreground">
-              {conversation.targetTitle}
+              {conversation.targetType === "USER"
+                ? "Личные сообщения"
+                : conversation.targetTitle}
             </span>
           )}
         </div>
@@ -392,11 +394,21 @@ function ChatView({ conversation }: { conversation: Conversation }) {
       {conversation.status === "REQUESTED" && (
         <SectionCard
           icon={MessageCircle}
-          title={isOwner ? "Запрос на чат" : "Ожидает ответа автора"}
+          title={
+            isOwner
+              ? "Запрос на чат"
+              : conversation.targetType === "USER"
+                ? "Ожидает ответа пользователя"
+                : "Ожидает ответа автора"
+          }
           description={
             isOwner
-              ? `${other?.displayName || "Пользователь"} хочет обсудить с вами помощь.`
-              : "Чат откроется, когда автор объявления примет запрос."
+              ? conversation.targetType === "USER"
+                ? `${other?.displayName || "Пользователь"} хочет вам написать.`
+                : `${other?.displayName || "Пользователь"} хочет обсудить с вами помощь.`
+              : conversation.targetType === "USER"
+                ? "Чат откроется, когда пользователь примет запрос."
+                : "Чат откроется, когда автор объявления примет запрос."
           }
         >
           {isOwner && (

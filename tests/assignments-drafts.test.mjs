@@ -349,3 +349,34 @@ test("cursor feed: an empty cursor is sent, pages merge without repeats", async 
   ])
   assert.deepEqual([...merged].map((item) => item.id), ["a", "b", "c"])
 })
+
+test("profile presence and personal chat: relative time, error texts, USER chats in the socket schema", () => {
+  const { formatTimeAgo } = load("lib/relativeTime.ts")
+  const now = Date.parse("2026-11-12T12:00:00Z")
+  const ago = (ms) => formatTimeAgo(new Date(now - ms).toISOString(), now)
+  assert.equal(ago(5 * 60_000), "5 минут назад")
+  assert.equal(ago(10_000), "1 минуту назад")
+  assert.equal(ago(3 * 3_600_000), "3 часа назад")
+  assert.equal(ago(30 * 3_600_000), "вчера")
+  assert.equal(ago(5 * 86_400_000), "7 ноября 2026 г.")
+  assert.equal(formatTimeAgo("oops", now), "")
+
+  const [errors, api] = load(["lib/chat/errors.ts", "api/instance.ts"])
+  const fail = (code, status = 409) => new api.ApiError("серверный текст", status, code)
+  const text = (error) => errors.userChatRequestError(error)
+  assert.equal(text(fail("CHAT_NOT_ALLOWED", 403)), "Нельзя написать самому себе.")
+  assert.equal(text(fail("USER_NOT_FOUND", 404)), "Пользователь недоступен.")
+  assert.equal(text(fail("CHAT_DISABLED")), "Пользователь отключил личные сообщения.")
+  assert.equal(text(fail("CHAT_REQUEST_DECLINED")), "Запрос уже был отклонён.")
+  assert.equal(text(fail("RATE_LIMITED", 429)), "Слишком много запросов на чат, попробуйте позже.")
+
+  // A personal chat pushed over the socket is accepted.
+  const events = load("lib/chat/events.ts")
+  const id = "2032112f-4957-43d7-99db-4ee94d178eff"
+  const conversation = {
+    id, targetType: "USER", targetId: id, targetTitle: "Анна", status: "REQUESTED",
+    participants: [], writable: false, unreadCount: 0, lastMessageAt: null,
+    createdAt: "2026-11-12T10:00:00Z", closedAt: null, closedBy: null, hidden: false,
+  }
+  assert.ok(events.parseFrame(events.conversationSchema, JSON.stringify(conversation)))
+})

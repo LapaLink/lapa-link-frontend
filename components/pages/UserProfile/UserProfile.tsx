@@ -2,12 +2,29 @@
 
 import Link from "next/link"
 import { useEffect } from "react"
+import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
-import { CloudOff, HandHeart, MapPin, Megaphone, UserX } from "lucide-react"
+import {
+  CloudOff,
+  HandHeart,
+  MapPin,
+  Megaphone,
+  MessageCircle,
+  UserX,
+} from "lucide-react"
 import { ApiError, casesApi, getErrorMessage, usersApi } from "@/api"
-import { useAuth, useCities, useDictionaryLocale, useNeedTypes } from "@/hooks"
+import {
+  useAuth,
+  useChatPermission,
+  useCities,
+  useDictionaryLocale,
+  useNeedTypes,
+  useRequestChat,
+} from "@/hooks"
 import { mergeFeedPages } from "@/lib/cases"
+import { caseChatAction, userChatRequestError } from "@/lib/chat"
+import { formatTimeAgo } from "@/lib/relativeTime"
 import { ROUTES } from "@/lib/constants"
 import { getCityName, getDictionaryName } from "@/lib/dictionaries"
 import type { BadgeResponse, PublicProfile } from "@/types"
@@ -65,8 +82,12 @@ function UserProfileContent({ userId }: { userId: string }) {
     queryKey: ["users", "profile", userId],
     queryFn: ({ signal }) => usersApi.get(userId, signal),
     enabled: !isSelf,
-    // A stale answer would hide a changed avatar or a new badge.
+    // A stale answer would hide a changed avatar or a new badge. The online
+    // status is counted per request: coming back to the tab refetches the
+    // profile when it is older than a minute, no polling.
     gcTime: 0,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
     retry: (count, error) =>
       !(error instanceof ApiError && error.status === 404) && count < 2,
   })
@@ -117,13 +138,21 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-5 sm:gap-6">
       <header className="flex flex-col gap-4 rounded-2xl border border-foreground/[0.07] bg-card p-5 shadow-card sm:flex-row sm:items-center sm:p-6">
-        <UserAvatar
-          user={{
-            displayName: profile.displayName,
-            avatarUrl: profile.avatarUrl,
-          }}
-          size="profile"
-        />
+        <span className="relative shrink-0">
+          <UserAvatar
+            user={{
+              displayName: profile.displayName,
+              avatarUrl: profile.avatarUrl,
+            }}
+            size="profile"
+          />
+          {profile.online && (
+            <span
+              aria-hidden
+              className="absolute right-1 bottom-1 size-4 rounded-full border-2 border-card bg-green-500"
+            />
+          )}
+        </span>
         <div className="flex min-w-0 flex-col gap-1.5">
           <h1 className="text-2xl font-extrabold [overflow-wrap:anywhere] sm:text-3xl">
             {profile.displayName}
@@ -135,6 +164,15 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
                 {profile.cityName}
               </span>
             )}
+            {profile.online ? (
+              <span className="font-semibold text-green-700">В сети</span>
+            ) : (
+              profile.lastLoginAt && (
+                <span>
+                  Последний вход: {formatTimeAgo(profile.lastLoginAt)}
+                </span>
+              )
+            )}
             <span>
               На платформе с{" "}
               <time dateTime={profile.registeredAt}>
@@ -142,6 +180,7 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
               </time>
             </span>
           </p>
+          <ProfileChat userId={profile.id} />
           {profile.bio && (
             <p className="mt-1 whitespace-pre-line [overflow-wrap:anywhere]">
               {profile.bio}
@@ -199,6 +238,69 @@ function ProfileView({ profile }: { profile: PublicProfile }) {
       <AuthorCases userId={profile.id} closedCases={stats.closedCases} />
     </section>
   )
+}
+
+/**
+ * «Написать»: a personal chat request to the profile owner. The state comes
+ * from the chat permission of the USER target; a repeated request is safe.
+ */
+function ProfileChat({ userId }: { userId: string }) {
+  const permission = useChatPermission("USER", userId, true)
+  const request = useRequestChat("USER")
+  const action = caseChatAction({
+    isAuthor: false,
+    hasActiveResponse: false,
+    permission: permission.data,
+  })
+  const conversationId = permission.data?.conversationId
+  if (action === "request")
+    return (
+      <Button
+        className="mt-2 h-11 self-start sm:h-10"
+        disabled={request.isPending}
+        onClick={() =>
+          request.mutate(userId, {
+            onSuccess: () => toast.success("Запрос отправлен"),
+            onError: (error) => toast.error(userChatRequestError(error)),
+          })
+        }
+      >
+        <MessageCircle aria-hidden />
+        {request.isPending ? "Отправляем…" : "Написать"}
+      </Button>
+    )
+  if (action === "requested")
+    return (
+      <Button
+        disabled
+        variant="outline"
+        className="mt-2 h-11 self-start sm:h-10"
+      >
+        Запрос отправлен
+      </Button>
+    )
+  if (action === "declined")
+    return (
+      <p className="mt-2 text-sm text-foreground/70">
+        Пользователь отклонил запрос.
+      </p>
+    )
+  if (action === "open" && conversationId)
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <Button asChild className="h-11 sm:h-10">
+          <Link href={ROUTES.CHAT(conversationId)}>
+            <MessageCircle aria-hidden />
+            Открыть чат
+          </Link>
+        </Button>
+        {permission.data?.conversationStatus === "CLOSED" && (
+          <span className="text-sm text-foreground/70">Чат закрыт</span>
+        )}
+      </div>
+    )
+  // Loading, or personal messages are off: nothing to show.
+  return null
 }
 
 /** A badge with its name; a click shows the description and the date. */

@@ -32,7 +32,7 @@ export const chatErrorSchema = z.object({
 
 export const conversationSchema = z.object({
   id: z.uuid(),
-  targetType: z.enum(["CASE", "SUPPORT"]),
+  targetType: z.enum(["CASE", "SUPPORT", "USER"]),
   targetId: z.uuid(),
   targetTitle: z.string(),
   status: z.enum(["REQUESTED", "ACTIVE", "DECLINED", "CLOSED"]),

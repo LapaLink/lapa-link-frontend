@@ -158,7 +158,9 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="truncate font-semibold">{name}</span>
           <span className="truncate text-sm text-muted-foreground">
-            {conversation.targetTitle}
+            {conversation.targetType === "USER"
+              ? "Личные сообщения"
+              : conversation.targetTitle}
           </span>
           <span
             className={cn(

@@ -51,6 +51,7 @@ import {
   NotificationSettings,
   NotificationsCard,
   PasswordChangeAction,
+  PersonalChatCard,
   PhoneCard,
   ProfileEditForm,
   ProfileSummaryCard,
@@ -380,6 +381,7 @@ function PersonalSection({ user }: { user: CurrentUser }) {
           }
         />
         <PhoneCard user={user} />
+        <PersonalChatCard user={user} />
         <LanguageCard user={user} />
       </div>
     </div>

@@ -1,5 +1,9 @@
-/** SUPPORT: a question to the administration, created by POST /support-questions only. */
-export type ChatTargetType = "CASE" | "SUPPORT"
+/**
+ * SUPPORT: a question to the administration, created by POST /support-questions
+ * only. USER: a personal chat tied to a profile; targetTitle is the profile
+ * owner's name, so the title comes from the other participant.
+ */
+export type ChatTargetType = "CASE" | "SUPPORT" | "USER"
 export type ConversationStatus = "REQUESTED" | "ACTIVE" | "DECLINED" | "CLOSED"
 export type ConversationRole = "OWNER" | "INITIATOR"
 

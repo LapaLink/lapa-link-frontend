@@ -24,6 +24,10 @@ export type PublicProfile = {
   /** In the current user's language. */
   cityName: string | null
   registeredAt: string
+  /** Time of the last sign-in (not of the last activity); null if never. */
+  lastLoginAt: string | null
+  /** Made requests within the last 5 minutes; counted when the profile is requested. */
+  online: boolean
   stats: PublicProfileStats
   /** Newest first. */
   badges: BadgeResponse[]
