@@ -103,7 +103,11 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
           )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup aria-label="Моя активность">
+        {/* On phones these links are in the main menu (the burger button). */}
+        <DropdownMenuGroup
+          aria-label="Моя активность"
+          className="max-lg:hidden"
+        >
           <DropdownMenuLabel>Моя активность</DropdownMenuLabel>
           {activityLinks.map(({ href, label, icon: Icon }) => {
             const active = pathname === href
@@ -124,7 +128,7 @@ export function ProfileMenu({ user }: { user: CurrentUser }) {
             )
           })}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="max-lg:hidden" />
         <DropdownMenuGroup aria-label="Помощь">
           <DropdownMenuLabel>Помощь</DropdownMenuLabel>
           <DropdownMenuItem asChild className="min-h-11">

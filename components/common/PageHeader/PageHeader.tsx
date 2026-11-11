@@ -13,6 +13,7 @@ export function PageHeader({
   title,
   description,
   actions,
+  actionsClassName,
   className,
 }: {
   eyebrow?: ReactNode
@@ -21,6 +22,8 @@ export function PageHeader({
   title: ReactNode
   description?: ReactNode
   actions?: ReactNode
+  /** Extra classes of the actions block, e.g. `max-sm:hidden`. */
+  actionsClassName?: string
   className?: string
 }) {
   return (
@@ -54,7 +57,14 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">{actions}</div>
+        <div
+          className={cn(
+            "flex shrink-0 flex-col gap-2 sm:flex-row",
+            actionsClassName,
+          )}
+        >
+          {actions}
+        </div>
       )}
     </div>
   )

@@ -110,7 +110,6 @@ import {
 } from "./NeedDetails"
 import { CaseGallery, galleryOf } from "./CaseGallery"
 import { NeedFormDialog } from "./NeedFormDialog"
-import { CaseHistory } from "./CaseHistory"
 import { DraftActions } from "./DraftActions"
 import { ApplicantAdoption, AuthorAdoptionRequests } from "./Adoption"
 import { ADOPTION_NEED_TYPE } from "@/lib/adoption"
@@ -1051,20 +1050,6 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                     ?.scrollIntoView({ behavior: "smooth", block: "center" }),
               },
             })
-          }}
-        />
-      )}
-
-      {user && (isAuthor || hasActiveResponse) && (
-        <CaseHistory
-          caseId={caseId}
-          authorId={animalCase.author.id}
-          userId={user.id}
-          needName={(needId) => {
-            const need = animalCase.needs.find((item) => item.id === needId)
-            return need
-              ? getDictionaryName(needTypes.data, need.type, locale)
-              : "Потребность"
           }}
         />
       )}

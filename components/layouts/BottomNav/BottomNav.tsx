@@ -2,9 +2,9 @@
 
 import { usePathname } from "next/navigation"
 import {
-  CirclePlus,
   LogIn,
   MessageCircle,
+  Newspaper,
   Search,
   UserRound,
 } from "lucide-react"
@@ -15,8 +15,8 @@ import { useAuth, useChatUnreadCount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 
 /**
- * Tab bar at the bottom of the screen on phones and tablets: cases, a new
- * case, messages with the unread count and the profile (sign in for guests).
+ * Tab bar at the bottom of the screen on phones and tablets: search, own
+ * cases, messages with the unread count and the profile (sign in for guests).
  */
 export function BottomNav() {
   const pathname = usePathname() ?? ""
@@ -31,7 +31,7 @@ export function BottomNav() {
   }> = [
     {
       href: ROUTES.CASES,
-      label: "Объявления",
+      label: "Поиск",
       icon: Search,
       active:
         pathname === ROUTES.CASES ||
@@ -39,10 +39,11 @@ export function BottomNav() {
           pathname !== ROUTES.CREATE_CASE),
     },
     {
-      href: ROUTES.CREATE_CASE,
-      label: "Подать",
-      icon: CirclePlus,
-      active: pathname === ROUTES.CREATE_CASE,
+      // Guests land on the page's own sign-in prompt.
+      href: ROUTES.MY_CASES,
+      label: "Мои объявления",
+      icon: Newspaper,
+      active: pathname === ROUTES.MY_CASES,
     },
     ...(user
       ? [

@@ -20,9 +20,7 @@ import {
   Heart,
   ListFilter,
   LocateFixed,
-  Lock,
   Map as MapIcon,
-  MapPin,
   PawPrint,
   Plus,
   RotateCcw,
@@ -95,6 +93,7 @@ import {
 } from "@/components/common"
 import { needStatusLabels } from "./statusLabels"
 import { CaseFeedCard, CaseFeedSkeleton } from "./CaseFeedCard"
+import { CityFilter } from "./CityFilter"
 import { UrgentCases } from "./UrgentCases"
 import { needPriorityLabels } from "./schemas"
 
@@ -356,9 +355,9 @@ export function CasesList() {
   return (
     <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
       <PageHeader
-        eyebrow="Помощь животным"
         title="Кому нужна помощь?"
-        description="Найдите животное или помогите тем, кто рядом с вами."
+        // On phones these are in the bottom bar and the main menu.
+        actionsClassName="max-sm:hidden"
         actions={
           <>
             {user && (
@@ -395,26 +394,25 @@ export function CasesList() {
               type="button"
               variant="ghost"
               aria-pressed={state.mode === mode}
-              // "Подходит мне" needs an account: guests see it locked.
-              disabled={mode === "matching" && !user}
               className={cn(
                 "h-11 flex-1 rounded-full px-5 sm:h-10 sm:flex-none",
                 state.mode === mode
                   ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover hover:text-primary-foreground"
                   : "text-foreground/80 hover:bg-muted hover:text-foreground",
               )}
-              onClick={() => update({ mode })}
+              onClick={() => {
+                // "Подходит мне" needs an account: guests go to sign in.
+                if (mode === "matching" && !user) {
+                  if (!authLoading) router.push(ROUTES.LOGIN)
+                  return
+                }
+                update({ mode })
+              }}
             >
               {label}
             </Button>
           ))}
         </div>
-        {!user && !authLoading && (
-          <p className="flex items-center gap-2 text-sm text-foreground/75">
-            <Lock aria-hidden className="size-4 shrink-0" />
-            «Подходит мне» доступно только авторизованным пользователям
-          </p>
-        )}
       </div>
       <div
         role="search"
@@ -450,32 +448,16 @@ export function CasesList() {
           </Field>
           <Field className="gap-1.5">
             <FieldLabel htmlFor="city-filter">Город</FieldLabel>
-            <Select
-              value={state.cityCode ?? ALL}
-              onValueChange={(value) =>
-                update({ cityCode: value === ALL ? undefined : value })
-              }
-            >
-              <SelectTrigger
-                id="city-filter"
-                className={cn("data-[size=default]:h-11", fieldClass)}
-              >
-                <MapPin aria-hidden className="text-primary" />
-                <SelectValue placeholder="Любой город" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value={ALL}>Любой город</SelectItem>
-                  {cities.data?.flatMap((group) =>
-                    group.cities.map((city) => (
-                      <SelectItem key={city.code} value={city.code}>
-                        {getCityName(cities.data, city.code, locale)}
-                      </SelectItem>
-                    )),
-                  )}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <CityFilter
+              id="city-filter"
+              value={state.cityCode}
+              options={(allCities ?? []).map((item) => ({
+                code: item.code,
+                name: getCityName(cities.data, item.code, locale),
+              }))}
+              fieldClass={fieldClass}
+              onChange={(cityCode) => update({ cityCode })}
+            />
           </Field>
           <Field className="gap-1.5">
             <FieldLabel htmlFor="need-type-filter">Тип помощи</FieldLabel>

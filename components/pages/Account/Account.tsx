@@ -19,7 +19,6 @@ import {
   LayoutGrid,
   Mail,
   MapPin,
-  PawPrint,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -53,7 +52,6 @@ import {
   NotificationsCard,
   PasswordChangeAction,
   PhoneCard,
-  ProfileCard,
   ProfileEditForm,
   ProfileSummaryCard,
 } from "./common"
@@ -206,26 +204,6 @@ function AccountContent() {
             </h1>
             <p className="text-foreground/70">{section.description}</p>
           </div>
-          {current === "overview" && (
-            <div className="flex items-center gap-4 rounded-2xl bg-primary-soft px-5 py-4 xl:max-w-sm">
-              <span
-                aria-hidden
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
-              >
-                <HeartHandshake className="size-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="font-bold">Спасибо, что помогаете!</p>
-                <p className="text-sm text-foreground/70">
-                  Вместе мы делаем мир добрее для животных.
-                </p>
-              </div>
-              <PawPrint
-                aria-hidden
-                className="size-7 shrink-0 text-primary/60"
-              />
-            </div>
-          )}
         </header>
 
         {current === "overview" && (
@@ -330,22 +308,18 @@ function OverviewSection({
   return (
     <>
       <ProfileSummaryCard user={user} onEdit={() => onOpen("personal")} />
-      <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2">
-        {/* Editing happens on "Личные данные"; here the card only reads. */}
-        <ProfileCard
-          user={user}
-          editing={false}
-          onEditingChange={(editing) => editing && onOpen("personal")}
-        />
-        <EmailChangeCard
-          email={user.email}
-          verified={
-            user.emailVerifiedAt === undefined
-              ? undefined
-              : !!user.emailVerifiedAt
-          }
-        />
-      </div>
+      <EmailChangeCard
+        email={user.email}
+        verified={
+          user.emailVerifiedAt === undefined
+            ? undefined
+            : !!user.emailVerifiedAt
+        }
+        phone={{
+          number: user.phone ?? null,
+          confirmed: user.phoneConfirmed === true,
+        }}
+      />
       <NotificationsCard user={user} />
       <HelpOffersCard user={user} />
       <SectionCard icon={Globe} title="Настройки аккаунта" fullWidthBody>

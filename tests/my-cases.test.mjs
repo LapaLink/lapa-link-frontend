@@ -496,8 +496,11 @@ test("feed: old title links fill search, guests see the matching mode locked, no
   })
   assert.match(guest, /id="search-filter"[^>]*value="рыжий"/)
   assert.ok(guest.includes("Показано объявлений: 1"))
-  assert.match(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
-  assert.ok(guest.includes("доступно только авторизованным"))
+  // Guests get a live button (it leads to sign in) and no explanatory texts.
+  assert.match(guest, /aria-pressed="false"[^>]*>Подходит мне/)
+  assert.doesNotMatch(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
+  for (const text of ["доступно только авторизованным", "Помощь животным", "Найдите животное или помогите"])
+    assert.ok(!guest.includes(text), text)
   assert.ok(!guest.includes('href="/my-cases"'))
   // Nearby controls stay collapsed until the user opens them or supplies a point.
   assert.ok(!guest.includes('id="radius-filter"'))
@@ -669,7 +672,9 @@ test("account overview shows the section menu, summary, cards and account settin
   assert.match(html, /aria-current="page"[^>]*>.*?Обзор</)
   assert.ok(html.includes('href="#personal"'))
   assert.ok(html.includes("Профиль заполнен"))
-  assert.ok(html.includes("Спасибо, что помогаете!"))
+  // The overview has no personal data card and no thanks banner; contacts list the phone.
+  assert.ok(!html.includes("Спасибо, что помогаете!"))
+  assert.ok(html.includes("Номер телефона"))
   assert.ok(html.includes("Что присылать"))
   assert.ok(html.includes("Настройки аккаунта"))
   assert.ok(html.includes("Сменить пароль"))
@@ -728,4 +733,24 @@ test("gallery editor marks the first photo as cover and offers reorder and delet
   assert.ok(gallery.includes("Кот, фото 1 из 2"))
   assert.ok(gallery.includes("1 из 2"))
   assert.ok(gallery.includes("Показать фото 2"))
+})
+
+test("badge picture: uploaded image first, then the icon, then the category or default", () => {
+  const draw = (badge) =>
+    renderPage("components/common/BadgeArtwork/BadgeArtwork.tsx", "BadgeArtwork", {
+      props: { badge, size: 40, dimmed: badge.dimmed },
+    })
+  const base = { code: "FIRST_CASE", category: "AUTHOR", name: "Первое объявление", icon: "paw-print", imageUrl: null }
+  const uploaded = draw({ ...base, imageUrl: "https://cdn.example.by/badges/first.png" })
+  assert.ok(uploaded.includes('src="https://cdn.example.by/badges/first.png"'))
+  assert.ok(uploaded.includes('alt="Первое объявление"'))
+  assert.ok(uploaded.includes('loading="lazy"'))
+  assert.ok(uploaded.includes("object-contain"))
+  // Without a picture: the illustration by icon key, then by code, then by category.
+  assert.ok(draw(base).includes('src="/badges/author.svg"'))
+  assert.ok(draw({ ...base, icon: null }).includes('src="/badges/author.svg"'))
+  assert.ok(draw({ code: "NEW_ONE", category: "TRUST", icon: "unknown", imageUrl: null }).includes('src="/badges/trust.svg"'))
+  assert.ok(draw({ code: "NEW_ONE", category: "UNKNOWN", icon: null, imageUrl: null }).includes('src="/badges/award.svg"'))
+  // Not earned: the picture is dimmed.
+  assert.ok(draw({ ...base, imageUrl: "https://cdn.example.by/x.png", dimmed: true }).includes("opacity-55"))
 })

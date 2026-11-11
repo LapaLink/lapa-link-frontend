@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Mail, Pencil } from "lucide-react"
+import { Mail, Pencil, Phone } from "lucide-react"
 import { SectionCard, StatusBadge } from "@/components/common"
 import {
   Button,
@@ -17,9 +17,12 @@ import { EmailConfirmationForm } from "./EmailConfirmationForm"
 export function EmailChangeCard({
   email,
   verified,
+  phone,
 }: {
   email: string
   verified?: boolean
+  /** When given, the phone is listed too; it is edited in «Личные данные». */
+  phone?: { number: string | null; confirmed: boolean }
 }) {
   const [open, setOpen] = useState(false)
   const change = useEmailChange(() => setOpen(false))
@@ -50,6 +53,39 @@ export function EmailChangeCard({
           </StatusBadge>
         )}
       </p>
+      {phone && (
+        <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <span
+            aria-hidden
+            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70"
+          >
+            <Phone className="size-4" />
+          </span>
+          <span className="sr-only">Номер телефона: </span>
+          {phone.number ? (
+            <>
+              <span className="min-w-0 text-sm font-medium [overflow-wrap:anywhere]">
+                {phone.number}
+              </span>
+              <StatusBadge
+                tone={phone.confirmed ? "success" : "muted"}
+                className="whitespace-nowrap"
+              >
+                {phone.confirmed ? "Подтверждён" : "Не подтверждён"}
+              </StatusBadge>
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">Не указан</span>
+          )}
+          {/* A plain anchor: the profile switches sections on hashchange. */}
+          <a
+            href="#personal"
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            {phone.number ? "Изменить" : "Добавить"}
+          </a>
+        </p>
+      )}
       {!open && change.notice && (
         <p role="status" className="text-sm text-success-foreground">
           {change.notice}
