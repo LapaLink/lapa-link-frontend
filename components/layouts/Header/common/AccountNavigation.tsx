@@ -1,7 +1,7 @@
 "use client"
 
 import { NavigationLink as Link } from "@/components/providers"
-import { MessageCircle } from "lucide-react"
+import { MessageCircle, Plus } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useAuth, useChatUnreadCount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
@@ -54,6 +54,7 @@ export function AccountNavigation() {
           </Button>
           <NotificationCenter key={user.id} />
           <ProfileMenu user={user} />
+          <CreateCaseLink />
         </>
       ) : (
         <>
@@ -63,8 +64,21 @@ export function AccountNavigation() {
           <Button asChild>
             <Link href={ROUTES.REGISTER}>Регистрация</Link>
           </Button>
+          <CreateCaseLink />
         </>
       )}
     </nav>
+  )
+}
+
+/** The main action of the header on wide screens (phones have the round «+»). */
+function CreateCaseLink() {
+  return (
+    <Button asChild className="hidden lg:inline-flex">
+      <Link href={ROUTES.CREATE_CASE}>
+        <Plus data-icon="inline-start" />
+        Нашёл животное
+      </Link>
+    </Button>
   )
 }

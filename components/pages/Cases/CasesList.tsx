@@ -22,7 +22,6 @@ import {
   LocateFixed,
   Map as MapIcon,
   PawPrint,
-  Plus,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -81,6 +80,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  Switch,
   Field,
   FieldLabel,
 } from "@/components/ui"
@@ -89,12 +89,10 @@ import {
   FormAlert,
   ListPagination,
   LoadingButton,
-  PageHeader,
 } from "@/components/common"
 import { needStatusLabels } from "./statusLabels"
 import { CaseFeedCard, CaseFeedSkeleton } from "./CaseFeedCard"
 import { CityFilter } from "./CityFilter"
-import { UrgentCases } from "./UrgentCases"
 import { needPriorityLabels } from "./schemas"
 
 const PAGE_SIZE = 6
@@ -112,6 +110,15 @@ const CasesMap = dynamic(() => import("./CasesMap"), {
 
 // Without a city or a point the map opens over Minsk.
 const DEFAULT_VIEW = { latitude: 53.9023, longitude: 27.5619, zoom: 11 }
+
+/** Category chip of the feed toolbar (selected: dark, else white with a border). */
+const chipButton = (on: boolean) =>
+  cn(
+    "flex h-11 items-center gap-2 rounded-full border-[1.5px] px-[18px] text-[15px] font-semibold whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+    on
+      ? "border-foreground bg-foreground text-background"
+      : "border-input bg-card text-foreground hover:border-foreground/30",
+  )
 
 const sortLabels: Record<CaseFeedSort, string> = {
   NEWEST: "Новые",
@@ -169,6 +176,7 @@ export function CasesList() {
   const [pointHint, setPointHint] = useState("")
   const [nearOpen, setNearOpen] = useState<boolean | null>(null)
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
 
   const navigate = (next: FeedState) => {
@@ -346,6 +354,14 @@ export function CasesList() {
     Number(!!state.priority) +
     Number(!!state.needStatus)
   const moreVisible = moreOpen ?? advancedCount > 0
+  const activeFilterCount = [
+    state.animalType,
+    state.cityCode,
+    state.search,
+    state.priority,
+    state.needStatus,
+    state.point,
+  ].filter(Boolean).length
   // Neutral fields: the burgundy accent is kept for actions. The value sits
   // next to the icon instead of the trigger's center.
   const fieldClass =
@@ -353,71 +369,81 @@ export function CasesList() {
   const chipClass = "h-11 rounded-full sm:h-9"
 
   return (
-    <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
-      <PageHeader
-        title="Кому нужна помощь?"
-        // On phones these are in the bottom bar and the main menu.
-        actionsClassName="max-sm:hidden"
-        actions={
-          <>
-            {user && (
-              <Button variant="outline" asChild className="h-11 sm:h-10">
-                <Link href={ROUTES.MY_CASES}>Мои объявления</Link>
-              </Button>
-            )}
-            <Button
-              asChild
-              className="h-11 px-5 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/25"
-            >
-              <Link href={ROUTES.CREATE_CASE}>
-                <Plus aria-hidden />
-                Создать объявление
-              </Link>
-            </Button>
-          </>
-        }
-      />
-      <div className="flex flex-wrap items-center gap-3">
+    <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <div
           role="group"
-          aria-label="Какие объявления показать"
-          className="flex w-full gap-1 rounded-full border border-foreground/[0.07] bg-card p-1 shadow-card sm:w-fit"
+          aria-label="Какая помощь нужна"
+          className="flex flex-wrap items-center gap-2.5"
         >
-          {(
-            [
-              ["all", "Все объявления"],
-              ["matching", "Подходит мне"],
-            ] as const
-          ).map(([mode, label]) => (
-            <Button
-              key={mode}
-              type="button"
-              variant="ghost"
-              aria-pressed={state.mode === mode}
-              className={cn(
-                "h-11 flex-1 rounded-full px-5 sm:h-10 sm:flex-none",
-                state.mode === mode
-                  ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover hover:text-primary-foreground"
-                  : "text-foreground/80 hover:bg-muted hover:text-foreground",
-              )}
-              onClick={() => {
-                // "Подходит мне" needs an account: guests go to sign in.
-                if (mode === "matching" && !user) {
-                  if (!authLoading) router.push(ROUTES.LOGIN)
-                  return
+          <button
+            type="button"
+            aria-pressed={selectedNeedTypes.length === 0}
+            className={chipButton(selectedNeedTypes.length === 0)}
+            onClick={() => update({ needTypes: [] })}
+          >
+            Все
+          </button>
+          {sortedNeedTypes.map((type) => {
+            const on = selectedNeedTypes.includes(type.code)
+            return (
+              <button
+                key={type.code}
+                type="button"
+                aria-pressed={on}
+                className={chipButton(on)}
+                onClick={() =>
+                  update({
+                    needTypes: on
+                      ? selectedNeedTypes.filter((code) => code !== type.code)
+                      : [...selectedNeedTypes, type.code],
+                  })
                 }
-                update({ mode })
-              }}
-            >
-              {label}
-            </Button>
-          ))}
+              >
+                {needTypeName(type.code)}
+              </button>
+            )
+          })}
         </div>
+        <span aria-hidden className="mx-1 hidden h-7 w-px bg-input sm:block" />
+        <button
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="feed-filters"
+          className={chipButton(false)}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal aria-hidden className="size-[18px]" />
+          Фильтры
+          {activeFilterCount > 0 && (
+            <span className="flex size-[22px] items-center justify-center rounded-full bg-foreground text-xs text-background">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        <label className="ml-auto flex cursor-pointer items-center gap-2.5 text-[15px] font-semibold">
+          <Switch
+            checked={matching}
+            onCheckedChange={(on) => {
+              // "Подходит мне" needs an account: guests go to sign in.
+              if (on && !user) {
+                if (!authLoading) router.push(ROUTES.LOGIN)
+                return
+              }
+              update({ mode: on ? "matching" : "all" })
+            }}
+          />
+          Подходит мне
+        </label>
       </div>
       <div
+        id="feed-filters"
         role="search"
         aria-label="Фильтры объявлений"
-        className="flex flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5"
+        className={cn(
+          "flex-col gap-3 rounded-2xl border border-foreground/[0.07] bg-card p-4 shadow-card sm:p-5",
+          filtersOpen ? "flex" : "hidden",
+        )}
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field className="gap-1.5">
@@ -768,73 +794,14 @@ export function CasesList() {
         </DialogContent>
       </Dialog>
 
-      <section
-        aria-labelledby="cases-map-title"
-        // On phones the animals come first: the map goes under the list.
-        className="flex min-w-0 flex-col gap-3 max-lg:order-last"
-      >
-        <h2
-          id="cases-map-title"
-          className="flex items-center gap-2 text-xl font-bold"
-        >
-          <MapIcon aria-hidden className="size-5 text-primary" />
-          Карта объявлений
-        </h2>
-        {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
-        <div className="relative isolate h-[22rem] overflow-hidden rounded-2xl border border-foreground/[0.07] shadow-card sm:h-[28rem] lg:h-[34rem]">
-          <CasesMap
-            view={mapView}
-            point={state.point}
-            homePoint={homePoint}
-            radiusKm={state.point ? radius : undefined}
-            items={(mapFilter && markers.data?.items) || []}
-            needTypeName={needTypeName}
-            onBoundsChange={setMapBounds}
-          />
-          {(mapBounds && !mapFilter) ||
-          markers.data?.truncated ||
-          markers.isError ? (
-            <p
-              role="status"
-              className="absolute inset-x-14 top-3 z-[1000] mx-auto w-fit rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
-            >
-              {mapBounds && !mapFilter
-                ? "Приблизьте карту, чтобы увидеть объявления"
-                : markers.isError
-                  ? getErrorMessage(
-                      markers.error,
-                      "Не удалось загрузить метки на карте.",
-                    )
-                  : "Показаны не все объявления — приблизьте карту"}
-            </p>
-          ) : null}
-        </div>
-        <ul
-          aria-label="Цвет метки — приоритет"
-          className="flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs text-foreground/75"
-        >
-          {mapLegend.map(([fill, label]) => (
-            <li key={label} className="flex items-center gap-1.5">
-              <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
-                <circle cx="5" cy="5" r="5" className={fill} />
-              </svg>
-              {label}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <UrgentCases
-        filter={filter}
-        enabled={feedReady}
-        cityName={(code) => getCityName(cities.data, code, locale)}
-        needTypeName={needTypeName}
-      />
 
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Объявления
-          </h2>
+          <h1 className="text-[28px] font-bold tracking-tight">
+            Питомцы ждут помощи рядом
+          </h1>
           {feedItems && (
             <p role="status" className="text-sm text-foreground/75">
               {matching
@@ -960,6 +927,62 @@ export function CasesList() {
           )}
         </div>
       )}
+        </div>
+      <section
+        aria-labelledby="cases-map-title"
+        className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6"
+      >
+        <h2
+          id="cases-map-title"
+          className="flex items-center gap-2 text-xl font-bold"
+        >
+          <MapIcon aria-hidden className="size-5 text-primary" />
+          Карта объявлений
+        </h2>
+        {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
+        <div className="relative isolate h-[22rem] overflow-hidden rounded-[28px] border border-foreground/[0.07] shadow-card sm:h-[28rem] lg:h-[36rem]">
+          <CasesMap
+            view={mapView}
+            point={state.point}
+            homePoint={homePoint}
+            radiusKm={state.point ? radius : undefined}
+            items={(mapFilter && markers.data?.items) || []}
+            needTypeName={needTypeName}
+            onBoundsChange={setMapBounds}
+          />
+          {(mapBounds && !mapFilter) ||
+          markers.data?.truncated ||
+          markers.isError ? (
+            <p
+              role="status"
+              className="absolute inset-x-14 top-3 z-[1000] mx-auto w-fit rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
+            >
+              {mapBounds && !mapFilter
+                ? "Приблизьте карту, чтобы увидеть объявления"
+                : markers.isError
+                  ? getErrorMessage(
+                      markers.error,
+                      "Не удалось загрузить метки на карте.",
+                    )
+                  : "Показаны не все объявления — приблизьте карту"}
+            </p>
+          ) : null}
+        </div>
+        <ul
+          aria-label="Цвет метки — приоритет"
+          className="flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs text-foreground/75"
+        >
+          {mapLegend.map(([fill, label]) => (
+            <li key={label} className="flex items-center gap-1.5">
+              <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
+                <circle cx="5" cy="5" r="5" className={fill} />
+              </svg>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </section>
+      </div>
     </section>
   )
 }

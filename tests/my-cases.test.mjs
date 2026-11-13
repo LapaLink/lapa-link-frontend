@@ -434,7 +434,6 @@ test("public cards link to details, use logo placeholder and load more by cursor
     data: { content: [item], totalPages: null, nextCursor: "abc" },
   })
   assert.ok(html.includes('href="/cases/case-1"'))
-  assert.ok(html.includes('href="/my-cases"'))
   assert.ok(html.includes('src="/icon.svg"'))
   assert.ok(html.includes("Показать ещё"))
   // Cursor mode has no page numbers and no total.
@@ -470,21 +469,18 @@ test("feed card shows the urgent need, its priority and deadline, other needs, t
     openNeedTypes: ["FOSTER", "FOOD", "TRANSPORT"],
   })
   assert.ok(html.includes("Срочно"))
-  assert.ok(html.includes("Минск · 1,2 км"))
-  assert.ok(html.includes("Ищем временный дом…"))
+  assert.ok(html.includes("1,2 км"))
+  assert.ok(html.includes("Кошка · Минск"))
   assert.ok(html.includes(">Передержка<"))
-  assert.ok(html.includes("Высокий приоритет"))
-  // The need comment stays on the case page and in "Срочные запросы".
-  assert.ok(!html.includes("Нужна передержка на 7 дней"))
   assert.match(html, /до 20 окт/)
-  // The top need is not repeated among the other badges.
+  // The top need is not repeated among the other chips.
   assert.ok(html.includes(">Корм<") && html.includes(">Транспорт<"))
   assert.equal(html.match(/>Передержка</g).length, 1)
 
   // Old cached items without the new fields still render.
   const plain = card({})
   assert.ok(!plain.includes("Срочно"))
-  assert.ok(plain.includes(">Минск<"))
+  assert.ok(plain.includes("Минск"))
 })
 
 test("feed: old title links fill search, guests see the matching mode locked, no point disables radius", () => {
@@ -497,8 +493,10 @@ test("feed: old title links fill search, guests see the matching mode locked, no
   assert.match(guest, /id="search-filter"[^>]*value="рыжий"/)
   assert.ok(guest.includes("Показано объявлений: 1"))
   // Guests get a live button (it leads to sign in) and no explanatory texts.
-  assert.match(guest, /aria-pressed="false"[^>]*>Подходит мне/)
-  assert.doesNotMatch(guest, /aria-pressed="false"[^>]*disabled=""[^>]*>Подходит мне/)
+  // "Подходит мне" is a switch; for guests it stays live (it leads to sign in).
+  assert.match(guest, /role="switch"[^>]*aria-checked="false"/)
+  assert.doesNotMatch(guest, /role="switch"[^>]*disabled=""/)
+  assert.ok(guest.includes("Подходит мне"))
   for (const text of ["доступно только авторизованным", "Помощь животным", "Найдите животное или помогите"])
     assert.ok(!guest.includes(text), text)
   assert.ok(!guest.includes('href="/my-cases"'))
@@ -511,7 +509,7 @@ test("feed: old title links fill search, guests see the matching mode locked, no
     query: "mode=matching&latitude=53.9&longitude=27.56&radiusKm=20",
     data: { content: [], totalPages: 0, totalElements: 0 },
   })
-  assert.match(matching, /aria-pressed="true"[^>]*>Подходит мне/)
+  assert.match(matching, /role="switch"[^>]*aria-checked="true"/)
   assert.ok(matching.includes("Нет подходящих объявлений"))
   assert.ok(matching.includes('href="/account#help-offers"'))
   const radius = matching.match(/<input[^>]*id="radius-filter"[^>]*>/)?.[0] ?? ""

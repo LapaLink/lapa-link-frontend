@@ -51,7 +51,7 @@ export function BottomNav() {
     },
     {
       href: ROUTES.CREATE_CASE,
-      label: "Создать объявление",
+      label: "Нашёл животное",
       icon: Plus,
       active: pathname === ROUTES.CREATE_CASE,
       center: true,

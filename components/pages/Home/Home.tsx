@@ -96,7 +96,7 @@ export function Home() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href={ROUTES.CREATE_CASE}>Создать объявление</Link>
+              <Link href={ROUTES.CREATE_CASE}>Нашёл животное</Link>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
