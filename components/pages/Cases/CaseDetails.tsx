@@ -271,14 +271,18 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
     setOfferError("")
     const message = messageByNeed[need.id]?.trim()
     if (!message) {
-      setOfferError("Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.")
+      setOfferError(
+        "Напишите короткое сообщение автору: чем можете помочь и как с вами связаться.",
+      )
       return
     }
     try {
       await createResponse.mutateAsync({ needId: need.id, message })
     } catch (error) {
       if (handledCaseHidden(error)) return setOfferNeed(null)
-      setOfferError(getErrorMessage(error, "Не удалось отправить предложение помощи."))
+      setOfferError(
+        getErrorMessage(error, "Не удалось отправить предложение помощи."),
+      )
     }
   }
 
@@ -410,7 +414,10 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
       )
   }, [loaded])
 
-  if (details.isLoading || (details.data && !details.data.author && !details.error))
+  if (
+    details.isLoading ||
+    (details.data && !details.data.author && !details.error)
+  )
     return (
       <div
         role="status"
@@ -628,7 +635,12 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           )}
         </div>
         {canEdit && (
-          <div className={cn("col-span-2", hasPhoto && "sm:col-span-1 sm:col-start-2")}>
+          <div
+            className={cn(
+              "col-span-2",
+              hasPhoto && "sm:col-span-1 sm:col-start-2",
+            )}
+          >
             <Button
               asChild
               variant="outline"
@@ -641,11 +653,21 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             </Button>
           </div>
         )}
-          {user && !isAuthor && (animalCase.status === "OPEN" || animalCase.status === "CLOSED") && (
-          <div className={cn("col-span-2", hasPhoto && "sm:col-span-1 sm:col-start-2")}>
-            <ReportCaseButton caseId={caseId} authorId={animalCase.author?.id} />
-          </div>
-        )}
+        {user &&
+          !isAuthor &&
+          (animalCase.status === "OPEN" || animalCase.status === "CLOSED") && (
+            <div
+              className={cn(
+                "col-span-2",
+                hasPhoto && "sm:col-span-1 sm:col-start-2",
+              )}
+            >
+              <ReportCaseButton
+                caseId={caseId}
+                authorId={animalCase.author?.id}
+              />
+            </div>
+          )}
       </header>
 
       {isAuthor && draft && <DraftActions caseId={caseId} />}
@@ -877,7 +899,11 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           >
             {animalCase.needs.map((need) => {
               const needResponses = responsesByNeed.get(need.id) ?? []
-              const needName = getDictionaryName(needTypes.data, need.type, locale)
+              const needName = getDictionaryName(
+                needTypes.data,
+                need.type,
+                locale,
+              )
               const canManageNeed =
                 isAuthor && editable && need.status !== "CLOSED"
               return (
@@ -963,7 +989,10 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                           Войдите, чтобы предложить помощь и написать автору.
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          <Button asChild className="h-11 flex-1 sm:h-10 sm:flex-none">
+                          <Button
+                            asChild
+                            className="h-11 flex-1 sm:h-10 sm:flex-none"
+                          >
                             <Link href={ROUTES.LOGIN}>Войти</Link>
                           </Button>
                           <Button
@@ -982,52 +1011,60 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
                       user &&
                       (need.status === "OPEN" ||
                         myCaseApplicationsForNeed(need.id).length > 0) && (
-                      <>
-                        {myCaseApplicationsForNeed(need.id).length ? (
-                          <div className="rounded-xl bg-muted/60 p-4">
-                            <p className="font-semibold">
-                              Вы уже предложили здесь помощь.
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              Следите за ответом автора в разделе{" "}
-                              <Link
-                                href={ROUTES.MY_TASKS}
-                                className="font-semibold text-primary hover:text-primary-hover hover:underline"
-                              >
-                                «Мои отклики»
-                              </Link>
-                              .
-                            </p>
-                            <ul className="mt-3 space-y-2 text-sm">
-                              {myCaseApplicationsForNeed(need.id).map(
-                                (application) => (
-                                  <li
-                                    key={application.id}
-                                    className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3"
-                                  >
-                                    <StatusBadge
-                                      tone={responseStatusTones[application.status]}
+                        <>
+                          {myCaseApplicationsForNeed(need.id).length ? (
+                            <div className="rounded-xl bg-muted/60 p-4">
+                              <p className="font-semibold">
+                                Вы уже предложили здесь помощь.
+                              </p>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Следите за ответом автора в разделе{" "}
+                                <Link
+                                  href={ROUTES.MY_TASKS}
+                                  className="font-semibold text-primary hover:text-primary-hover hover:underline"
+                                >
+                                  «Мои отклики»
+                                </Link>
+                                .
+                              </p>
+                              <ul className="mt-3 space-y-2 text-sm">
+                                {myCaseApplicationsForNeed(need.id).map(
+                                  (application) => (
+                                    <li
+                                      key={application.id}
+                                      className="flex flex-col items-start gap-2 rounded-xl border bg-card p-3"
                                     >
-                                      {responseStatusLabels[application.status]}
-                                    </StatusBadge>
-                                    <p className="text-muted-foreground [overflow-wrap:anywhere]">
-                                      {application.message}
-                                    </p>
-                                  </li>
-                                ),
-                              )}
-                            </ul>
-                          </div>
-                        ) : (
-                          <Button
-                            className={touchButton}
-                            onClick={() => openOffer(need)}
-                          >
-                            Предложить помощь
-                          </Button>
-                        )}
-                      </>
-                    )}
+                                      <StatusBadge
+                                        tone={
+                                          responseStatusTones[
+                                            application.status
+                                          ]
+                                        }
+                                      >
+                                        {
+                                          responseStatusLabels[
+                                            application.status
+                                          ]
+                                        }
+                                      </StatusBadge>
+                                      <p className="text-muted-foreground [overflow-wrap:anywhere]">
+                                        {application.message}
+                                      </p>
+                                    </li>
+                                  ),
+                                )}
+                              </ul>
+                            </div>
+                          ) : (
+                            <Button
+                              className={touchButton}
+                              onClick={() => openOffer(need)}
+                            >
+                              Предложить помощь
+                            </Button>
+                          )}
+                        </>
+                      )}
 
                     {isAuthor && (
                       <AuthorNeedPanel
@@ -1193,81 +1230,81 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
 
       {canEdit && !draft && !hidden && (
         <div id="close-case" className="scroll-mt-24">
-        <SectionCard
-          icon={Lock}
-          title="Закрыть объявление"
-          description="Если животное уже нашло дом или помощь больше не нужна, закройте объявление — оно пропадёт из общего списка."
-        >
-          <Field>
-            <FieldLabel htmlFor="close-reason">Причина закрытия</FieldLabel>
-            <Select value={closeReason} onValueChange={setCloseReason}>
-              <SelectTrigger id="close-reason">
-                <SelectValue placeholder="Выберите причину" />
-              </SelectTrigger>
-              <SelectContent>
-                {closeReasons.data?.map((reason) => (
-                  <SelectItem key={reason.code} value={reason.code}>
-                    {reason.nameRu}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          {selectedReason?.requiresComment && (
-            <Field>
-              <FieldLabel htmlFor="close-comment">
-                Комментарий (обязательно для этой причины)
-              </FieldLabel>
-              <Textarea
-                id="close-comment"
-                value={closeComment}
-                onChange={(event) => setCloseComment(event.target.value)}
-                placeholder="Опишите детали закрытия объявления"
-              />
-            </Field>
-          )}
-
-          {hasActiveAssignments && (
-            <FieldSet>
-              <FieldLegend variant="label">
-                У объявления есть выбранные помощники. Что с ними сделать?
-              </FieldLegend>
-              <div className="flex flex-col gap-2">
-                {closeAssignmentOptions.map(({ value, label }) => (
-                  <label
-                    key={value}
-                    className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors has-[:checked]:border-primary/40 has-[:checked]:bg-primary-soft has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40"
-                  >
-                    <input
-                      type="radio"
-                      name="close-assignments"
-                      value={value}
-                      checked={closeAssignments === value}
-                      onChange={() => setCloseAssignments(value)}
-                      className="size-4 accent-primary"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </FieldSet>
-          )}
-
-          <LoadingButton
-            loading={closeCaseMutation.isPending}
-            loadingText="Закрываем…"
-            disabled={
-              !closeReason ||
-              (!!selectedReason?.requiresComment && !closeComment.trim()) ||
-              (hasActiveAssignments && !closeAssignments)
-            }
-            className="h-11 w-full px-6 sm:h-10 sm:w-fit"
-            onClick={() => void handleCloseCase()}
+          <SectionCard
+            icon={Lock}
+            title="Закрыть объявление"
+            description="Если животное уже нашло дом или помощь больше не нужна, закройте объявление — оно пропадёт из общего списка."
           >
-            Закрыть объявление
-          </LoadingButton>
-        </SectionCard>
+            <Field>
+              <FieldLabel htmlFor="close-reason">Причина закрытия</FieldLabel>
+              <Select value={closeReason} onValueChange={setCloseReason}>
+                <SelectTrigger id="close-reason">
+                  <SelectValue placeholder="Выберите причину" />
+                </SelectTrigger>
+                <SelectContent>
+                  {closeReasons.data?.map((reason) => (
+                    <SelectItem key={reason.code} value={reason.code}>
+                      {reason.nameRu}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {selectedReason?.requiresComment && (
+              <Field>
+                <FieldLabel htmlFor="close-comment">
+                  Комментарий (обязательно для этой причины)
+                </FieldLabel>
+                <Textarea
+                  id="close-comment"
+                  value={closeComment}
+                  onChange={(event) => setCloseComment(event.target.value)}
+                  placeholder="Опишите детали закрытия объявления"
+                />
+              </Field>
+            )}
+
+            {hasActiveAssignments && (
+              <FieldSet>
+                <FieldLegend variant="label">
+                  У объявления есть выбранные помощники. Что с ними сделать?
+                </FieldLegend>
+                <div className="flex flex-col gap-2">
+                  {closeAssignmentOptions.map(({ value, label }) => (
+                    <label
+                      key={value}
+                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition-colors has-[:checked]:border-primary/40 has-[:checked]:bg-primary-soft has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40"
+                    >
+                      <input
+                        type="radio"
+                        name="close-assignments"
+                        value={value}
+                        checked={closeAssignments === value}
+                        onChange={() => setCloseAssignments(value)}
+                        className="size-4 accent-primary"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </FieldSet>
+            )}
+
+            <LoadingButton
+              loading={closeCaseMutation.isPending}
+              loadingText="Закрываем…"
+              disabled={
+                !closeReason ||
+                (!!selectedReason?.requiresComment && !closeComment.trim()) ||
+                (hasActiveAssignments && !closeAssignments)
+              }
+              className="h-11 w-full px-6 sm:h-10 sm:w-fit"
+              onClick={() => void handleCloseCase()}
+            >
+              Закрыть объявление
+            </LoadingButton>
+          </SectionCard>
         </div>
       )}
       {helpNeed && (
@@ -1325,7 +1362,10 @@ function AuthorNeedPanel({
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {accepted && (
-        <section aria-labelledby={`helper-${need.id}`} className="flex flex-col gap-2">
+        <section
+          aria-labelledby={`helper-${need.id}`}
+          className="flex flex-col gap-2"
+        >
           <h4
             id={`helper-${need.id}`}
             className="text-sm font-semibold text-muted-foreground"
@@ -1366,7 +1406,10 @@ function AuthorNeedPanel({
       )}
 
       {others.length > 0 ? (
-        <section aria-labelledby={`responses-${need.id}`} className="flex flex-col gap-2">
+        <section
+          aria-labelledby={`responses-${need.id}`}
+          className="flex flex-col gap-2"
+        >
           <h4
             id={`responses-${need.id}`}
             className="text-sm font-semibold text-muted-foreground"
@@ -1449,8 +1492,7 @@ function ResponseChatStatus({
   if (!conversation) return null
   return (
     <p className="text-xs text-muted-foreground">
-      {conversation.status === "ACTIVE" ||
-      conversation.status === "CLOSED" ? (
+      {conversation.status === "ACTIVE" || conversation.status === "CLOSED" ? (
         <Link
           href={ROUTES.CHAT(conversation.id)}
           className="font-semibold text-primary hover:text-primary-hover hover:underline"

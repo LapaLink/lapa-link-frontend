@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { PawPrint } from "lucide-react"
 import { useState } from "react"
 import { normalizeRemoteImageUrl } from "@/lib/images"
 import { Skeleton } from "@/components/ui"
@@ -57,7 +58,7 @@ export function CasePhoto({
     <div
       role="img"
       aria-label="Фото животного пока нет"
-      className={`flex ${aspect} flex-col items-center justify-center gap-2 bg-[radial-gradient(circle_at_50%_40%,var(--card)_0%,var(--primary-soft)_70%)]`}
+      className={`relative flex ${aspect} flex-col items-center justify-center gap-2 overflow-hidden bg-[radial-gradient(circle_at_50%_40%,var(--card)_0%,var(--primary-soft)_70%)]`}
     >
       <span className="flex size-16 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-primary/10 sm:size-20">
         <Image
@@ -68,6 +69,14 @@ export function CasePhoto({
           className="h-auto w-3/5 opacity-80"
         />
       </span>
+      <PawPrint
+        aria-hidden
+        className="absolute top-3 right-4 size-7 rotate-12 text-primary/15"
+      />
+      <PawPrint
+        aria-hidden
+        className="absolute bottom-3 left-4 size-9 -rotate-12 text-primary/15"
+      />
       <span aria-hidden className="text-xs font-semibold text-primary/70">
         Фото пока нет
       </span>

@@ -49,15 +49,15 @@ export function BottomNav() {
       icon: Newspaper,
       active: pathname === ROUTES.MY_CASES,
     },
-    {
-      href: ROUTES.CREATE_CASE,
-      label: "Нашёл животное",
-      icon: Plus,
-      active: pathname === ROUTES.CREATE_CASE,
-      center: true,
-    },
     ...(user
       ? [
+          {
+            href: ROUTES.CREATE_CASE,
+            label: "Нашёл животное",
+            icon: Plus,
+            active: pathname === ROUTES.CREATE_CASE,
+            center: true,
+          },
           {
             href: ROUTES.CHATS,
             label: "Сообщения",
@@ -109,7 +109,9 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                aria-label={badge > 0 ? `${label}, непрочитанных: ${badge}` : undefined}
+                aria-label={
+                  badge > 0 ? `${label}, непрочитанных: ${badge}` : undefined
+                }
                 className={cn(
                   "flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold outline-none transition-colors focus-visible:bg-muted",
                   active

@@ -6,9 +6,18 @@ import { Footer } from "../Footer/Footer"
 import { ROUTES } from "@/lib/constants"
 
 const benefits = [
-  { icon: Megaphone, text: "Подайте объявление о найденном животном за пару минут." },
-  { icon: HeartHandshake, text: "Предлагайте помощь тем, кто рядом, и следите за ответами." },
-  { icon: PawPrint, text: "Все ваши объявления и добрые дела — в одном месте." },
+  {
+    icon: Megaphone,
+    text: "Подайте объявление о найденном животном за пару минут.",
+  },
+  {
+    icon: HeartHandshake,
+    text: "Предлагайте помощь тем, кто рядом, и следите за ответами.",
+  },
+  {
+    icon: PawPrint,
+    text: "Все ваши объявления и добрые дела — в одном месте.",
+  },
 ]
 
 type AuthLayoutProps = {

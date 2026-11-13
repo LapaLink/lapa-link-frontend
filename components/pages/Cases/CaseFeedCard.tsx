@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { Clock, Zap } from "lucide-react"
+import { Clock, HandHeart, Zap } from "lucide-react"
 import { ROUTES } from "@/lib/constants"
 import { formatNeedWindow } from "@/lib/needs"
 import type { CaseListItem } from "@/types"
+import { cn } from "cn"
 import { Skeleton } from "@/components/ui"
 import { CasePhoto } from "@/components/common"
 
@@ -25,10 +26,13 @@ export function CaseFeedCard({
   item,
   cityName,
   needTypeName,
+  layout = "grid",
 }: {
   item: CaseListItem
   cityName: string
   needTypeName: (code: string) => string
+  /** `list` puts the photo beside the text. */
+  layout?: "grid" | "list"
 }) {
   const { topNeed } = item
   const urgent = topNeed?.priority === "HIGH"
@@ -44,9 +48,17 @@ export function CaseFeedCard({
   return (
     <Link
       href={ROUTES.CASE_DETAILS(item.id)}
-      className="group flex min-w-0 flex-col gap-3 rounded-[20px] outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+      className={cn(
+        "group flex min-w-0 gap-3 rounded-[20px] border border-border bg-card p-3 shadow-[0_6px_18px_rgba(84,46,58,0.06)] outline-none transition-all motion-safe:hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(84,46,58,0.14)] focus-visible:ring-3 focus-visible:ring-ring/40",
+        layout === "list" ? "flex-row sm:gap-4" : "flex-col",
+      )}
     >
-      <div className="relative overflow-hidden rounded-[20px] [&_img]:transition-transform [&_img]:duration-500 motion-safe:group-hover:[&_img]:scale-[1.03]">
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-2xl [&_img]:transition-transform [&_img]:duration-500 motion-safe:group-hover:[&_img]:scale-[1.03]",
+          layout === "list" && "w-36 shrink-0 sm:w-56",
+        )}
+      >
         <CasePhoto src={item.photoUrl} alt={item.title} aspect="aspect-[4/3]" />
         {urgent && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-card px-[11px] py-1.5 text-[13px] font-bold text-urgent">
@@ -55,7 +67,7 @@ export function CaseFeedCard({
           </span>
         )}
       </div>
-      <div className="flex min-w-0 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="line-clamp-1 text-lg font-bold [overflow-wrap:anywhere]">
             {item.title}
@@ -91,6 +103,10 @@ export function CaseFeedCard({
           <Clock aria-hidden className="size-[15px] shrink-0" />
           {due}
         </p>
+        <span className="mt-auto flex h-11 items-center justify-center gap-2 rounded-xl bg-primary-soft text-base font-bold text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+          <HandHeart aria-hidden className="size-5" />
+          Помочь
+        </span>
       </div>
     </Link>
   )

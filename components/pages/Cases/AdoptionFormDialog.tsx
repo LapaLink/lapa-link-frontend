@@ -202,7 +202,10 @@ export function AdoptionFormDialog({
         const fields = cause.fields
         if (fields.message) setErrors({ message: fields.message })
         else setError(text)
-      } else if (code === "OPERATION_LIMIT_EXCEEDED" || code === "OPERATION_BLOCKED") {
+      } else if (
+        code === "OPERATION_LIMIT_EXCEEDED" ||
+        code === "OPERATION_BLOCKED"
+      ) {
         setError("Слишком много заявок, попробуйте позже.")
       } else if (code === "ADOPTION_REQUEST_ALREADY_EXISTS") {
         toast.info(text)

@@ -64,7 +64,6 @@ export function AccountNavigation() {
           <Button asChild>
             <Link href={ROUTES.REGISTER}>Регистрация</Link>
           </Button>
-          <CreateCaseLink />
         </>
       )}
     </nav>

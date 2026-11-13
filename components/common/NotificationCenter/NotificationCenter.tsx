@@ -92,7 +92,12 @@ const notificationDate = new Intl.DateTimeFormat("ru", {
   minute: "2-digit",
 })
 
-export function NotificationCenter() {
+export function NotificationCenter({
+  variant = "icon",
+}: {
+  /** `sidebar`: a wide labelled row for the left navigation. */
+  variant?: "icon" | "sidebar"
+}) {
   const client = useQueryClient()
   const [open, setOpen] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -132,12 +137,25 @@ export function NotificationCenter() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="relative size-11 rounded-full"
+          size={variant === "sidebar" ? "default" : "icon"}
+          className={
+            variant === "sidebar"
+              ? "h-12 w-full justify-start gap-3 rounded-xl border-b px-4 text-base font-semibold text-foreground/80"
+              : "relative size-11 rounded-full"
+          }
           aria-label={`Уведомления${unread ? `, непрочитанных: ${unread}` : ""}`}
         >
           <Bell className="size-5" />
-          {unread > 0 && (
+          {variant === "sidebar" && "Уведомления"}
+          {unread > 0 && variant === "sidebar" && (
+            <span
+              aria-hidden="true"
+              className="ml-auto min-w-5 rounded-full bg-primary px-1.5 text-xs leading-5 font-bold text-primary-foreground"
+            >
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+          {unread > 0 && variant === "icon" && (
             <span
               aria-hidden="true"
               className="absolute right-0 top-0 min-w-5 rounded-full bg-primary px-1 text-[10px] font-bold leading-5 text-primary-foreground"

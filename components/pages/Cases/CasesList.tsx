@@ -12,12 +12,17 @@ import {
 } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
+  ArrowRight,
   ArrowUpDown,
+  Cat,
   ChevronDown,
   CircleAlert,
   CloudOff,
   HandHeart,
+  Dog,
   Heart,
+  LayoutGrid,
+  List,
   ListFilter,
   LocateFixed,
   Map as MapIcon,
@@ -177,6 +182,8 @@ export function CasesList() {
   const [nearOpen, setNearOpen] = useState<boolean | null>(null)
   const [moreOpen, setMoreOpen] = useState<boolean | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [view, setView] = useState<"grid" | "list">("grid")
+  const [showMap, setShowMap] = useState(true)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
 
   const navigate = (next: FeedState) => {
@@ -369,41 +376,96 @@ export function CasesList() {
   const chipClass = "h-11 rounded-full sm:h-9"
 
   return (
-    <section className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5">
+    <section className="mx-auto flex w-full min-w-0 flex-col gap-5">
+      <div className="relative isolate overflow-hidden rounded-[28px] bg-gradient-to-r from-primary-soft via-peach/70 to-primary-soft px-6 py-8 sm:px-10 sm:py-10">
+        <svg
+          aria-hidden
+          viewBox="0 0 220 200"
+          className="absolute right-4 bottom-0 -z-10 hidden h-[92%] sm:block"
+        >
+          <ellipse
+            cx="120"
+            cy="196"
+            rx="100"
+            ry="14"
+            className="fill-primary/10"
+          />
+          <path
+            d="M150 120c30-10 50 10 42 40-4 14-20 8-26-4z"
+            className="fill-[#c97b3e]"
+          />
+          <rect
+            x="62"
+            y="96"
+            width="96"
+            height="92"
+            rx="40"
+            className="fill-white"
+          />
+          <path d="M60 120l8 52 24-8z" className="fill-primary" />
+          <ellipse cx="96" cy="64" rx="52" ry="48" className="fill-white" />
+          <path
+            d="M52 40c-22 6-26 44-12 62 14-4 22-30 20-50z"
+            className="fill-[#c97b3e]"
+          />
+          <path
+            d="M138 30c26 0 34 30 22 52-14-6-24-26-22-52z"
+            className="fill-[#c97b3e]"
+          />
+          <path
+            d="M96 22c18 0 26 14 22 34-10-8-26-8-40 0-2-20 4-34 18-34z"
+            className="fill-[#c97b3e]"
+          />
+          <circle cx="78" cy="68" r="6" className="fill-foreground" />
+          <circle cx="116" cy="68" r="6" className="fill-foreground" />
+          <ellipse cx="97" cy="84" rx="9" ry="6" className="fill-foreground" />
+          <path d="M84 94c6 12 22 12 26 0z" className="fill-primary/70" />
+        </svg>
+        <PawPrint
+          aria-hidden
+          className="absolute -right-6 -bottom-8 -z-10 size-56 rotate-12 text-primary/10 sm:hidden"
+        />
+        <PawPrint
+          aria-hidden
+          className="absolute right-40 top-4 -z-10 hidden size-16 -rotate-12 text-primary/10 sm:block"
+        />
+        <h1 className="max-w-lg text-3xl leading-tight font-extrabold tracking-tight sm:text-4xl">
+          Каждое животное <span className="text-primary">заслуживает дом</span>
+        </h1>
+        <p className="mt-2 text-lg text-foreground/75">
+          Помогите найти любящего хозяина
+        </p>
+        <Button asChild size="lg" className="mt-5 rounded-full">
+          <Link href={ROUTES.FAQ}>
+            Узнать больше
+            <ArrowRight data-icon="inline-end" />
+          </Link>
+        </Button>
+      </div>
       <div className="flex flex-wrap items-center gap-2.5">
         <div
           role="group"
-          aria-label="Какая помощь нужна"
+          aria-label="Кого показать"
           className="flex flex-wrap items-center gap-2.5"
         >
-          <button
-            type="button"
-            aria-pressed={selectedNeedTypes.length === 0}
-            className={chipButton(selectedNeedTypes.length === 0)}
-            onClick={() => update({ needTypes: [] })}
-          >
-            Все
-          </button>
-          {sortedNeedTypes.map((type) => {
-            const on = selectedNeedTypes.includes(type.code)
-            return (
-              <button
-                key={type.code}
-                type="button"
-                aria-pressed={on}
-                className={chipButton(on)}
-                onClick={() =>
-                  update({
-                    needTypes: on
-                      ? selectedNeedTypes.filter((code) => code !== type.code)
-                      : [...selectedNeedTypes, type.code],
-                  })
-                }
-              >
-                {needTypeName(type.code)}
-              </button>
-            )
-          })}
+          {(
+            [
+              [undefined, "Все", PawPrint],
+              ["DOG", "Собаки", Dog],
+              ["CAT", "Кошки", Cat],
+            ] as const
+          ).map(([value, label, Icon]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={state.animalType === value}
+              className={chipButton(state.animalType === value)}
+              onClick={() => update({ animalType: value })}
+            >
+              <Icon aria-hidden className="size-[18px]" />
+              {label}
+            </button>
+          ))}
         </div>
         <span aria-hidden className="mx-1 hidden h-7 w-px bg-input sm:block" />
         <button
@@ -794,194 +856,246 @@ export function CasesList() {
         </DialogContent>
       </Dialog>
 
-
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-        <div className="flex min-w-0 flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[28px] font-bold tracking-tight">
-            Питомцы ждут помощи рядом
-          </h1>
-          {feedItems && (
-            <p role="status" className="text-sm text-foreground/75">
-              {matching
-                ? `Найдено объявлений: ${matchingFeed.data?.totalElements}`
-                : `Показано объявлений: ${feedItems.length}`}
-            </p>
-          )}
-        </div>
-        <Select
-          value={state.orderBy}
-          onValueChange={(value) => update({ orderBy: value as CaseFeedSort })}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label="Сортировка"
-            className={cn(
-              "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
-              fieldClass,
-            )}
-          >
-            <ArrowUpDown aria-hidden className="text-primary" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectGroup>
-              {(["NEWEST", "DISTANCE", "PRIORITY", "DEADLINE"] as const).map(
-                (orderBy) => (
-                  <SelectItem
-                    key={orderBy}
-                    value={orderBy}
-                    // Ordering by distance needs a point (FEED_POINT_REQUIRED).
-                    disabled={orderBy === "DISTANCE" && !state.point}
-                  >
-                    {sortLabels[orderBy]}
-                  </SelectItem>
-                ),
-              )}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {cases.isPending || cursorBroken ? (
-        <CaseFeedSkeleton />
-      ) : cases.isError && !feedItems?.length ? (
-        <EmptyState
-          icon={CloudOff}
-          title="Не получилось загрузить объявления"
-          description="Возможно, пропал интернет или сервис ненадолго недоступен. Фильтры сохранятся — просто попробуйте ещё раз."
-        >
-          <FormAlert
-            message={getErrorMessage(
-              cases.error,
-              "Не удалось загрузить объявления.",
-            )}
-          />
-          <Button
-            variant="outline"
-            className="h-11 sm:h-10"
-            onClick={() => void cases.refetch()}
-          >
-            Попробовать ещё раз
-          </Button>
-        </EmptyState>
-      ) : feedItems?.length ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {feedItems.map((item) => (
-            <CaseFeedCard
-              key={item.id}
-              item={item}
-              cityName={getCityName(cities.data, item.cityCode, locale)}
-              needTypeName={needTypeName}
-            />
-          ))}
-        </div>
-      ) : matching ? (
-        <EmptyState
-          icon={HandHeart}
-          title="Нет подходящих объявлений"
-          description="Здесь появятся объявления, где нужна помощь, которую вы отметили в профиле, — в вашем радиусе или в городе профиля."
-        >
-          <Button asChild variant="outline" className="h-11 sm:h-10">
-            <Link href={`${ROUTES.ACCOUNT}#help-offers`}>
-              Настроить, чем готов помочь
-            </Link>
-          </Button>
-        </EmptyState>
-      ) : (
-        <EmptyState
-          icon={Search}
-          title="Ничего не нашлось"
-          description="Пока нет объявлений по выбранным фильтрам."
-        />
-      )}
-      {matching && matchingFeed.data && (
-        <ListPagination
-          page={state.page}
-          totalPages={matchingFeed.data.totalPages}
-          busy={matchingFeed.isFetching}
-          onPageChange={(page) => navigate({ ...state, page })}
-        />
-      )}
-      {!matching && !!feedItems?.length && (
-        <div className="flex flex-col items-center gap-3">
-          {cursorFeed.isError && (
-            <FormAlert
-              message={getErrorMessage(
-                cursorFeed.error,
-                "Не удалось загрузить объявления.",
-              )}
-            />
-          )}
-          {cursorFeed.hasNextPage && (
-            <LoadingButton
-              variant="outline"
-              className="h-11 px-8 sm:h-10"
-              loading={cursorFeed.isFetchingNextPage}
-              loadingText="Загружаем…"
-              onClick={() => void cursorFeed.fetchNextPage()}
-            >
-              Показать ещё
-            </LoadingButton>
-          )}
-        </div>
-      )}
-        </div>
-      <section
-        aria-labelledby="cases-map-title"
-        className="flex min-w-0 flex-col gap-3 lg:sticky lg:top-6"
+      <div
+        className={cn(
+          "grid gap-6 lg:items-start",
+          showMap && "lg:grid-cols-[minmax(0,1fr)_380px]",
+        )}
       >
-        <h2
-          id="cases-map-title"
-          className="flex items-center gap-2 text-xl font-bold"
-        >
-          <MapIcon aria-hidden className="size-5 text-primary" />
-          Карта объявлений
-        </h2>
-        {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
-        <div className="relative isolate h-[22rem] overflow-hidden rounded-[28px] border border-foreground/[0.07] shadow-card sm:h-[28rem] lg:h-[36rem]">
-          <CasesMap
-            view={mapView}
-            point={state.point}
-            homePoint={homePoint}
-            radiusKm={state.point ? radius : undefined}
-            items={(mapFilter && markers.data?.items) || []}
-            needTypeName={needTypeName}
-            onBoundsChange={setMapBounds}
-          />
-          {(mapBounds && !mapFilter) ||
-          markers.data?.truncated ||
-          markers.isError ? (
-            <p
-              role="status"
-              className="absolute inset-x-14 top-3 z-[1000] mx-auto w-fit rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-[28px] font-bold tracking-tight">
+                Питомцы ждут помощи рядом
+              </h2>
+              {feedItems && (
+                <p role="status" className="text-sm text-foreground/75">
+                  {matching
+                    ? `Найдено объявлений: ${matchingFeed.data?.totalElements}`
+                    : `Показано объявлений: ${feedItems.length}`}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={state.orderBy}
+                onValueChange={(value) =>
+                  update({ orderBy: value as CaseFeedSort })
+                }
+              >
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Сортировка"
+                  className={cn(
+                    "w-auto gap-2 rounded-full px-3 text-sm data-[size=sm]:h-11 sm:data-[size=sm]:h-9",
+                    fieldClass,
+                  )}
+                >
+                  <ArrowUpDown aria-hidden className="text-primary" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectGroup>
+                    {(
+                      ["NEWEST", "DISTANCE", "PRIORITY", "DEADLINE"] as const
+                    ).map((orderBy) => (
+                      <SelectItem
+                        key={orderBy}
+                        value={orderBy}
+                        // Ordering by distance needs a point (FEED_POINT_REQUIRED).
+                        disabled={orderBy === "DISTANCE" && !state.point}
+                      >
+                        {sortLabels[orderBy]}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                aria-label="Показать карту"
+                aria-pressed={showMap}
+                title="Карта"
+                onClick={() => setShowMap((on) => !on)}
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-xl border transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                  showMap
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-card text-foreground/70 hover:border-foreground/30",
+                )}
+              >
+                <MapIcon aria-hidden className="size-5" />
+              </button>
+              <button
+                type="button"
+                aria-label={
+                  view === "grid" ? "Показать списком" : "Показать сеткой"
+                }
+                title={view === "grid" ? "Списком" : "Сеткой"}
+                onClick={() =>
+                  setView((current) => (current === "grid" ? "list" : "grid"))
+                }
+                className="flex size-10 items-center justify-center rounded-xl border border-input bg-card text-foreground/70 transition-colors outline-none hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {view === "grid" ? (
+                  <List aria-hidden className="size-5" />
+                ) : (
+                  <LayoutGrid aria-hidden className="size-5" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {cases.isPending || cursorBroken ? (
+            <CaseFeedSkeleton />
+          ) : cases.isError && !feedItems?.length ? (
+            <EmptyState
+              icon={CloudOff}
+              title="Не получилось загрузить объявления"
+              description="Возможно, пропал интернет или сервис ненадолго недоступен. Фильтры сохранятся — просто попробуйте ещё раз."
             >
-              {mapBounds && !mapFilter
-                ? "Приблизьте карту, чтобы увидеть объявления"
-                : markers.isError
-                  ? getErrorMessage(
-                      markers.error,
-                      "Не удалось загрузить метки на карте.",
-                    )
-                  : "Показаны не все объявления — приблизьте карту"}
-            </p>
-          ) : null}
+              <FormAlert
+                message={getErrorMessage(
+                  cases.error,
+                  "Не удалось загрузить объявления.",
+                )}
+              />
+              <Button
+                variant="outline"
+                className="h-11 sm:h-10"
+                onClick={() => void cases.refetch()}
+              >
+                Попробовать ещё раз
+              </Button>
+            </EmptyState>
+          ) : feedItems?.length ? (
+            <div
+              className={cn(
+                "grid gap-5",
+                view === "list"
+                  ? "grid-cols-1"
+                  : showMap
+                    ? "sm:grid-cols-2 xl:grid-cols-3"
+                    : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+              )}
+            >
+              {feedItems.map((item) => (
+                <CaseFeedCard
+                  key={item.id}
+                  item={item}
+                  layout={view}
+                  cityName={getCityName(cities.data, item.cityCode, locale)}
+                  needTypeName={needTypeName}
+                />
+              ))}
+            </div>
+          ) : matching ? (
+            <EmptyState
+              icon={HandHeart}
+              title="Нет подходящих объявлений"
+              description="Здесь появятся объявления, где нужна помощь, которую вы отметили в профиле, — в вашем радиусе или в городе профиля."
+            >
+              <Button asChild variant="outline" className="h-11 sm:h-10">
+                <Link href={`${ROUTES.ACCOUNT}#help-offers`}>
+                  Настроить, чем готов помочь
+                </Link>
+              </Button>
+            </EmptyState>
+          ) : (
+            <EmptyState
+              icon={Search}
+              title="Ничего не нашлось"
+              description="Пока нет объявлений по выбранным фильтрам."
+            />
+          )}
+          {matching && matchingFeed.data && (
+            <ListPagination
+              page={state.page}
+              totalPages={matchingFeed.data.totalPages}
+              busy={matchingFeed.isFetching}
+              onPageChange={(page) => navigate({ ...state, page })}
+            />
+          )}
+          {!matching && !!feedItems?.length && (
+            <div className="flex flex-col items-center gap-3">
+              {cursorFeed.isError && (
+                <FormAlert
+                  message={getErrorMessage(
+                    cursorFeed.error,
+                    "Не удалось загрузить объявления.",
+                  )}
+                />
+              )}
+              {cursorFeed.hasNextPage && (
+                <LoadingButton
+                  variant="outline"
+                  className="h-11 px-8 sm:h-10"
+                  loading={cursorFeed.isFetchingNextPage}
+                  loadingText="Загружаем…"
+                  onClick={() => void cursorFeed.fetchNextPage()}
+                >
+                  Показать ещё
+                </LoadingButton>
+              )}
+            </div>
+          )}
         </div>
-        <ul
-          aria-label="Цвет метки — приоритет"
-          className="flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs text-foreground/75"
-        >
-          {mapLegend.map(([fill, label]) => (
-            <li key={label} className="flex items-center gap-1.5">
-              <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
-                <circle cx="5" cy="5" r="5" className={fill} />
-              </svg>
-              {label}
-            </li>
-          ))}
-        </ul>
-      </section>
+        {showMap && (
+          <section
+            aria-labelledby="cases-map-title"
+            className="order-first flex min-w-0 flex-col gap-3 lg:sticky lg:top-6 lg:order-none"
+          >
+            <h2
+              id="cases-map-title"
+              className="flex items-center gap-2 text-xl font-bold"
+            >
+              <MapIcon aria-hidden className="size-5 text-primary" />
+              Карта объявлений
+            </h2>
+            {/* `isolate` keeps Leaflet's high z-index panes under the sticky header. */}
+            <div className="relative isolate h-72 overflow-hidden rounded-[28px] border border-foreground/[0.07] shadow-card sm:h-[28rem] lg:h-[36rem]">
+              <CasesMap
+                view={mapView}
+                point={state.point}
+                homePoint={homePoint}
+                radiusKm={state.point ? radius : undefined}
+                items={(mapFilter && markers.data?.items) || []}
+                needTypeName={needTypeName}
+                onBoundsChange={setMapBounds}
+              />
+              {(mapBounds && !mapFilter) ||
+              markers.data?.truncated ||
+              markers.isError ? (
+                <p
+                  role="status"
+                  className="absolute inset-x-14 top-3 z-[1000] mx-auto w-fit rounded-xl bg-card/95 px-3 py-2 text-center text-sm font-semibold shadow-sm"
+                >
+                  {mapBounds && !mapFilter
+                    ? "Приблизьте карту, чтобы увидеть объявления"
+                    : markers.isError
+                      ? getErrorMessage(
+                          markers.error,
+                          "Не удалось загрузить метки на карте.",
+                        )
+                      : "Показаны не все объявления — приблизьте карту"}
+                </p>
+              ) : null}
+            </div>
+            <ul
+              aria-label="Цвет метки — приоритет"
+              className="flex flex-wrap gap-x-4 gap-y-1.5 px-1 text-xs text-foreground/75"
+            >
+              {mapLegend.map(([fill, label]) => (
+                <li key={label} className="flex items-center gap-1.5">
+                  <svg aria-hidden viewBox="0 0 10 10" className="size-2.5">
+                    <circle cx="5" cy="5" r="5" className={fill} />
+                  </svg>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </section>
   )

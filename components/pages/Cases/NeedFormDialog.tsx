@@ -139,17 +139,23 @@ function NeedForm({
         if (error.code === "NEED_TIME_WINDOW_INVALID")
           form.setError("deadline", { type: "server", message: error.message })
         // The need or the case was closed meanwhile: show the actual state.
-        if (["NEED_CLOSED", "CASE_CLOSED", "CASE_NOT_FOUND"].includes(error.code ?? ""))
+        if (
+          ["NEED_CLOSED", "CASE_CLOSED", "CASE_NOT_FOUND"].includes(
+            error.code ?? "",
+          )
+        )
           void invalidateTaskData(client, caseId)
       }
       // Field errors stay under the fields, the message is shown above them.
-      if (error instanceof Error) form.setError("root", { message: error.message })
+      if (error instanceof Error)
+        form.setError("root", { message: error.message })
     },
   })
   const rootError = form.formState.errors.root?.message
   const detailsError = form.formState.errors.details?.message
   const retryable =
-    save.error instanceof ApiError && save.error.code === "OPERATION_IN_PROGRESS"
+    save.error instanceof ApiError &&
+    save.error.code === "OPERATION_IN_PROGRESS"
 
   return (
     <Form

@@ -57,7 +57,9 @@ export function CaseChat({
 }) {
   if (isAuthor)
     return <AuthorCaseChat caseId={caseId} caseOpen={caseOpen} chats={chats} />
-  return <HelperCaseChat caseId={caseId} hasActiveResponse={hasActiveResponse} />
+  return (
+    <HelperCaseChat caseId={caseId} hasActiveResponse={hasActiveResponse} />
+  )
 }
 
 function AuthorCaseChat({
@@ -85,7 +87,10 @@ function AuthorCaseChat({
     >
       {caseOpen && (
         <div className="flex min-h-11 items-center justify-between gap-4">
-          <FieldLabel htmlFor="case-chat" className="cursor-pointer font-semibold">
+          <FieldLabel
+            htmlFor="case-chat"
+            className="cursor-pointer font-semibold"
+          >
             Разрешить чат с откликнувшимися
           </FieldLabel>
           {permission.isPending ? (
@@ -116,7 +121,10 @@ function AuthorCaseChat({
         }
       />
       {requestList.length > 0 && (
-        <section className="flex flex-col gap-3" aria-labelledby="chat-requests">
+        <section
+          className="flex flex-col gap-3"
+          aria-labelledby="chat-requests"
+        >
           <h3 id="chat-requests" className="font-semibold">
             Запросы на чат
           </h3>
