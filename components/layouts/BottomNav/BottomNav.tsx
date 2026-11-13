@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import {
   LogIn,
+  Plus,
   MessageCircle,
   Newspaper,
   Search,
@@ -16,7 +17,8 @@ import { ROUTES } from "@/lib/constants"
 
 /**
  * Tab bar at the bottom of the screen on phones and tablets: search, own
- * cases, messages with the unread count and the profile (sign in for guests).
+ * cases, a round «+» in the middle (the main action: report an animal),
+ * messages with the unread count and the profile (sign in for guests).
  */
 export function BottomNav() {
   const pathname = usePathname() ?? ""
@@ -28,6 +30,8 @@ export function BottomNav() {
     icon: typeof Search
     active: boolean
     badge?: number
+    /** The raised round main action. */
+    center?: boolean
   }> = [
     {
       href: ROUTES.CASES,
@@ -44,6 +48,13 @@ export function BottomNav() {
       label: "Мои объявления",
       icon: Newspaper,
       active: pathname === ROUTES.MY_CASES,
+    },
+    {
+      href: ROUTES.CREATE_CASE,
+      label: "Создать объявление",
+      icon: Plus,
+      active: pathname === ROUTES.CREATE_CASE,
+      center: true,
     },
     ...(user
       ? [
@@ -79,7 +90,20 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/[0.07] bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <ul className="mx-auto flex max-w-md">
-        {tabs.map(({ href, label, icon: Icon, active, badge = 0 }) => {
+        {tabs.map(({ href, label, icon: Icon, active, badge = 0, center }) => {
+          if (center)
+            return (
+              <li key={href} className="flex flex-1 justify-center">
+                <Link
+                  href={href}
+                  aria-label={label}
+                  aria-current={active ? "page" : undefined}
+                  className="-mt-5 flex size-14 items-center justify-center self-start rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-card outline-none transition-colors hover:bg-primary-hover focus-visible:ring-ring"
+                >
+                  <Icon aria-hidden className="size-7" strokeWidth={2.5} />
+                </Link>
+              </li>
+            )
           return (
             <li key={href} className="flex-1">
               <Link

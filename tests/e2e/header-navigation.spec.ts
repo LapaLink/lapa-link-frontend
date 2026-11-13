@@ -16,7 +16,7 @@ test("desktop header keeps primary actions visible and groups personal links", a
     header.getByRole("link", { name: "Объявления", exact: true }),
   ).toHaveAttribute("aria-current", "page")
   await expect(
-    header.getByRole("link", { name: "Подать объявление" }),
+    header.getByRole("link", { name: "Создать объявление" }),
   ).toBeVisible()
   await expect(
     header.getByRole("link", { name: "Сообщения, непрочитанных: 2" }),

@@ -18,6 +18,7 @@ import { ROUTES } from "@/lib/constants"
 import { NavigationLink as Link } from "@/components/providers"
 import { FormAlert } from "@/components/common"
 import { Button } from "@/components/ui"
+import { HomeUrgent } from "./HomeUrgent"
 
 const ways = [
   {
@@ -95,7 +96,7 @@ export function Home() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href={ROUTES.CREATE_CASE}>Я нашёл животное</Link>
+              <Link href={ROUTES.CREATE_CASE}>Создать объявление</Link>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -125,6 +126,7 @@ export function Home() {
           </div>
         </div>
       </section>
+      <HomeUrgent />
       <section className="flex flex-col gap-7" aria-labelledby="ways-heading">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">

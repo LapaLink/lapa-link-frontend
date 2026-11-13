@@ -6,6 +6,7 @@ const tones = {
   success: "bg-success text-success-foreground",
   muted: "bg-muted text-muted-foreground",
   danger: "bg-destructive/10 text-destructive",
+  urgent: "bg-urgent-soft text-urgent",
 }
 
 /** Small pill for a status or a short attribute; the text carries the meaning, the tone only supports it. */
@@ -23,7 +24,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold [overflow-wrap:anywhere]",
+        "inline-flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold [overflow-wrap:anywhere]",
         tones[tone],
         className,
       )}

@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-nunito-sans);
+  --font-sans: var(--font-onest);
   --font-mono: ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -37,6 +37,9 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
+  --color-urgent: var(--urgent);
+  --color-urgent-soft: var(--urgent-soft);
+  --color-peach: var(--peach);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-popover-foreground: var(--popover-foreground);
@@ -56,34 +59,39 @@
 }
 
 :root {
-  --background: #faf9f8;
-  --foreground: #17243b;
+  /* «Тёплый дом»: warm cream ground, ink text, the brand colour unchanged. */
+  --background: #fffbf7;
+  --foreground: #2b2125;
   --card: #ffffff;
-  --card-foreground: #17243b;
+  --card-foreground: #2b2125;
   --popover: #ffffff;
-  --popover-foreground: #17243b;
+  --popover-foreground: #2b2125;
   --primary: #ac405c;
-  --primary-hover: #93334d;
+  --primary-hover: #8e3049;
   --primary-foreground: #ffffff;
-  --primary-soft: #fbeef1;
-  --secondary: #f8eef1;
-  --secondary-foreground: #17243b;
-  --muted: #f3f4f6;
-  --muted-foreground: #5f6e86;
-  --accent: #f5f1f2;
-  --accent-foreground: #17243b;
-  --success: #e8f5ec;
-  --success-foreground: #2f7a45;
+  --primary-soft: #fbeff2;
+  --secondary: #fbeff2;
+  --secondary-foreground: #2b2125;
+  --muted: #f5ede6;
+  --muted-foreground: #6e6066;
+  --accent: #f5ede6;
+  --accent-foreground: #2b2125;
+  --success: #eaf6ef;
+  --success-foreground: #2f7a52;
+  --urgent: #b4501f;
+  --urgent-soft: #fff1e8;
+  --peach: #ffe3d1;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: #e9eaee;
-  --input: #e2e4e9;
+  --border: #efe6df;
+  --input: #e6dad2;
   --ring: #ac405c;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  /* xl ≈ 16px (buttons, fields), 2xl ≈ 20px (cards). */
+  --radius: 0.7rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -134,6 +142,8 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-size: 1.0625rem;
+    line-height: 1.5;
   }
   html {
     @apply font-sans;

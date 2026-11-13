@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Nunito_Sans } from "next/font/google"
+import { Onest } from "next/font/google"
 import "./globals.css"
 import {
   QueryProvider,
@@ -8,9 +8,10 @@ import {
 } from "@/components/providers"
 import { Toaster } from "@/components/ui"
 
-const nunitoSans = Nunito_Sans({
-  variable: "--font-nunito-sans",
+const onest = Onest({
+  variable: "--font-onest",
   subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 })
 
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="ru"
       suppressHydrationWarning
-      className={`${nunitoSans.variable} h-full antialiased`}
+      className={`${onest.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <QueryProvider>

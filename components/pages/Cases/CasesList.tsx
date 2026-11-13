@@ -770,7 +770,8 @@ export function CasesList() {
 
       <section
         aria-labelledby="cases-map-title"
-        className="flex min-w-0 flex-col gap-3"
+        // On phones the animals come first: the map goes under the list.
+        className="flex min-w-0 flex-col gap-3 max-lg:order-last"
       >
         <h2
           id="cases-map-title"

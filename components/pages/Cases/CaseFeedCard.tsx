@@ -106,7 +106,7 @@ export function CaseFeedCard({
           {urgent && (
             <StatusBadge
               icon={ChevronsUp}
-              className="bg-primary text-primary-foreground shadow-sm"
+              className="bg-card text-urgent shadow-sm"
             >
               Срочно
             </StatusBadge>

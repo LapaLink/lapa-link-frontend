@@ -475,6 +475,17 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   const openAdoptionNeed = animalCase.needs.some(
     (need) => need.type === ADOPTION_NEED_TYPE && need.status !== "CLOSED",
   )
+  // The main action on phones: the first open need (not adoption, which has
+  // its own form) the visitor has not responded to yet.
+  const helpNeed =
+    !isAuthor && canAct
+      ? animalCase.needs.find(
+          (need) =>
+            need.status === "OPEN" &&
+            need.type !== ADOPTION_NEED_TYPE &&
+            !myCaseApplicationsForNeed(need.id).length,
+        )
+      : undefined
   const hasPhoto = !!animalCase.photoUrl
   const gallery = galleryOf(animalCase)
   const draft = animalCase.status === "DRAFT"
@@ -530,7 +541,13 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
   ]
 
   return (
-    <section className="mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-5 [overflow-wrap:anywhere] sm:gap-6">
+    <section
+      className={cn(
+        "mx-auto flex min-w-0 w-full max-w-4xl flex-col gap-5 [overflow-wrap:anywhere] sm:gap-6",
+        // Room for the fixed «Помочь» bar on phones.
+        helpNeed && "pb-20 lg:pb-0",
+      )}
+    >
       <nav
         aria-label="Навигация по объявлению"
         className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm"
@@ -556,6 +573,10 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           {caseStatusBadge(animalCase.status).label}
         </StatusBadge>
       </nav>
+
+      {gallery.length > 0 && (
+        <CaseGallery photos={gallery} title={animalCase.title} />
+      )}
 
       <header className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-4 gap-y-4 sm:gap-x-6">
         {hasPhoto && (
@@ -686,10 +707,6 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
           hasActiveResponse={hasActiveResponse}
           chats={caseChats}
         />
-      )}
-
-      {gallery.length > 0 && (
-        <CaseGallery photos={gallery} title={animalCase.title} />
       )}
 
       <SectionCard icon={PawPrint} title="О животном">
@@ -1251,6 +1268,25 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             Закрыть объявление
           </LoadingButton>
         </SectionCard>
+        </div>
+      )}
+      {helpNeed && (
+        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t bg-card px-5 py-3 shadow-[0_-8px_24px_rgba(84,46,58,0.08)] lg:hidden">
+          <span className="min-w-0 flex-1 text-sm">
+            <span className="block truncate font-semibold">
+              {getDictionaryName(needTypes.data, helpNeed.type, locale)}
+            </span>
+            <span className="text-muted-foreground">нужна помощь</span>
+          </span>
+          {user ? (
+            <Button size="lg" onClick={() => openOffer(helpNeed)}>
+              Помочь
+            </Button>
+          ) : (
+            <Button size="lg" asChild>
+              <Link href={ROUTES.LOGIN}>Помочь</Link>
+            </Button>
+          )}
         </div>
       )}
     </section>

@@ -30,7 +30,7 @@ export function MainNavigation() {
           aria-current={creating ? "page" : undefined}
         >
           <Plus data-icon="inline-start" />
-          Подать объявление
+          Создать объявление
         </Link>
       </Button>
     </nav>
