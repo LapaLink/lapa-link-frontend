@@ -16,13 +16,13 @@ export function Footer() {
           href={ROUTES.FAQ}
           className="font-medium text-foreground/80 hover:text-primary hover:underline"
         >
-          Частые вопросы
+          О проекте
         </Link>
         <Link
           href={ROUTES.SUPPORT}
           className="font-medium text-foreground/80 hover:text-primary hover:underline"
         >
-          Связаться с администратором
+          Поддержка
         </Link>
       </div>
     </footer>
