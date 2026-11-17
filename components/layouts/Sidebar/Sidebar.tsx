@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation"
 import {
   CircleHelp,
+  Heart,
   House,
   LifeBuoy,
   MessageCircle,
@@ -12,7 +13,7 @@ import {
 import { cn } from "cn"
 import { NavigationLink as Link } from "@/components/providers"
 import { NotificationCenter, UnreadCount } from "@/components/common"
-import { useAuth, useChatUnreadCount } from "@/hooks"
+import { useApplyPendingFavorite, useAuth, useChatUnreadCount } from "@/hooks"
 import { ROUTES } from "@/lib/constants"
 
 /**
@@ -23,6 +24,7 @@ import { ROUTES } from "@/lib/constants"
 export function Sidebar() {
   const pathname = usePathname() ?? ""
   const { user } = useAuth()
+  useApplyPendingFavorite()
   const unread = useChatUnreadCount(!!user).data?.count ?? 0
   const items = [
     {
@@ -52,6 +54,12 @@ export function Sidebar() {
             icon: MessageCircle,
             active: pathname.startsWith(ROUTES.CHATS),
             badge: unread,
+          },
+          {
+            href: ROUTES.FAVORITES,
+            label: "Избранное",
+            icon: Heart,
+            active: pathname === ROUTES.FAVORITES,
           },
         ]
       : []),

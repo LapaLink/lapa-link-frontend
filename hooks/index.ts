@@ -1,4 +1,9 @@
 export { useAuth } from "./useAuth"
+export {
+  savePendingFavorite,
+  useApplyPendingFavorite,
+  useFavorites,
+} from "./useFavorites"
 export { dictionaryQueries } from "./model/dictionaryQueries"
 export {
   useCities,
@@ -32,7 +37,13 @@ export {
   useUpdateNotification,
 } from "./useAccountMutations"
 export { useDebouncedValue } from "./useDebouncedValue"
-export { useUnreadCount, useInbox, useReadNotifications, useNotificationChannels, useUpdateNotificationChannel } from "./useInbox"
+export {
+  useUnreadCount,
+  useInbox,
+  useReadNotifications,
+  useNotificationChannels,
+  useUpdateNotificationChannel,
+} from "./useInbox"
 export { startInboxStream } from "./model/inboxStream"
 export {
   useChatPermission,

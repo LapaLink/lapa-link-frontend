@@ -1,5 +1,6 @@
 import type {
   AccountDeletionDto,
+  CaseListItem,
   CurrentUser,
   MyBadgeResponse,
   UpdateProfileDto,
@@ -45,16 +46,27 @@ export const accountApi = {
       body: JSON.stringify(data),
     }),
   /** Own cases, drafts included; `status` narrows the list (e.g. DRAFT). */
-  getCases: (
-    page = 0,
-    size = 20,
-    signal?: AbortSignal,
-    status?: CaseStatus,
-  ) =>
+  getCases: (page = 0, size = 20, signal?: AbortSignal, status?: CaseStatus) =>
     authorizedRequest<PageResponse<MyCaseListItem>>(
       `/account/cases${query({ status, page, size })}`,
       { signal },
     ),
+  /** Saved cases, newest first; published ones only. */
+  getFavorites: (page = 0, size = 20, signal?: AbortSignal) =>
+    authorizedRequest<PageResponse<CaseListItem>>(
+      `/account/favorites/cases${query({ page, size })}`,
+      { signal },
+    ),
+  /** Idempotent; 404 CASE_NOT_FOUND when the case is not published. */
+  addFavorite: (caseId: string) =>
+    authorizedRequest<void>(`/account/favorites/cases/${caseId}`, {
+      method: "PUT",
+    }),
+  /** Idempotent. */
+  removeFavorite: (caseId: string) =>
+    authorizedRequest<void>(`/account/favorites/cases/${caseId}`, {
+      method: "DELETE",
+    }),
   getMe: async (signal?: AbortSignal) => {
     const revision = getSessionRevision()
     const user = await authorizedRequest<CurrentUser>("/account/me", { signal })
@@ -135,11 +147,7 @@ export const accountApi = {
         body: JSON.stringify({ enabled }),
       },
     ),
-  getHelpApplications: (
-    status?: HelpApplicationStatus,
-    page = 0,
-    size = 20,
-  ) =>
+  getHelpApplications: (status?: HelpApplicationStatus, page = 0, size = 20) =>
     authorizedRequest<PageResponse<MyHelpApplication>>(
       `/account/help-applications${query({ status, page, size })}`,
     ),

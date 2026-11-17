@@ -6,6 +6,7 @@ import {
   ChevronDown,
   CircleHelp,
   ClipboardList,
+  Heart,
   House,
   LifeBuoy,
   LogOut,
@@ -34,6 +35,7 @@ const activityLinks = [
   { href: ROUTES.MY_CASES, label: "Мои объявления", icon: Newspaper },
   { href: ROUTES.MY_TASKS, label: "Мои отклики", icon: ClipboardList },
   { href: ROUTES.MY_ADOPTIONS, label: "Заявки на дом", icon: House },
+  { href: ROUTES.FAVORITES, label: "Избранное", icon: Heart },
 ]
 
 export function ProfileMenu({ user }: { user: CurrentUser }) {

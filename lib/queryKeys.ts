@@ -19,6 +19,9 @@ export const queryKeys = {
   /** Unread mandatory notifications, oldest first: the modal queue. */
   inboxMandatory: ["account", "inbox", "mandatory"] as const,
   notificationChannels: ["account", "notification-channels"] as const,
+  /** Ids of the saved cases (first 100, newest first): drives the hearts. */
+  favoriteIds: ["account", "favorites", "ids"] as const,
+  favoriteList: ["account", "favorites", "list"] as const,
   myCases: (page = 0, size = 20, status?: CaseStatus) =>
     ["account", "cases", { page, size, status }] as const,
   caseHistory: (id: string) => ["cases", "history", id] as const,

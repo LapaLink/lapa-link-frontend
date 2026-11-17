@@ -30,12 +30,7 @@ export type AnimalSex = "MALE" | "FEMALE" | "UNKNOWN"
  * 404) and actions on it answer 409 CASE_HIDDEN until it is restored.
  */
 export type CaseStatus =
-  | "DRAFT"
-  | "PENDING_REVIEW"
-  | "OPEN"
-  | "REJECTED"
-  | "CLOSED"
-  | "HIDDEN"
+  "DRAFT" | "PENDING_REVIEW" | "OPEN" | "REJECTED" | "CLOSED" | "HIDDEN"
 export type NeedStatus = "OPEN" | "ASSIGNED" | "CLOSED"
 export type NeedPriority = "LOW" | "MEDIUM" | "HIGH"
 
@@ -225,6 +220,11 @@ export type CaseListItem = {
   topNeed: CaseTopNeed | null
   /** Types of all open needs that are not overdue, without repeats. */
   openNeedTypes: string[]
+  /**
+   * Whether the signed-in user saved the case. The backend does not send it
+   * yet; the client falls back to its own set of favorite ids.
+   */
+  favorite?: boolean | null
 }
 
 export type CaseTopNeed = {

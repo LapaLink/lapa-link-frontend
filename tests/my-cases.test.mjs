@@ -62,6 +62,8 @@ function renderPage(
   const hooks = {
     useAuth: () => ({ user, isLoading: false, error: null }),
     useDictionaryLocale: () => "ru",
+    useFavorites: () => ({ isFavorite: (_id, server) => server ?? false, setFavorite: async () => {} }),
+    savePendingFavorite() {},
     useCities: () => ({ data: cities, isPending: false, isError: false }),
     useNeedTypes: () => ({ data: [] }),
     useCaseCloseReasons: () => ({ data: [] }),
@@ -444,6 +446,20 @@ test("public cards link to details, use logo placeholder and load more by cursor
   })
   assert.ok(!last.includes("Показать ещё"))
   assert.ok(!html.includes(">Открыть<"))
+})
+
+test("feed card has a favorite heart (server flag wins) and the favorites list hides needs and deadline", () => {
+  const render = (props) =>
+    renderPage("components/pages/Cases/CaseFeedCard.tsx", "CaseFeedCard", {
+      props: { item, cityName: "Минск", needTypeName: (c) => c, ...props },
+    })
+  assert.match(render({}), /aria-pressed="false"[^>]*aria-label="Добавить в избранное"/)
+  assert.match(
+    render({ item: { ...item, favorite: true } }),
+    /aria-pressed="true"[^>]*aria-label="Убрать из избранного"/,
+  )
+  assert.ok(!render({ brief: true }).includes("без срока"))
+  assert.ok(render({}).includes("без срока"))
 })
 
 test("feed card shows the urgent need, its priority and deadline, other needs, the description and distance", () => {

@@ -52,6 +52,7 @@ import {
   IconCircle,
   LoadingButton,
   CasePhoto,
+  FavoriteButton,
   SectionCard,
   StatusBadge,
   UserAvatar,
@@ -602,9 +603,19 @@ export function CaseDetails({ caseId, highlightNeedId }: CaseDetailsProps) {
             !hasPhoto && "col-span-2",
           )}
         >
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-3xl lg:text-4xl">
-            {animalCase.title}
-          </h1>
+          <div className="flex w-full min-w-0 items-start justify-between gap-3">
+            <h1 className="text-2xl font-extrabold leading-tight tracking-tight [overflow-wrap:anywhere] sm:text-3xl lg:text-4xl">
+              {animalCase.title}
+            </h1>
+            {/* Only published cases can be saved (the server answers 404 otherwise). */}
+            {(animalCase.status === "OPEN" ||
+              animalCase.status === "CLOSED") && (
+              <FavoriteButton
+                caseId={animalCase.id}
+                className="shrink-0 border border-border"
+              />
+            )}
+          </div>
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
             <UserAvatar
               user={{
